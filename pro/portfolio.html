@@ -91,7 +91,7 @@ canvas{width:100%!important;height:100%!important}
 </div>
 
 <div class="card hidden" id="summaryCard">
-  <div class="card-title">Волатильность портфеля vs отдельные бумаги (1 год)</div>
+  <div class="card-title">Доходность, волатильность и просадка (1 год)</div>
   <div class="results-grid" id="summaryGrid"></div>
   <div class="vol-compare" id="volCompare"></div>
 </div>
@@ -263,27 +263,92 @@ async function run(){
     const waVol=tickers.reduce((s,t,i)=>s+weights[i]*vols[i],0);
     const divEffect=(1-portVol/waVol)*100;
 
+    // Portfolio daily values (normalized to 100)
+    const portDaily=common.map((d,di)=>{
+      let val=0;tickers.forEach((t,i)=>{val+=weights[i]*(closeMap[t][di].close/closeMap[t][0].close)*100;});return val;
+    });
+
+    // Max drawdown
+    let peak=portDaily[0], maxDD=0, ddStart=0, ddEnd=0, ddPeak=0;
+    let currentPeak=0;
+    for(let i=0;i<portDaily.length;i++){
+      if(portDaily[i]>peak){peak=portDaily[i];currentPeak=i;}
+      const dd=(peak-portDaily[i])/peak;
+      if(dd>maxDD){maxDD=dd;ddStart=currentPeak;ddEnd=i;ddPeak=peak;}
+    }
+
+    // Individual max drawdowns
+    const indDD=tickers.map(t=>{
+      const prices=closeMap[t].map(c=>c.close);
+      let pk=prices[0],mdd=0;
+      for(let i=0;i<prices.length;i++){
+        if(prices[i]>pk)pk=prices[i];
+        const dd=(pk-prices[i])/pk;
+        if(dd>mdd)mdd=dd;
+      }
+      return mdd*100;
+    });
+
+    // Expected return (annualized from total return)
+    const totalReturn=(portDaily[portDaily.length-1]/portDaily[0]-1);
+    const yearsInPeriod=common.length/252;
+    const annualReturn=(Math.pow(1+totalReturn,1/yearsInPeriod)-1)*100;
+
+    // Individual returns
+    const indReturns=tickers.map(t=>{
+      const prices=closeMap[t];
+      const tr=prices[prices.length-1].close/prices[0].close-1;
+      return(Math.pow(1+tr,1/yearsInPeriod)-1)*100;
+    });
+
     // Summary
     document.getElementById('summaryCard').classList.remove('hidden');
     const sg=document.getElementById('summaryGrid');
     sg.innerHTML='';
-    [{l:'Волатильность портфеля',v:portVol.toFixed(1)+'%',s:'с учётом корреляций',c:'hl'},
+    [{l:'Доходность портфеля',v:annualReturn.toFixed(1)+'%',s:'годовая',c:'hl'},
+     {l:'Волатильность портфеля',v:portVol.toFixed(1)+'%',s:'с учётом корреляций',c:'hl'},
+     {l:'Макс. просадка портфеля',v:'-'+(maxDD*100).toFixed(1)+'%',s:common[ddStart]+' → '+common[ddEnd],c:'dd'},
      {l:'Средневзвеш. волатильность',v:waVol.toFixed(1)+'%',s:'без диверсификации',c:''},
-     {l:'Эффект диверсификации',v:divEffect.toFixed(1)+'%',s:'снижение риска',c:'hl'}
+     {l:'Эффект диверсификации',v:divEffect.toFixed(1)+'%',s:'снижение риска',c:'hl'},
+     {l:'Sharpe (упрощ.)',v:(annualReturn/portVol).toFixed(2),s:'доходность / волатильность',c:''}
     ].forEach(m=>{
       const el=document.createElement('div');el.className='metric '+(m.c||'');
-      el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
+      if(m.c==='dd'){el.style.background='#FDF0F0';el.style.border='1px solid rgba(180,64,64,0.15)';el.querySelector||0;
+        el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value" style="color:#B44040">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';}
+      else{el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';}
       sg.appendChild(el);
     });
 
-    // Vol comparison bars
+    // Vol & drawdown comparison bars
     const vc=document.getElementById('volCompare');vc.innerHTML='';
+    // Return bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:4px">ДОХОДНОСТЬ (ГОДОВАЯ)</div>';
+    const allRets=[{label:'ПОРТФЕЛЬ',val:annualReturn,color:'#2D5A3D'},...tickers.map((t,i)=>({label:t,val:indReturns[i],color:'#1B6B9A'}))];
+    const maxRet=Math.max(...allRets.map(v=>Math.abs(v.val)),1);
+    allRets.forEach(v=>{
+      const pct=Math.abs(v.val)/maxRet*100;
+      const row=document.createElement('div');row.className='vol-bar-row';
+      row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:'+(v.val>=0?v.color:'#B44040')+'"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+(v.val<0?';color:#B44040':'')+'">'+v.val.toFixed(1)+'%</span>';
+      vc.appendChild(row);
+    });
+    // Vol bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:16px">ВОЛАТИЛЬНОСТЬ</div>';
     const maxVol=Math.max(portVol,...vols);
     const allVols=[{label:'ПОРТФЕЛЬ',vol:portVol,color:'#2D5A3D'},...tickers.map((t,i)=>({label:t,vol:vols[i],color:'#1B6B9A'}))];
     allVols.forEach(v=>{
       const pct=(v.vol/maxVol)*100;
       const row=document.createElement('div');row.className='vol-bar-row';
       row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:'+v.color+'"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'">'+v.vol.toFixed(1)+'%</span>';
+      vc.appendChild(row);
+    });
+    // Drawdown bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:16px">МАКС. ПРОСАДКА</div>';
+    const allDD=[{label:'ПОРТФЕЛЬ',dd:maxDD*100},...tickers.map((t,i)=>({label:t,dd:indDD[i]}))];
+    const maxDDval=Math.max(...allDD.map(v=>v.dd));
+    allDD.forEach(v=>{
+      const pct=v.dd/maxDDval*100;
+      const row=document.createElement('div');row.className='vol-bar-row';
+      row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:#B44040"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+';color:#B44040">-'+v.dd.toFixed(1)+'%</span>';
       vc.appendChild(row);
     });
 
@@ -320,9 +385,6 @@ async function run(){
       return{label:t,data:closeMap[t].map(c=>(c.close/base)*100),borderColor:colors[i%colors.length],pointRadius:0,borderWidth:1.5,tension:0.1,fill:false};
     });
     // Add portfolio line
-    const portDaily=common.map((d,di)=>{
-      let val=0;tickers.forEach((t,i)=>{val+=weights[i]*(closeMap[t][di].close/closeMap[t][0].close)*100;});return val;
-    });
     datasets.unshift({label:'ПОРТФЕЛЬ',data:portDaily,borderColor:'#1A1A18',borderWidth:2.5,pointRadius:0,tension:0.1,fill:false,borderDash:[]});
 
     priceChart=new Chart(ctx,{type:'line',data:{labels:common,datasets},options:{
