@@ -1,19 +1,6 @@
-<!-- 
-  Password gate for PRO calculators.
-  Add this at the very top of each PRO calculator HTML file, right after <body>:
-  
-  <script src="../gate.js"></script>
-  
-  The gate.js checks localStorage for a valid token. 
-  If not found, shows password prompt.
--->
 (function(){
-  // ===== CHANGE PASSWORD HERE =====
-  var PASS_HASH = 'a571463a3aeaddb2d45bde4c97ceaad80e8a2454a6fc1462a99e31c3343a9dfe'; // SHA-256 of password
-  // To generate hash for your password, open browser console and run:
-  // crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_PASSWORD')).then(h=>console.log(Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')))
-  // ================================
-
+  // Password hash - SHA-256 of PROFI2026
+  var PASS_HASH = 'a571463a3aeaddb2d45bde4c97ceaad80e8a2454a6fc1462a99e31c3343a9dfe';
   var KEY = 'pro_access_token';
   var EXPIRY_KEY = 'pro_access_expiry';
 
@@ -36,7 +23,7 @@
     document.body.style.display = 'none';
     var overlay = document.createElement('div');
     overlay.id = 'proGate';
-    overlay.innerHTML = 
+    overlay.innerHTML =
       '<div style="font-family:DM Sans,system-ui,sans-serif;max-width:400px;margin:80px auto;padding:2rem;background:#fff;border-radius:14px;border:1px solid #E5E4DF;text-align:center">' +
       '<h2 style="font-size:1.2rem;margin-bottom:0.5rem">PRO-доступ</h2>' +
       '<p style="font-size:0.85rem;color:#6B6A65;margin-bottom:1.5rem">Этот калькулятор доступен по подписке</p>' +
@@ -60,7 +47,6 @@
     sha256(pass).then(function(hash) {
       if (hash === PASS_HASH) {
         localStorage.setItem(KEY, hash);
-        // Token valid for 35 days
         var exp = new Date();
         exp.setDate(exp.getDate() + 35);
         localStorage.setItem(EXPIRY_KEY, exp.toISOString());
