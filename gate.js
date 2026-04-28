@@ -9,7 +9,7 @@
 -->
 (function(){
   // ===== CHANGE PASSWORD HERE =====
-  var PASS_HASH = '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5'; // SHA-256 of 'test123'
+  var PASS_HASH = 'a571463a3aeaddb2d45bde4c97ceaad80e8a2454a6fc1462a99e31c3343a9dfe'; // SHA-256 of password
   // To generate hash for your password, open browser console and run:
   // crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_PASSWORD')).then(h=>console.log(Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')))
   // ================================

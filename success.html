@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оплата прошла · PRO-доступ</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#FAFAF8;color:#1A1A18;line-height:1.6;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#fff;border:1px solid #E5E4DF;border-radius:14px;padding:2.5rem;max-width:480px;width:90%;text-align:center}
+.icon{font-size:3rem;margin-bottom:1rem}
+h1{font-size:1.4rem;font-weight:600;margin-bottom:0.5rem}
+.sub{font-size:0.88rem;color:#6B6A65;margin-bottom:2rem}
+.password-box{background:#EDF7F1;border:2px solid #2D7A4F;border-radius:10px;padding:1.25rem;margin-bottom:1.5rem}
+.password-label{font-size:0.75rem;color:#2D7A4F;text-transform:uppercase;letter-spacing:0.06em;font-weight:500;margin-bottom:0.5rem}
+.password-value{font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:700;color:#2D7A4F;letter-spacing:0.05em;user-select:all}
+.steps{text-align:left;margin-bottom:1.5rem}
+.steps h3{font-size:0.82rem;font-weight:600;margin-bottom:0.75rem;color:#6B6A65;text-transform:uppercase;letter-spacing:0.04em}
+.step{display:flex;gap:10px;margin-bottom:0.6rem;font-size:0.85rem}
+.step-num{background:#2D5A3D;color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:600;flex-shrink:0;margin-top:2px}
+.btn{display:inline-block;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;padding:0.7rem 2rem;border:none;border-radius:10px;background:#2D5A3D;color:#fff;cursor:pointer;text-decoration:none;transition:opacity 0.2s;margin-top:0.5rem}
+.btn:hover{opacity:0.85}
+.note{font-size:0.72rem;color:#9C9B96;margin-top:1.5rem;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">✅</div>
+  <h1>Оплата прошла!</h1>
+  <p class="sub">PRO-доступ к финансовым калькуляторам активирован</p>
+  
+  <div class="password-box">
+    <div class="password-label">Ваш пароль для PRO-доступа</div>
+    <!-- ===== CHANGE PASSWORD HERE ===== -->
+    <div class="password-value">PROFI2026</div>
+    <!-- ================================ -->
+  </div>
+
+  <div class="steps">
+    <h3>Как использовать</h3>
+    <div class="step"><span class="step-num">1</span><span>Сохраните или запомните пароль</span></div>
+    <div class="step"><span class="step-num">2</span><span>Откройте любой PRO-калькулятор (облигации или акции)</span></div>
+    <div class="step"><span class="step-num">3</span><span>Введите пароль — доступ откроется на 35 дней</span></div>
+  </div>
+
+  <a class="btn" href="index.html">Перейти к калькуляторам →</a>
+
+  <p class="note">Пароль действует 35 дней с момента ввода. Если возникли проблемы — напишите в Telegram @kutnyak_invest</p>
+</div>
+</body>
+</html>
