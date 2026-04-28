@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кредитный анализ эмитента · Калькулятор метрик</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--surface3:#ECEAE4;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;
+--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--red:#B44040;--red-bg:#FDF0F0;
+--orange:#C46A2E;--orange-bg:#FDF4EC;
+--yellow:#A67A2E;--yellow-bg:#FDF7ED;
+--green:#2D7A4F;--green-bg:#EDF7F1;
+--border:#E5E4DF;--border2:#D1D0CB;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:920px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.input-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:700px){.input-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.input-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:0.72rem;color:var(--text2);font-weight:500}
+.field input,.field select{
+font-family:var(--mono);font-size:0.9rem;font-weight:500;
+padding:0.5rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius);
+background:var(--surface2);color:var(--text);outline:none;width:100%;transition:border-color 0.2s;
+}
+.field input:focus{border-color:var(--accent)}
+.field .hint{font-size:0.65rem;color:var(--text3)}
+.section-label{font-size:0.72rem;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;margin-top:8px}
+.btn{
+font-family:var(--sans);font-size:0.85rem;font-weight:500;
+padding:0.6rem 1.5rem;border:none;border-radius:var(--radius);
+background:var(--accent);color:#fff;cursor:pointer;transition:opacity 0.2s;margin-top:1rem;
+}
+.btn:hover{opacity:0.85}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:700px){.results-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;border:1px solid transparent}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.25rem;font-weight:600;letter-spacing:-0.02em}
+.metric-sub{font-size:0.68rem;color:var(--text3)}
+.z-green{background:var(--green-bg);border-color:rgba(45,122,79,0.15)}.z-green .metric-value{color:var(--green)}
+.z-yellow{background:var(--yellow-bg);border-color:rgba(166,122,46,0.15)}.z-yellow .metric-value{color:var(--yellow)}
+.z-orange{background:var(--orange-bg);border-color:rgba(196,106,46,0.15)}.z-orange .metric-value{color:var(--orange)}
+.z-red{background:var(--red-bg);border-color:rgba(180,64,64,0.15)}.z-red .metric-value{color:var(--red)}
+.z-neutral{background:var(--surface2)}.z-neutral .metric-value{color:var(--text)}
+.verdict-card{margin-top:1rem;padding:1rem 1.25rem;border-radius:var(--radius);display:flex;align-items:center;gap:12px}
+.verdict-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.verdict-text{font-size:0.9rem;font-weight:500}
+.verdict-sub{font-size:0.75rem;color:var(--text2);margin-top:2px}
+.info-block{margin-top:1.25rem;padding:1rem 1.1rem;background:var(--surface2);border-radius:var(--radius);border-left:3px solid var(--accent);font-size:0.78rem;color:var(--text2);line-height:1.6}
+.hidden{display:none}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.toggle-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.toggle-btn{font-family:var(--sans);font-size:0.75rem;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);cursor:pointer;transition:all 0.2s}
+.toggle-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Кредитный анализ эмитента</h1>
+<p class="subtitle">Финансовые коэффициенты из отчётности · методология Екатерины Кутняк</p>
+
+<div class="card">
+  <div class="card-title">Эмитент</div>
+  <div class="input-grid" style="grid-template-columns:2fr 1fr 1fr">
+    <div class="field">
+      <label>Название эмитента</label>
+      <input type="text" id="emitName" placeholder="ООО «Компания»">
+    </div>
+    <div class="field">
+      <label>Период отчётности</label>
+      <select id="period">
+        <option value="12">Годовая</option>
+        <option value="9">9 месяцев</option>
+        <option value="6">Полугодие</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Стандарт</label>
+      <select id="standard">
+        <option value="IFRS">МСФО</option>
+        <option value="RAS">РСБУ</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Данные из отчётности (млн ₽)</div>
+
+  <div class="section-label">Отчёт о прибылях и убытках</div>
+  <div class="input-grid">
+    <div class="field"><label>Выручка</label><input type="text" id="revenue" inputmode="decimal"><span class="hint">Revenue</span></div>
+    <div class="field"><label>EBIT</label><input type="text" id="ebit" inputmode="decimal"><span class="hint">Операционная прибыль</span></div>
+    <div class="field"><label>Амортизация (D&A)</label><input type="text" id="da" inputmode="decimal"><span class="hint">Depreciation & Amortization</span></div>
+    <div class="field"><label>EBITDA</label><input type="text" id="ebitda" inputmode="decimal" style="background:#E8F0EB"><span class="hint">Авто: EBIT + D&A (или введите вручную)</span></div>
+    <div class="field"><label>Чистая прибыль</label><input type="text" id="netIncome" inputmode="decimal"><span class="hint">Net Income</span></div>
+    <div class="field"><label>Процентные расходы</label><input type="text" id="interestExp" inputmode="decimal"><span class="hint">Interest Expense (P&L)</span></div>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">Баланс</div>
+  <div class="input-grid">
+    <div class="field"><label>Итого активы</label><input type="text" id="totalAssets" inputmode="decimal"><span class="hint">Total Assets</span></div>
+    <div class="field"><label>Собственный капитал</label><input type="text" id="equity" inputmode="decimal"><span class="hint">Total Equity</span></div>
+    <div class="field"><label>Итого обязательства</label><input type="text" id="totalLiab" inputmode="decimal"><span class="hint">Все обязательства (долг + кз + пр.)</span></div>
+    <div class="field"><label>Финансовый долг</label><input type="text" id="totalDebt" inputmode="decimal"><span class="hint">Кредиты + облигации + лизинг IFRS16</span></div>
+    <div class="field"><label>Денежные средства</label><input type="text" id="cash" inputmode="decimal"><span class="hint">Cash & Equivalents</span></div>
+    <div class="field"><label>Эскроу-счета</label><input type="text" id="escrow" inputmode="decimal"><span class="hint">Для девелоперов (необязательно)</span></div>
+    <div class="field"><label>Оборотные активы</label><input type="text" id="currentAssets" inputmode="decimal"><span class="hint">Current Assets</span></div>
+    <div class="field"><label>Краткосрочные обязательства</label><input type="text" id="currentLiab" inputmode="decimal"><span class="hint">Current Liabilities</span></div>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">Денежный поток (ОДДС)</div>
+  <div class="input-grid">
+    <div class="field"><label>CFO (операционный)</label><input type="text" id="cfo" inputmode="decimal"><span class="hint">Cash Flow from Operations</span></div>
+    <div class="field"><label>Проценты уплаченные</label><input type="text" id="interestPaid" inputmode="decimal"><span class="hint">Interest Paid (ОДДС)</span></div>
+  </div>
+
+  <div class="section-label" style="margin-top:16px">Средние значения (необязательно)</div>
+  <div class="input-grid">
+    <div class="field"><label>Ср. активы</label><input type="text" id="avgAssets" inputmode="decimal"><span class="hint">(Активы нач. + кон.) / 2</span></div>
+    <div class="field"><label>Ср. собственный капитал</label><input type="text" id="avgEquity" inputmode="decimal"><span class="hint">(СК нач. + кон.) / 2</span></div>
+  </div>
+
+  <button class="btn" onclick="calculate()">Рассчитать</button>
+</div>
+
+<div class="card hidden" id="resultsCard">
+  <div class="card-title">Кредитные метрики</div>
+  <div class="toggle-row" id="toggleRow">
+    <button class="toggle-btn active" data-group="leverage" onclick="toggleGroup(this)">Долговая нагрузка</button>
+    <button class="toggle-btn active" data-group="coverage" onclick="toggleGroup(this)">Покрытие</button>
+    <button class="toggle-btn active" data-group="liquidity" onclick="toggleGroup(this)">Ликвидность</button>
+    <button class="toggle-btn active" data-group="profitability" onclick="toggleGroup(this)">Рентабельность</button>
+  </div>
+  <div class="results-grid" id="resultsGrid"></div>
+  <div class="verdict-card" id="verdictCard"></div>
+  <div class="info-block" id="annualNote" style="display:none"></div>
+</div>
+
+<div class="card hidden" id="commentCard">
+  <div class="card-title">Интерпретация</div>
+  <div id="commentary" style="font-size:0.82rem;line-height:1.7;color:var(--text)"></div>
+</div>
+
+<p class="footer-note">
+  Debt Ratio и D/E рассчитываются по всем обязательствам (как требуют рейтинговые агентства).<br>
+  Debt/EBITDA и Net Debt/EBITDA — по финансовому долгу.<br>
+  ICR классический = EBIT / процентные расходы (P&L). ICR cash = EBITDA / проценты уплаченные (ОДДС).<br>
+  Beaver = CFO до процентов и налогов / финансовый долг.<br>
+  Для промежуточной отчётности (9М, 6М) потоковые показатели аннуализируются (×4/3 или ×2).
+</p>
+</div>
+
+<script>
+function p(id){const v=document.getElementById(id).value.replace(/\s/g,'').replace(',','.');return v===''?null:parseFloat(v)}
+
+const thresholds = {
+  debtEbitda:    [{max:1.5,z:'green',l:'Низкий'},{max:3,z:'yellow',l:'Умеренный'},{max:5,z:'orange',l:'Повышенный'},{max:999,z:'red',l:'Высокий'}],
+  netDebtEbitda: [{max:1,z:'green',l:'Низкий'},{max:2.5,z:'yellow',l:'Умеренный'},{max:4,z:'orange',l:'Повышенный'},{max:999,z:'red',l:'Высокий'}],
+  debtRatio:     [{max:0.5,z:'green',l:'Низкий'},{max:0.7,z:'yellow',l:'Умеренный'},{max:0.85,z:'orange',l:'Повышенный'},{max:999,z:'red',l:'Высокий'}],
+  de:            [{max:1,z:'green',l:'Низкий'},{max:2,z:'yellow',l:'Умеренный'},{max:4,z:'orange',l:'Повышенный'},{max:999,z:'red',l:'Высокий'}],
+  icrClassic:    [{min:5,z:'green',l:'Высокий'},{min:3,z:'yellow',l:'Умеренный'},{min:1.5,z:'orange',l:'Низкий'},{min:0,z:'red',l:'Критический'}],
+  icrCash:       [{min:5,z:'green',l:'Высокий'},{min:3,z:'yellow',l:'Умеренный'},{min:1.5,z:'orange',l:'Низкий'},{min:0,z:'red',l:'Критический'}],
+  currentRatio:  [{min:2,z:'green',l:'Высокий'},{min:1.2,z:'yellow',l:'Умеренный'},{min:0.8,z:'orange',l:'Низкий'},{min:0,z:'red',l:'Критический'}],
+  beaver:        [{min:0.4,z:'green',l:'Устойчив'},{min:0.2,z:'yellow',l:'Внимание'},{min:0.1,z:'orange',l:'Риск'},{min:0,z:'red',l:'Опасность'}],
+  ebitdaMargin:  [{min:25,z:'green',l:'Высокая'},{min:15,z:'yellow',l:'Средняя'},{min:8,z:'orange',l:'Низкая'},{min:0,z:'red',l:'Убыточная'}],
+  netMargin:     [{min:15,z:'green',l:'Высокая'},{min:5,z:'yellow',l:'Средняя'},{min:0,z:'orange',l:'Низкая'},{min:-999,z:'red',l:'Убыточная'}],
+  roa:           [{min:10,z:'green',l:'Высокая'},{min:4,z:'yellow',l:'Средняя'},{min:1,z:'orange',l:'Низкая'},{min:-999,z:'red',l:'Убыточная'}],
+  roe:           [{min:15,z:'green',l:'Высокая'},{min:8,z:'yellow',l:'Средняя'},{min:0,z:'orange',l:'Низкая'},{min:-999,z:'red',l:'Убыточная'}]
+};
+
+function getZone(metric, value) {
+  const t = thresholds[metric];
+  if (!t || value === null || isNaN(value)) return {z:'neutral',l:'—'};
+  for (const r of t) {
+    if ('max' in r && value <= r.max) return r;
+    if ('min' in r && value >= r.min) return r;
+  }
+  return {z:'neutral',l:'—'};
+}
+
+function fmt(v, type) {
+  if (v === null || isNaN(v)) return '—';
+  if (type === 'x') return v.toFixed(2) + '×';
+  if (type === '%') return v.toFixed(1) + '%';
+  if (type === 'f') return v.toFixed(3);
+  return v.toFixed(2);
+}
+
+let allMetrics = [];
+
+function calculate() {
+  const period = parseInt(document.getElementById('period').value);
+  const ann = period < 12 ? 12 / period : 1;
+
+  const revenue = p('revenue');
+  const ebit = p('ebit');
+  const da = p('da');
+  let ebitda = p('ebitda');
+  const netIncome = p('netIncome');
+  const interestExp = p('interestExp');
+  const totalAssets = p('totalAssets');
+  const equity = p('equity');
+  const totalLiab = p('totalLiab');
+  const totalDebt = p('totalDebt');
+  const cash = p('cash');
+  const escrow = p('escrow');
+  const currentAssets = p('currentAssets');
+  const currentLiab = p('currentLiab');
+  const cfo = p('cfo');
+  const interestPaid = p('interestPaid');
+  const avgAssets = p('avgAssets') || totalAssets;
+  const avgEquity = p('avgEquity') || equity;
+
+  // Auto-calc EBITDA if not entered manually
+  if (ebitda === null && ebit !== null && da !== null) {
+    ebitda = ebit + da;
+    document.getElementById('ebitda').value = ebitda.toFixed(1);
+  }
+
+  // Annualize flow items
+  const aRevenue = revenue !== null ? revenue * ann : null;
+  const aEbit = ebit !== null ? ebit * ann : null;
+  const aEbitda = ebitda !== null ? ebitda * ann : null;
+  const aNetIncome = netIncome !== null ? netIncome * ann : null;
+  const aInterestExp = interestExp !== null ? interestExp * ann : null;
+  const aCfo = cfo !== null ? cfo * ann : null;
+  const aInterestPaid = interestPaid !== null ? interestPaid * ann : null;
+
+  // Net debt
+  const netDebt = (totalDebt !== null && cash !== null) ? totalDebt - cash : null;
+  const netDebtExEscrow = (netDebt !== null && escrow !== null) ? netDebt - escrow : null;
+
+  // Metrics
+  const debtEbitda = (totalDebt !== null && aEbitda && aEbitda !== 0) ? totalDebt / aEbitda : null;
+  const netDebtEbitda = (netDebt !== null && aEbitda && aEbitda !== 0) ? netDebt / aEbitda : null;
+  const netDebtEbitdaEscrow = (netDebtExEscrow !== null && aEbitda && aEbitda !== 0) ? netDebtExEscrow / aEbitda : null;
+  const debtRatio = (totalLiab !== null && totalAssets && totalAssets !== 0) ? totalLiab / totalAssets : null;
+  const de = (totalLiab !== null && equity && equity !== 0) ? totalLiab / equity : null;
+  const icrClassic = (aEbit !== null && aInterestExp && aInterestExp !== 0) ? aEbit / aInterestExp : null;
+  const icrCash = (aEbitda !== null && aInterestPaid && aInterestPaid !== 0) ? aEbitda / aInterestPaid : null;
+  const currentRatio = (currentAssets !== null && currentLiab && currentLiab !== 0) ? currentAssets / currentLiab : null;
+  const beaverCfo = (aCfo !== null && aInterestPaid !== null) ? aCfo + aInterestPaid : aCfo;
+  const beaver = (beaverCfo !== null && totalDebt && totalDebt !== 0) ? beaverCfo / totalDebt : null;
+  const ebitdaMargin = (aEbitda !== null && aRevenue && aRevenue !== 0) ? (aEbitda / aRevenue) * 100 : null;
+  const netMargin = (aNetIncome !== null && aRevenue && aRevenue !== 0) ? (aNetIncome / aRevenue) * 100 : null;
+  const roa = (aNetIncome !== null && avgAssets && avgAssets !== 0) ? (aNetIncome / avgAssets) * 100 : null;
+  const roe = (aNetIncome !== null && avgEquity && avgEquity !== 0) ? (aNetIncome / avgEquity) * 100 : null;
+
+  allMetrics = [
+    {id:'debtEbitda',   group:'leverage',     label:'Debt / EBITDA',     value:debtEbitda, type:'x', sub:'финансовый долг'},
+    {id:'netDebtEbitda',group:'leverage',     label:'Net Debt / EBITDA', value:netDebtEbitda, type:'x', sub:'чистый долг'},
+    ...(escrow !== null ? [{id:'netDebtEbitda',group:'leverage',label:'ND/EBITDA (без эскроу)',value:netDebtEbitdaEscrow, type:'x', sub:'для девелоперов'}] : []),
+    {id:'debtRatio',    group:'leverage',     label:'Debt Ratio',        value:debtRatio, type:'f', sub:'все обяз-ва / активы'},
+    {id:'de',           group:'leverage',     label:'D/E',               value:de, type:'x', sub:'все обяз-ва / СК'},
+    {id:'icrClassic',   group:'coverage',     label:'ICR (классич.)',    value:icrClassic, type:'x', sub:'EBIT / % расходы'},
+    {id:'icrCash',      group:'coverage',     label:'ICR (cash)',        value:icrCash, type:'x', sub:'EBITDA / % уплач.'},
+    {id:'currentRatio', group:'liquidity',    label:'Current Ratio',     value:currentRatio, type:'x', sub:'ОА / КО'},
+    {id:'beaver',       group:'liquidity',    label:'Beaver',            value:beaver, type:'f', sub:'CFO до % / фин. долг'},
+    {id:'ebitdaMargin', group:'profitability',label:'EBITDA margin',     value:ebitdaMargin, type:'%', sub:'EBITDA / выручка'},
+    {id:'netMargin',    group:'profitability',label:'Чистая маржа',      value:netMargin, type:'%', sub:'ЧП / выручка'},
+    {id:'roa',          group:'profitability',label:'ROA',               value:roa, type:'%', sub:'ЧП / ср. активы'},
+    {id:'roe',          group:'profitability',label:'ROE',               value:roe, type:'%', sub:'ЧП / ср. СК'}
+  ];
+
+  renderMetrics();
+
+  // Annualization note
+  const noteEl = document.getElementById('annualNote');
+  if (ann > 1) {
+    noteEl.style.display = 'block';
+    noteEl.textContent = 'Потоковые показатели (выручка, EBITDA, EBIT, ЧП, CFO, проценты) аннуализированы: × ' + ann.toFixed(2) + ' (период ' + period + 'М → 12М). Балансовые показатели взяты на отчётную дату.';
+  } else {
+    noteEl.style.display = 'none';
+  }
+
+  // Verdict
+  let scores = [];
+  allMetrics.forEach(m => {
+    const z = getZone(m.id, m.value);
+    if (z.z === 'green') scores.push(3);
+    else if (z.z === 'yellow') scores.push(2);
+    else if (z.z === 'orange') scores.push(1);
+    else if (z.z === 'red') scores.push(0);
+  });
+  const validScores = scores.filter(s => s !== undefined);
+  const avgScore = validScores.length > 0 ? validScores.reduce((a,b)=>a+b,0) / validScores.length : 0;
+
+  const vc = document.getElementById('verdictCard');
+  let vColor, vBg, vText, vSub;
+  if (avgScore >= 2.5) { vColor='#2D7A4F';vBg='#EDF7F1';vText='Высокое кредитное качество';vSub='Большинство метрик в зелёной зоне'; }
+  else if (avgScore >= 1.8) { vColor='#A67A2E';vBg='#FDF7ED';vText='Среднее кредитное качество';vSub='Есть зоны внимания'; }
+  else if (avgScore >= 1.0) { vColor='#C46A2E';vBg='#FDF4EC';vText='Пониженное кредитное качество';vSub='Несколько метрик в красной/оранжевой зоне'; }
+  else { vColor='#B44040';vBg='#FDF0F0';vText='Низкое кредитное качество';vSub='Критические значения по ключевым метрикам'; }
+  vc.style.background = vBg; vc.style.color = vColor;
+  vc.innerHTML = '<div class="verdict-dot" style="background:'+vColor+'"></div><div><div class="verdict-text">'+vText+'</div><div class="verdict-sub" style="color:'+vColor+'">'+vSub+' · средний балл '+avgScore.toFixed(1)+'/3.0</div></div>';
+
+  // Commentary
+  const cc = document.getElementById('commentCard');
+  cc.classList.remove('hidden');
+  let comm = [];
+  const name = document.getElementById('emitName').value || 'Эмитент';
+
+  if (debtEbitda !== null) {
+    if (debtEbitda <= 2) comm.push('Долговая нагрузка низкая (Debt/EBITDA ' + debtEbitda.toFixed(1) + '×) — комфортный уровень для инвестиционного грейда.');
+    else if (debtEbitda <= 4) comm.push('Долговая нагрузка умеренная (Debt/EBITDA ' + debtEbitda.toFixed(1) + '×) — допустимо, но требует мониторинга.');
+    else comm.push('Долговая нагрузка высокая (Debt/EBITDA ' + debtEbitda.toFixed(1) + '×) — существенный кредитный риск.');
+  }
+  if (icrClassic !== null) {
+    if (icrClassic < 1.5) comm.push('Покрытие процентов критически низкое (ICR ' + icrClassic.toFixed(1) + '×) — операционная прибыль едва покрывает проценты.');
+    else if (icrClassic >= 4) comm.push('Процентная нагрузка комфортная (ICR ' + icrClassic.toFixed(1) + '×).');
+  }
+  if (currentRatio !== null && currentRatio < 1) comm.push('Текущая ликвидность ниже 1 (CR ' + currentRatio.toFixed(2) + '×) — краткосрочные обязательства не покрыты оборотными активами.');
+  if (netDebtEbitda !== null && netDebtEbitda < 0) comm.push('Отрицательный чистый долг — денежная позиция превышает финансовый долг.');
+  if (beaver !== null && beaver < 0.15) comm.push('Коэффициент Бивера критически низкий (' + beaver.toFixed(3) + ') — высокая вероятность финансовых затруднений в ближайшие 1–2 года.');
+
+  document.getElementById('commentary').innerHTML = comm.length > 0 ? comm.join('<br><br>') : 'Введите больше данных для детальной интерпретации.';
+
+  document.getElementById('resultsCard').classList.remove('hidden');
+}
+
+function renderMetrics() {
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+  const activeGroups = [];
+  document.querySelectorAll('.toggle-btn.active').forEach(b => activeGroups.push(b.dataset.group));
+
+  allMetrics.forEach(m => {
+    if (!activeGroups.includes(m.group)) return;
+    const zone = getZone(m.id, m.value);
+    const el = document.createElement('div');
+    el.className = 'metric z-' + zone.z;
+    el.innerHTML = '<span class="metric-label">' + m.label + '</span><span class="metric-value">' + fmt(m.value, m.type) + '</span><span class="metric-sub">' + m.sub + ' · ' + zone.l + '</span>';
+    grid.appendChild(el);
+  });
+}
+
+function toggleGroup(btn) {
+  btn.classList.toggle('active');
+  if (allMetrics.length > 0) renderMetrics();
+}
+
+// Auto-calc EBITDA when EBIT or D&A changes
+['ebit','da'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    const ebitVal = p('ebit');
+    const daVal = p('da');
+    const ebitdaField = document.getElementById('ebitda');
+    // Only auto-fill if user hasn't manually entered EBITDA
+    if (ebitVal !== null && daVal !== null && ebitdaField.dataset.manual !== '1') {
+      ebitdaField.value = (ebitVal + daVal).toFixed(1);
+    }
+  });
+});
+document.getElementById('ebitda').addEventListener('input', function() {
+  this.dataset.manual = this.value.trim() ? '1' : '0';
+});
+</script>
+</body>
+</html>

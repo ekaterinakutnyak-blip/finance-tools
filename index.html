@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Финансовые калькуляторы · Екатерина Кутняк</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:800px;margin:0 auto;padding:2.5rem 1.5rem 3rem}
+h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem}
+.subtitle{font-size:0.9rem;color:var(--text2);margin-bottom:0.75rem}
+.intro{font-size:0.88rem;color:var(--text2);line-height:1.7;margin-bottom:2.5rem}
+.section-header{display:flex;align-items:center;gap:10px;margin:2rem 0 1rem}
+.section-header h2{font-size:1.1rem;font-weight:600}
+.badge{font-size:0.65rem;font-family:var(--mono);padding:2px 8px;border-radius:4px;font-weight:500}
+.badge-free{background:#EDF7F1;color:#2D7A4F}
+.badge-pro{background:#FDF7ED;color:#A67A2E}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem;text-decoration:none;display:block;transition:border-color 0.2s,transform 0.15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card h3{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:0.3rem}
+.card p{font-size:0.82rem;color:var(--text2);line-height:1.5}
+.card .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:0.6rem}
+.card .tag{font-size:0.65rem;font-family:var(--mono);padding:2px 7px;border-radius:4px;background:var(--surface2);color:var(--text3)}
+.s1 .tag{background:var(--accent-light);color:var(--accent)}
+.s2 .tag{background:var(--accent2-light);color:var(--accent2)}
+.s3 .tag{background:#F5EDFA;color:#7B4FA0}
+.card.locked{position:relative;overflow:hidden}
+.card.locked::after{content:'🔒';position:absolute;top:12px;right:14px;font-size:1rem}
+.pricing{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.75rem;margin:2rem 0;text-align:center}
+.pricing h2{font-size:1.1rem;font-weight:600;margin-bottom:0.5rem}
+.pricing .price{font-family:var(--mono);font-size:2rem;font-weight:700;color:var(--accent);margin:0.5rem 0}
+.pricing .price-sub{font-size:0.82rem;color:var(--text2);margin-bottom:1rem}
+.pricing ul{text-align:left;list-style:none;max-width:400px;margin:0 auto 1.25rem}
+.pricing li{font-size:0.85rem;padding:6px 0;border-bottom:1px solid var(--surface2)}
+.pricing li::before{content:'✓ ';color:var(--accent);font-weight:600}
+.btn-buy{display:inline-block;font-family:var(--sans);font-size:0.9rem;font-weight:600;padding:0.7rem 2rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;transition:opacity 0.2s}
+.btn-buy:hover{opacity:0.85}
+.footer{margin-top:2.5rem;font-size:0.72rem;color:var(--text3);line-height:1.6;text-align:center}
+.footer a{color:var(--text2)}
+.nav{display:flex;gap:6px;margin-bottom:2rem;flex-wrap:wrap}
+.nav a{font-size:0.78rem;padding:6px 14px;border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text2);transition:all 0.2s}
+.nav a:hover,.nav a.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Финансовые калькуляторы</h1>
+<p class="subtitle">Екатерина Кутняк · автор книг «Частный инвестор» и «Разумные инвестиции»</p>
+<p class="intro">Профессиональные инструменты для инвесторов и финансового планирования. Рыночные данные загружаются автоматически с Московской биржи.</p>
+
+<!-- ===== SECTION 1: FREE ===== -->
+<div class="section-header">
+  <h2>Личные финансы</h2>
+  <span class="badge badge-free">Бесплатно</span>
+</div>
+
+<a class="card s1" href="savings.html">
+  <h3>Накопления и пассивный доход</h3>
+  <p>Сколько накопите за N лет с учётом инфляции. Историческая доходность российского рынка 2003–2025 по аллокациям. Пассивный доход: вечная рента или проедание за N лет.</p>
+  <div class="tags"><span class="tag">Сложный %</span><span class="tag">Историч. доходность</span><span class="tag">Инфляция</span><span class="tag">Пассивный доход</span></div>
+</a>
+
+<a class="card s1" href="loan.html">
+  <h3>Кредитный калькулятор</h3>
+  <p>Аннуитетный платёж, переплата, досрочное погашение. Сравнение: уменьшить платёж или уменьшить срок.</p>
+  <div class="tags"><span class="tag">Аннуитет</span><span class="tag">Досрочное погашение</span><span class="tag">↓ Платёж vs ↓ Срок</span></div>
+</a>
+
+<!-- ===== SECTION 2: PAID ===== -->
+<div class="section-header">
+  <h2>Облигации</h2>
+  <span class="badge badge-pro">PRO</span>
+</div>
+
+<a class="card s2 locked" href="pro/pd-calculator.html">
+  <h3>Вероятность дефолта из спредов</h3>
+  <p>ISIN → доходность с биржи → спред к ОФЗ → implied PD, implied рейтинг Эксперт РА, справедливый спред, risk-neutral vs physical PD.</p>
+  <div class="tags"><span class="tag">MOEX API</span><span class="tag">КБД ОФЗ</span><span class="tag">Implied rating</span><span class="tag">Справедливый спред</span></div>
+</a>
+
+<a class="card s2 locked" href="pro/zspread-calculator.html">
+  <h3>Z-spread и implied PD</h3>
+  <p>Z-spread к КБД ОФЗ с учётом всех денежных потоков. График кривой, таблица cash flows.</p>
+  <div class="tags"><span class="tag">Z-spread</span><span class="tag">КБД график</span><span class="tag">Cash flow table</span></div>
+</a>
+
+<a class="card s2 locked" href="pro/credit-metrics.html">
+  <h3>Кредитный анализ эмитента</h3>
+  <p>12 коэффициентов из отчётности с цветовыми зонами: Debt/EBITDA, ICR, Beaver, ROE и другие.</p>
+  <div class="tags"><span class="tag">Debt/EBITDA</span><span class="tag">ICR</span><span class="tag">Beaver</span><span class="tag">Эскроу</span></div>
+</a>
+
+<!-- ===== SECTION 3: PAID ===== -->
+<div class="section-header">
+  <h2>Акции</h2>
+  <span class="badge badge-pro">PRO</span>
+</div>
+
+<a class="card s3 locked" href="pro/correlation.html">
+  <h3>Корреляция и волатильность</h3>
+  <p>Два тикера → корреляция и волатильность за 4 периода, графики динамики и скользящей корреляции.</p>
+  <div class="tags"><span class="tag">4 периода</span><span class="tag">Скользящая 60д</span><span class="tag">Волатильность</span></div>
+</a>
+
+<a class="card s3 locked" href="pro/portfolio.html">
+  <h3>Портфельный анализ</h3>
+  <p>До 10 бумаг с долями → корреляционная матрица, волатильность портфеля vs бумаг, эффект диверсификации.</p>
+  <div class="tags"><span class="tag">Матрица корреляций</span><span class="tag">Портфельная σ</span><span class="tag">Диверсификация</span></div>
+</a>
+
+<!-- ===== PRICING ===== -->
+<div class="pricing" id="pricing">
+  <h2>PRO-доступ</h2>
+  <div class="price">500 ₽/мес</div>
+  <div class="price-sub">Все калькуляторы облигаций и акций</div>
+  <ul>
+    <li>Вероятность дефолта из спредов + справедливый спред</li>
+    <li>Z-spread к КБД ОФЗ</li>
+    <li>Кредитный анализ эмитента (12 метрик)</li>
+    <li>Корреляция и волатильность акций</li>
+    <li>Портфельный анализ с матрицей корреляций</li>
+    <li>Implied рейтинг Эксперт РА</li>
+    <li>Данные с Мосбиржи в реальном времени</li>
+  </ul>
+  <a class="btn-buy" href="PAY_LINK_HERE" target="_blank">Оформить подписку</a>
+  <div style="font-size:0.72rem;color:var(--text3);margin-top:0.75rem">После оплаты пароль придёт на email в течение 5 минут</div>
+</div>
+
+<div class="footer">
+  Автор: Екатерина Кутняк · <a href="https://privatemoney.org" target="_blank">privatemoney.org</a><br>
+  Данные: <a href="https://iss.moex.com/" target="_blank">MOEX ISS API</a> · Эксперт РА · УК «Доход»<br>
+  © 2025–2026
+</div>
+
+</div>
+</body>
+</html>

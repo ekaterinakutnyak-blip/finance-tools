@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Z-spread калькулятор · КБД + MOEX API</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--surface3:#ECEAE4;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--danger:#B44040;--danger-bg:#FDF0F0;
+--warn:#A67A2E;--warn-bg:#FDF7ED;
+--ok:#2D7A4F;--ok-bg:#EDF7F1;
+--border:#E5E4DF;--border2:#D1D0CB;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.search-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.search-row .field{flex:1;min-width:200px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:0.78rem;color:var(--text2);font-weight:500}
+.field input,.field select{
+font-family:var(--mono);font-size:0.92rem;font-weight:500;
+padding:0.55rem 0.75rem;border:1px solid var(--border);border-radius:var(--radius);
+background:var(--surface2);color:var(--text);outline:none;transition:border-color 0.2s;width:100%;
+}
+.field input:focus{border-color:var(--accent)}
+.field .unit{font-size:0.72rem;color:var(--text3);margin-top:1px}
+.btn{
+font-family:var(--sans);font-size:0.85rem;font-weight:500;
+padding:0.55rem 1.2rem;border:1px solid var(--accent);border-radius:var(--radius);
+background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;
+}
+.btn:hover{opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-outline{background:transparent;color:var(--accent)}
+.status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.status.err{color:var(--danger)}
+.status.ok{color:var(--ok)}
+.bond-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:1rem}
+.info-chip{background:var(--surface2);border-radius:8px;padding:0.5rem 0.75rem}
+.info-chip .lbl{font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em}
+.info-chip .val{font-family:var(--mono);font-size:0.88rem;font-weight:500;margin-top:2px}
+.chart-container{position:relative;width:100%;height:320px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+@media(max-width:600px){.input-grid{grid-template-columns:1fr}}
+.slider-row{display:flex;align-items:center;gap:12px;margin-top:0.5rem}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--surface);box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.slider-val{font-family:var(--mono);font-size:0.9rem;font-weight:500;min-width:48px;text-align:right}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1rem}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+.metric{background:var(--surface2);border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px}
+.metric.hl{background:var(--accent-light);border:1px solid rgba(45,90,61,0.15)}
+.metric.hl2{background:var(--accent2-light);border:1px solid rgba(27,107,154,0.15)}
+.metric-label{font-size:0.7rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.3rem;font-weight:600;letter-spacing:-0.02em}
+.metric-sub{font-size:0.7rem;color:var(--text3)}
+.risk-bar{margin-top:1rem}
+.risk-bar-label{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text3);margin-bottom:4px}
+.risk-track{height:8px;background:var(--surface2);border-radius:4px;position:relative;overflow:hidden}
+.risk-track::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#2D7A4F 0%,#7AB648 25%,#A67A2E 50%,#D4764E 75%,#B44040 100%);border-radius:4px}
+.risk-marker{position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--text);border:2px solid var(--surface);transform:translateX(-50%);transition:left 0.3s;z-index:1}
+.risk-verdict{margin-top:0.75rem;padding:0.6rem 0.85rem;border-radius:var(--radius);font-size:0.82rem;font-weight:500;display:flex;align-items:center;gap:8px}
+.risk-verdict .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cf-table{margin-top:1rem;overflow-x:auto}
+.cf-table table{width:100%;border-collapse:collapse;font-size:0.78rem}
+.cf-table th{text-align:left;font-weight:500;color:var(--text2);padding:0.4rem 0.6rem;border-bottom:1px solid var(--border);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em}
+.cf-table td{padding:0.4rem 0.6rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.78rem}
+.cf-table tr:last-child td{border-bottom:none}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.gcurve-date{font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem}
+.hidden{display:none}
+.rating-card{display:flex;gap:1.5rem;align-items:stretch;flex-wrap:wrap}
+.rating-box{flex:1;min-width:180px;padding:1rem 1.25rem;border-radius:var(--radius);text-align:center}
+.rating-box .r-label{font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px}
+.rating-box .r-value{font-family:var(--mono);font-size:1.6rem;font-weight:600;letter-spacing:-0.01em}
+.rating-box .r-sub{font-size:0.72rem;color:var(--text3);margin-top:4px}
+.rating-arrow{display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:var(--text3);min-width:40px}
+.rating-scale{margin-top:1.25rem;overflow-x:auto}
+.rating-scale table{width:100%;border-collapse:collapse;font-size:0.75rem}
+.rating-scale th{font-weight:500;color:var(--text2);padding:0.35rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;text-align:center}
+.rating-scale td{padding:0.35rem 0.5rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.75rem;text-align:center}
+.rating-scale tr.active{background:var(--accent-light);font-weight:600}
+.rating-scale tr.active td{border-color:rgba(45,90,61,0.15)}
+.rating-match{background:#E8F0EB;color:#2D5A3D}
+.rating-above{background:#FDF7ED;color:#A67A2E}
+.rating-below{background:#FDF0F0;color:#B44040}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Z-spread и вероятность дефолта</h1>
+<p class="subtitle">Кривая бескупонной доходности ОФЗ · MOEX ISS API · live data</p>
+
+<!-- G-CURVE CARD -->
+<div class="card">
+  <div class="card-title">КБД ОФЗ (G-кривая Мосбиржи)</div>
+  <div class="gcurve-date" id="gcurveDate"></div>
+  <div class="chart-container"><canvas id="gcurveChart"></canvas></div>
+  <div class="status" id="gcurveStatus"><span class="loader"></span>Загрузка КБД...</div>
+</div>
+
+<!-- BOND SEARCH CARD -->
+<div class="card">
+  <div class="card-title">Облигация</div>
+  <div class="search-row">
+    <div class="field">
+      <label>ISIN или тикер на Мосбирже</label>
+      <input type="text" id="isinInput" placeholder="RU000A108Y69" spellcheck="false" autocomplete="off">
+    </div>
+    <button class="btn" id="loadBtn" onclick="loadBond()">Загрузить</button>
+  </div>
+  <div class="status" id="bondStatus"></div>
+  <div class="bond-info hidden" id="bondInfo"></div>
+</div>
+
+<!-- PRICE + RR CARD -->
+<div class="card hidden" id="calcCard">
+  <div class="card-title">Параметры расчёта</div>
+  <div class="input-grid">
+    <div class="field">
+      <label>Грязная цена (% от номинала)</label>
+      <input type="text" id="dirtyPrice" value="" inputmode="decimal">
+      <span class="unit">рыночная цена + НКД</span>
+    </div>
+    <div class="field">
+      <label>Recovery Rate</label>
+      <div class="slider-row">
+        <input type="range" id="rrSlider" min="0" max="60" value="20" step="5">
+        <span class="slider-val" id="rrVal">20%</span>
+      </div>
+      <span class="unit">ставка возврата при дефолте</span>
+    </div>
+  </div>
+  <div style="margin-top:1rem;text-align:right">
+    <button class="btn" id="calcBtn" onclick="calcZspread()">Рассчитать Z-spread</button>
+  </div>
+  <div class="status" id="calcStatus"></div>
+</div>
+
+<!-- RESULTS CARD -->
+<div class="card hidden" id="resultsCard">
+  <div class="card-title">Результаты</div>
+  <div class="results-grid" id="resultsGrid"></div>
+  <div class="risk-bar">
+    <div class="risk-bar-label"><span>Низкий риск</span><span>Высокий риск</span></div>
+    <div class="risk-track"><div class="risk-marker" id="riskMarker"></div></div>
+  </div>
+  <div class="risk-verdict" id="riskVerdict"></div>
+</div>
+
+<!-- IMPLIED RATING CARD -->
+<div class="card hidden" id="ratingCard">
+  <div class="card-title">Implied рейтинг · Эксперт РА</div>
+  <div style="margin-bottom:1rem">
+    <div class="field" style="max-width:280px">
+      <label>Формальный рейтинг эмитента (если известен)</label>
+      <select id="formalRating">
+        <option value="">— не указан —</option>
+        <option value="ruAAA">ruAAA</option>
+        <option value="ruAA+">ruAA+</option>
+        <option value="ruAA">ruAA</option>
+        <option value="ruAA-">ruAA-</option>
+        <option value="ruA+">ruA+</option>
+        <option value="ruA">ruA</option>
+        <option value="ruA-">ruA-</option>
+        <option value="ruBBB+">ruBBB+</option>
+        <option value="ruBBB">ruBBB</option>
+        <option value="ruBBB-">ruBBB-</option>
+        <option value="ruBB+">ruBB+</option>
+        <option value="ruBB">ruBB</option>
+        <option value="ruBB-">ruBB-</option>
+        <option value="ruB+">ruB+</option>
+        <option value="ruB">ruB</option>
+        <option value="ruB-">ruB-</option>
+        <option value="ruCCC">ruCCC</option>
+        <option value="ruCC">ruCC</option>
+      </select>
+    </div>
+  </div>
+  <div class="rating-card" id="ratingComparison"></div>
+  <div class="rating-scale" id="ratingScale"></div>
+</div>
+
+<!-- CASH FLOWS TABLE -->
+<div class="card hidden" id="cfCard">
+  <div class="card-title">Денежные потоки и дисконтирование</div>
+  <div class="cf-table" id="cfTable"></div>
+</div>
+
+<p class="footer-note">
+  Данные получены через открытый API Московской биржи (ISS MOEX) в реальном времени. КБД строится по модели Нельсона–Сигеля–Свенссона.<br>
+  Z-spread подбирается методом бисекции как постоянная надбавка к КБД, при которой PV денежных потоков = грязной цене.<br>
+  Risk-neutral PD из Z-spread обычно выше реальной (physical) PD из-за премии за кредитный риск.
+</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ======================== MOEX FETCH WITH JSONP FALLBACK ========================
+let _jsonpCounter = 0;
+
+function moexFetch(url) {
+  return fetch(url).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).catch(() => {
+    // CORS blocked or network error — fallback to JSONP
+    return new Promise((resolve, reject) => {
+      const cbName = '_moexCb' + (++_jsonpCounter) + '_' + Date.now();
+      const sep = url.includes('?') ? '&' : '?';
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('JSONP timeout'));
+      }, 15000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = function(data) {
+        cleanup();
+        resolve(data);
+      };
+
+      script.src = url + sep + 'callback=' + cbName;
+      script.onerror = function() { cleanup(); reject(new Error('JSONP script error')); };
+      document.body.appendChild(script);
+    });
+  });
+}
+
+// ======================== G-CURVE ========================
+let gcurveParams = null;
+let gcurvePoints = []; // {t, rate} pairs from API data block
+let gcurveChart = null;
+
+function nsRate(t, _unused) {
+  // Linear interpolation on actual MOEX-calculated yield points
+  if (!gcurvePoints.length || t <= 0) return 0;
+  if (t <= gcurvePoints[0].t) return gcurvePoints[0].rate;
+  if (t >= gcurvePoints[gcurvePoints.length - 1].t) return gcurvePoints[gcurvePoints.length - 1].rate;
+  for (let i = 1; i < gcurvePoints.length; i++) {
+    if (t <= gcurvePoints[i].t) {
+      const p0 = gcurvePoints[i - 1], p1 = gcurvePoints[i];
+      const frac = (t - p0.t) / (p1.t - p0.t);
+      return p0.rate + frac * (p1.rate - p0.rate);
+    }
+  }
+  return gcurvePoints[gcurvePoints.length - 1].rate;
+}
+
+async function loadGcurve() {
+  const st = document.getElementById('gcurveStatus');
+  try {
+    const d = await moexFetch('https://iss.moex.com/iss/engines/stock/zcyc/securities.json?iss.meta=off');
+
+    // Extract date from params
+    const paramCols = d.params.columns;
+    const paramRow = d.params.data[0];
+    const paramObj = {};
+    paramCols.forEach((c, i) => paramObj[c] = paramRow[i]);
+    const tradeDate = paramObj.tradedate;
+
+    // Extract yield points from data block
+    const dataCols = d.data.columns;
+    const dataRows = d.data.data;
+    const periodIdx = dataCols.indexOf('period');
+    const valueIdx = dataCols.indexOf('value');
+
+    gcurvePoints = [];
+    dataRows.forEach(row => {
+      const period = parseFloat(row[periodIdx]);
+      const value = parseFloat(row[valueIdx]);
+      if (!isNaN(period) && !isNaN(value) && period > 0) {
+        gcurvePoints.push({ t: period, rate: value });
+      }
+    });
+    gcurvePoints.sort((a, b) => a.t - b.t);
+
+    if (gcurvePoints.length > 0) {
+      gcurveParams = { date: tradeDate };
+      document.getElementById('gcurveDate').textContent = 'Дата расчёта: ' + tradeDate + ' · ' + gcurvePoints.length + ' точек (КБД)';
+      st.className = 'status ok';
+      st.textContent = 'КБД загружена (' + gcurvePoints.length + ' точек)';
+      drawGcurve();
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: build curve from OFZ-PD (SU26*) bonds on TQOB
+  try {
+    const d = await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,MATDATE,YIELDATPREVWAPRICE');
+    const cols = d.securities.columns;
+    const secidIdx = cols.indexOf('SECID');
+    const matIdx = cols.indexOf('MATDATE');
+    const yieldIdx = cols.indexOf('YIELDATPREVWAPRICE');
+    const today = new Date(); today.setHours(0,0,0,0);
+    gcurvePoints = [];
+    d.securities.data.forEach(row => {
+      const secid = row[secidIdx] || '';
+      const matDate = row[matIdx];
+      const ytm = parseFloat(row[yieldIdx]);
+      if (secid.startsWith('SU26') && matDate && ytm >= 8 && ytm <= 25) {
+        const years = (new Date(matDate) - today) / (365.25 * 86400000);
+        if (years > 0.1) gcurvePoints.push({ t: years, rate: ytm });
+      }
+    });
+    gcurvePoints.sort((a, b) => a.t - b.t);
+
+    if (gcurvePoints.length > 0) {
+      gcurveParams = { date: new Date().toISOString().slice(0, 10) };
+      document.getElementById('gcurveDate').textContent = 'Построена из ОФЗ-ПД · ' + gcurvePoints.length + ' выпусков';
+      st.className = 'status ok';
+      st.textContent = 'КБД построена из ОФЗ-ПД (' + gcurvePoints.length + ' выпусков)';
+      drawGcurve();
+      return;
+    }
+  } catch(e) {}
+
+  st.className = 'status err';
+  st.textContent = 'Не удалось загрузить КБД. Проверьте подключение к интернету.';
+}
+
+function drawGcurve() {
+  if (!gcurvePoints.length) return;
+  const terms = gcurvePoints.map(p => p.t);
+  const rates = gcurvePoints.map(p => p.rate);
+
+  const ctx = document.getElementById('gcurveChart').getContext('2d');
+  if (gcurveChart) gcurveChart.destroy();
+
+  gcurveChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: terms,
+      datasets: [{
+        label: 'КБД ОФЗ, %',
+        data: rates,
+        borderColor: '#2D5A3D',
+        backgroundColor: 'rgba(45,90,61,0.08)',
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ctx[0].parsed.x.toFixed(2) + ' лет',
+            label: ctx => ctx.parsed.y.toFixed(2) + '%'
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: { display: true, text: 'Срок, лет', font: { size: 12, family: 'DM Sans' } },
+          ticks: { stepSize: 5, font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          title: { display: true, text: 'Доходность, %', font: { size: 12, family: 'DM Sans' } },
+          ticks: { font: { size: 11, family: 'JetBrains Mono' }, callback: v => v.toFixed(1) },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+// ======================== BOND LOADING ========================
+let bondData = null;
+let bondCoupons = [];
+let bondAmorts = [];
+
+async function loadBond() {
+  const isin = document.getElementById('isinInput').value.trim();
+  if (!isin) return;
+  const st = document.getElementById('bondStatus');
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true;
+  st.className = 'status';
+  st.innerHTML = '<span class="loader"></span>Загрузка ' + isin + '...';
+
+  try {
+    // 1. Security description
+    const d1 = await moexFetch('https://iss.moex.com/iss/securities/' + isin + '.json?iss.meta=off');
+    const descCols = d1.description.columns;
+    const descRows = d1.description.data;
+    const desc = {};
+    descRows.forEach(row => {
+      const nameIdx = descCols.indexOf('name');
+      const valIdx = descCols.indexOf('value');
+      desc[row[nameIdx]] = row[valIdx];
+    });
+
+    // Find SECID from boards
+    const boardCols = d1.boards.columns;
+    const boardRows = d1.boards.data;
+    let secid = isin;
+    let primaryBoard = 'TQCB';
+    for (const row of boardRows) {
+      const obj = {};
+      boardCols.forEach((c, i) => obj[c] = row[i]);
+      if (obj.is_traded == 1) {
+        secid = obj.secid;
+        primaryBoard = obj.boardid;
+        break;
+      }
+    }
+
+    // 2. Market data (price, YTM, accrued)
+    const d2 = await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/' + primaryBoard + '/securities/' + secid + '.json?iss.meta=off');
+    const secCols = d2.securities.columns;
+    const secRow = d2.securities.data[0] || [];
+    const sec = {};
+    secCols.forEach((c, i) => sec[c] = secRow[i]);
+
+    const mdCols = d2.marketdata.columns;
+    const mdRow = d2.marketdata.data[0] || [];
+    const md = {};
+    mdCols.forEach((c, i) => md[c] = mdRow[i]);
+
+    // 3. Bondization (coupons + amortizations)
+    const d3 = await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/' + secid + '.json?iss.meta=off&limit=unlimited');
+
+    const cCols = d3.coupons.columns;
+    bondCoupons = d3.coupons.data.map(row => {
+      const o = {};
+      cCols.forEach((c, i) => o[c] = row[i]);
+      return o;
+    });
+
+    const aCols = d3.amortizations.columns;
+    bondAmorts = d3.amortizations.data.map(row => {
+      const o = {};
+      aCols.forEach((c, i) => o[c] = row[i]);
+      return o;
+    });
+
+    // Store
+    const faceValue = parseFloat(desc.INITIALFACEVALUE || sec.FACEVALUE || '1000');
+    const currentFace = parseFloat(sec.FACEVALUE || desc.INITIALFACEVALUE || '1000');
+    const matDate = desc.MATDATE || sec.MATDATE || '';
+    const offerDate = sec.OFFERDATE || '';
+    const couponVal = parseFloat(sec.COUPONVALUE || '0');
+    const couponPeriod = parseInt(sec.COUPONPERIOD || '182');
+    const accruedInt = parseFloat(sec.ACCRUEDINT || '0');
+    const prevPrice = parseFloat(sec.PREVWAPRICE || sec.PREVPRICE || md.LAST || '100');
+    const ytmToMat = parseFloat(sec.YIELDATPREVWAPRICE || md.YIELD || '0');
+    const ytmToOffer = parseFloat(sec.YIELDTOOFFER || '0');
+
+    // Check if data is actually available
+    if (ytmToMat === 0 && couponVal === 0 && (!matDate || matDate === '')) {
+      st.className = 'status err';
+      st.textContent = 'Бумага не найдена на Мосбирже или данные недоступны. Возможно, она торгуется на СПБ Бирже.';
+      btn.disabled = false;
+      return;
+    }
+
+    // Use YTM to offer if offer date exists and is before maturity
+    const hasOffer = offerDate && offerDate.length > 0 && ytmToOffer > 0 && new Date(offerDate) > new Date();
+    const ytm = ytmToMat;
+
+    bondData = {
+      secid, isin, primaryBoard,
+      name: desc.NAME || sec.SECNAME || secid,
+      faceValue, currentFace, matDate, offerDate, hasOffer, couponVal, couponPeriod,
+      accruedInt, prevPrice, ytm,
+      couponPercent: desc.COUPONPERCENT || '',
+      issueDate: desc.ISSUEDATE || '',
+      faceUnit: desc.FACEUNIT || 'SUR'
+    };
+
+    // Dirty price
+    const dirty = prevPrice + (accruedInt / currentFace * 100);
+    document.getElementById('dirtyPrice').value = dirty.toFixed(3);
+
+    // Show info chips
+    const infoDiv = document.getElementById('bondInfo');
+    infoDiv.innerHTML = '';
+    const chips = [
+      ['Название', bondData.name],
+      ['Тикер', secid],
+      ['Номинал', currentFace.toLocaleString('ru-RU') + ' ₽'],
+      ['Погашение', matDate],
+      ['Купон', couponVal.toFixed(2) + ' ₽ / ' + couponPeriod + ' дн.'],
+      ['Цена (пред.)', prevPrice.toFixed(2) + '%'],
+      ['НКД', accruedInt.toFixed(2) + ' ₽'],
+      ['YTM к погаш.', ytmToMat.toFixed(2) + '%']
+    ];
+    if (hasOffer) {
+      chips.push(['Оферта', offerDate]);
+      chips.push(['YTM к оферте', ytmToOffer.toFixed(2) + '%']);
+    }
+    chips.forEach(([lbl, val]) => {
+      const el = document.createElement('div');
+      el.className = 'info-chip';
+      el.innerHTML = '<div class="lbl">' + lbl + '</div><div class="val">' + val + '</div>';
+      infoDiv.appendChild(el);
+    });
+    infoDiv.classList.remove('hidden');
+
+    document.getElementById('calcCard').classList.remove('hidden');
+    st.className = 'status ok';
+    st.textContent = 'Загружено: ' + bondData.name;
+  } catch(e) {
+    st.className = 'status err';
+    st.textContent = 'Ошибка: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+// ======================== EXPERT RA RATING TABLE ========================
+const expertRA = [
+  { rating: 'ruAAA', pd1: null,  pd2: null,  pd3: null },
+  { rating: 'ruAA+', pd1: null,  pd2: null,  pd3: 0.49 },
+  { rating: 'ruAA',  pd1: 0.25, pd2: 0.76, pd3: 0.76 },
+  { rating: 'ruAA-', pd1: null,  pd2: 0.54, pd3: 0.81 },
+  { rating: 'ruA+',  pd1: 0.61, pd2: 0.82, pd3: 1.43 },
+  { rating: 'ruA',   pd1: 0.74, pd2: 2.79, pd3: 3.90 },
+  { rating: 'ruA-',  pd1: 0.51, pd2: 1.35, pd3: 2.19 },
+  { rating: 'ruBBB+',pd1: 1.19, pd2: 2.57, pd3: 4.55 },
+  { rating: 'ruBBB', pd1: 2.14, pd2: 4.48, pd3: 6.82 },
+  { rating: 'ruBBB-',pd1: 1.61, pd2: 4.97, pd3: 9.21 },
+  { rating: 'ruBB+', pd1: 3.14, pd2: 7.73, pd3: 11.11 },
+  { rating: 'ruBB',  pd1: 5.06, pd2: 13.38,pd3: 20.72 },
+  { rating: 'ruBB-', pd1: 6.89, pd2: 11.48,pd3: 16.39 },
+  { rating: 'ruB+',  pd1: 6.27, pd2: 12.54,pd3: 19.40 },
+  { rating: 'ruB',   pd1: 5.29, pd2: 9.75, pd3: 13.65 },
+  { rating: 'ruB-',  pd1: 4.98, pd2: 11.31,pd3: 14.93 },
+  { rating: 'ruCCC', pd1: 13.30,pd2: 21.10,pd3: 26.15 },
+  { rating: 'ruCC',  pd1: 28.57,pd2: 38.10,pd3: 42.86 }
+];
+
+const ratingOrder = expertRA.map(r => r.rating);
+
+function getImpliedRating(pdAnnualPct, pdCumPct, T) {
+  // Choose the best horizon column
+  let col;
+  if (T <= 1.5) col = 'pd1';
+  else if (T <= 2.5) col = 'pd2';
+  else col = 'pd3';
+
+  // For annual PD always also check pd1
+  // Use cumulative PD matched to nearest horizon
+  const pdToMatch = (col === 'pd1') ? pdAnnualPct : pdCumPct;
+  const colLabel = col === 'pd1' ? '1 год' : col === 'pd2' ? '2 года' : '3 года';
+
+  let bestRating = 'ruCC';
+  let bestDiff = Infinity;
+
+  for (const row of expertRA) {
+    const refPD = row[col];
+    if (refPD === null) continue;
+    const diff = Math.abs(pdToMatch - refPD);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestRating = row.rating;
+    }
+  }
+
+  return { rating: bestRating, horizon: colLabel, col, pdUsed: pdToMatch };
+}
+
+function renderRatingCard(implied, formalRating, pdAnnualPct, pdCumPct, T) {
+  const card = document.getElementById('ratingCard');
+  card.classList.remove('hidden');
+
+  const comp = document.getElementById('ratingComparison');
+  const impliedIdx = ratingOrder.indexOf(implied.rating);
+  const formalIdx = formalRating ? ratingOrder.indexOf(formalRating) : -1;
+
+  // Rating comparison boxes
+  let html = '';
+  html += '<div class="rating-box" style="background:var(--accent2-light);border:1px solid rgba(27,107,154,0.15)">';
+  html += '<div class="r-label">Implied рейтинг</div>';
+  html += '<div class="r-value" style="color:#1B6B9A">' + implied.rating + '</div>';
+  html += '<div class="r-sub">по ' + implied.horizon + ' · PD ' + implied.pdUsed.toFixed(2) + '%</div>';
+  html += '</div>';
+
+  if (formalRating && formalIdx >= 0) {
+    const diff = impliedIdx - formalIdx;
+    let arrowSymbol, arrowColor, verdictText, verdictClass;
+    if (diff === 0) {
+      arrowSymbol = '='; arrowColor = '#2D7A4F';
+      verdictText = 'Рынок оценивает в соответствии с рейтингом';
+      verdictClass = 'rating-match';
+    } else if (diff > 0) {
+      arrowSymbol = '▼'; arrowColor = '#B44040';
+      verdictText = 'Рынок оценивает НИЖЕ формального рейтинга на ' + Math.abs(diff) + ' ступ.';
+      verdictClass = 'rating-below';
+    } else {
+      arrowSymbol = '▲'; arrowColor = '#2D7A4F';
+      verdictText = 'Рынок оценивает ВЫШЕ формального рейтинга на ' + Math.abs(diff) + ' ступ.';
+      verdictClass = 'rating-above';
+    }
+
+    html += '<div class="rating-arrow" style="color:' + arrowColor + '">' + arrowSymbol + '</div>';
+    html += '<div class="rating-box" style="background:var(--surface2);border:1px solid var(--border)">';
+    html += '<div class="r-label">Формальный рейтинг</div>';
+    html += '<div class="r-value">' + formalRating + '</div>';
+    html += '<div class="r-sub">Эксперт РА</div>';
+    html += '</div>';
+
+    html += '<div class="rating-box ' + verdictClass + '" style="border:none;display:flex;align-items:center;justify-content:center;min-width:220px">';
+    html += '<div class="r-value" style="font-size:0.9rem;font-weight:500;color:inherit">' + verdictText + '</div>';
+    html += '</div>';
+  }
+  comp.innerHTML = html;
+
+  // Full rating scale table
+  const scale = document.getElementById('ratingScale');
+  let thtml = '<table><thead><tr><th>Рейтинг</th><th>PD 1 год</th><th>PD 2 года</th><th>PD 3 года</th><th></th></tr></thead><tbody>';
+  expertRA.forEach(row => {
+    const isImplied = row.rating === implied.rating;
+    const isFormal = row.rating === formalRating;
+    const cls = isImplied ? ' class="active"' : '';
+    thtml += '<tr' + cls + '>';
+    thtml += '<td style="font-weight:500;text-align:left">' + row.rating;
+    if (isImplied) thtml += ' <span style="font-size:0.65rem;background:#1B6B9A;color:#fff;padding:1px 6px;border-radius:4px;vertical-align:middle">implied</span>';
+    if (isFormal) thtml += ' <span style="font-size:0.65rem;background:var(--text3);color:#fff;padding:1px 6px;border-radius:4px;vertical-align:middle">формальный</span>';
+    thtml += '</td>';
+    thtml += '<td>' + (row.pd1 !== null ? row.pd1.toFixed(2) + '%' : '—') + '</td>';
+    thtml += '<td>' + (row.pd2 !== null ? row.pd2.toFixed(2) + '%' : '—') + '</td>';
+    thtml += '<td>' + (row.pd3 !== null ? row.pd3.toFixed(2) + '%' : '—') + '</td>';
+    thtml += '<td></td></tr>';
+  });
+  thtml += '</tbody></table>';
+  scale.innerHTML = thtml;
+}
+
+// ======================== Z-SPREAD CALC ========================
+function calcZspread() {
+  if (!gcurvePoints.length || !bondData) return;
+  const st = document.getElementById('calcStatus');
+  const rr = parseInt(document.getElementById('rrSlider').value) / 100;
+  document.getElementById('rrVal').textContent = Math.round(rr * 100) + '%';
+
+  const dirtyPricePct = parseFloat(document.getElementById('dirtyPrice').value.replace(',', '.'));
+  if (isNaN(dirtyPricePct)) {
+    st.className = 'status err';
+    st.textContent = 'Введите грязную цену';
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const faceVal = bondData.currentFace;
+  const dirtyPriceAbs = dirtyPricePct / 100 * faceVal;
+
+  // Build cash flows: future coupons + amortizations + final redemption
+  const cashFlows = [];
+  const matDate = new Date(bondData.matDate);
+
+  // Add future coupons
+  bondCoupons.forEach(c => {
+    const d = new Date(c.coupondate);
+    if (d > today && c.value !== null && c.value > 0) {
+      cashFlows.push({ date: d, coupon: c.value, amort: 0 });
+    }
+  });
+
+  // Add amortizations
+  bondAmorts.forEach(a => {
+    const d = new Date(a.amortdate);
+    if (d > today && a.value !== null && a.value > 0) {
+      const existing = cashFlows.find(cf => cf.date.getTime() === d.getTime());
+      if (existing) {
+        existing.amort = a.value;
+      } else {
+        cashFlows.push({ date: d, coupon: 0, amort: a.value });
+      }
+    }
+  });
+
+  // If no amortization found for maturity, add face redemption
+  const hasMatAmort = cashFlows.some(cf => cf.amort > 0);
+  if (!hasMatAmort) {
+    const existing = cashFlows.find(cf => cf.date.getTime() === matDate.getTime());
+    if (existing) {
+      existing.amort = faceVal;
+    } else {
+      cashFlows.push({ date: matDate, coupon: 0, amort: faceVal });
+    }
+  }
+
+  cashFlows.sort((a, b) => a.date - b.date);
+
+  if (cashFlows.length === 0) {
+    st.className = 'status err';
+    st.textContent = 'Нет будущих денежных потоков';
+    return;
+  }
+
+  // Year fractions
+  cashFlows.forEach(cf => {
+    cf.t = (cf.date - today) / (365.25 * 86400000);
+    cf.total = cf.coupon + cf.amort;
+  });
+
+  // PV function given z-spread (in percentage points)
+  function pvAtZspread(z) {
+    let pv = 0;
+    cashFlows.forEach(cf => {
+      const r = nsRate(cf.t, gcurveParams) / 100 + z / 100;
+      const df = Math.pow(1 + r, -cf.t);
+      pv += cf.total * df;
+    });
+    return pv;
+  }
+
+  // Bisection to find Z-spread
+  let zLo = -5, zHi = 100;
+  const target = dirtyPriceAbs;
+
+  for (let iter = 0; iter < 200; iter++) {
+    const zMid = (zLo + zHi) / 2;
+    const pvMid = pvAtZspread(zMid);
+    if (pvMid > target) {
+      zLo = zMid;
+    } else {
+      zHi = zMid;
+    }
+    if (Math.abs(zHi - zLo) < 0.0001) break;
+  }
+  const zSpread = (zLo + zHi) / 2;
+  const zSpreadBps = Math.round(zSpread * 100);
+
+  // Implied PD
+  const lgd = 1 - rr;
+  const lambda = lgd > 0 ? (zSpread / 100) / lgd : 0;
+  const lastCF = cashFlows[cashFlows.length - 1];
+  const T = lastCF.t;
+  const pdAnnual = 1 - Math.exp(-lambda);
+  const survT = Math.exp(-lambda * T);
+  const pdCum = 1 - survT;
+  const el = pdCum * lgd;
+
+  // Nominal spread (YTM based) for comparison
+  const ofzRate = nsRate(T, gcurveParams);
+  const nomSpread = bondData.ytm - ofzRate;
+  const nomSpreadBps = Math.round(nomSpread * 100);
+
+  // Build results
+  document.getElementById('resultsCard').classList.remove('hidden');
+  const rg = document.getElementById('resultsGrid');
+  rg.innerHTML = '';
+  const metrics = [
+    ['Z-spread', zSpreadBps + ' бп', 'к КБД ОФЗ', 'hl'],
+    ['Номинальный спред', nomSpreadBps + ' бп', 'YTM − ОФЗ(' + T.toFixed(1) + 'Y)', ''],
+    ['Hazard rate (λ)', (lambda * 100).toFixed(2) + '%', 'при RR ' + Math.round(rr * 100) + '%', ''],
+    ['PD годовая', (pdAnnual * 100).toFixed(2) + '%', 'risk-neutral', 'hl2'],
+    ['PD кумулятивная', (pdCum * 100).toFixed(2) + '%', 'за ' + T.toFixed(1) + ' лет', 'hl2'],
+    ['P(выживание)', (survT * 100).toFixed(2) + '%', 'за ' + T.toFixed(1) + ' лет', ''],
+    ['Expected Loss', (el * 100).toFixed(2) + '%', 'от номинала', ''],
+    ['ОФЗ бенчмарк', ofzRate.toFixed(2) + '%', T.toFixed(1) + ' лет по КБД', ''],
+    ['YTM (биржа)', bondData.ytm.toFixed(2) + '%', 'MOEX', '']
+  ];
+  metrics.forEach(([lbl, val, sub, cls]) => {
+    const el = document.createElement('div');
+    el.className = 'metric' + (cls ? ' ' + cls : '');
+    el.innerHTML = '<span class="metric-label">' + lbl + '</span><span class="metric-value">' + val + '</span><span class="metric-sub">' + sub + '</span>';
+    rg.appendChild(el);
+  });
+
+  // Risk bar
+  const markerPct = Math.min(Math.max(pdAnnual * 100 / 20 * 100, 2), 98);
+  document.getElementById('riskMarker').style.left = markerPct + '%';
+  const v = document.getElementById('riskVerdict');
+  let color, bg, label;
+  if (pdAnnual < 0.02) { color = '#2D7A4F'; bg = '#EDF7F1'; label = 'Низкий кредитный риск'; }
+  else if (pdAnnual < 0.05) { color = '#7AB648'; bg = '#F2F8EC'; label = 'Умеренный кредитный риск'; }
+  else if (pdAnnual < 0.10) { color = '#A67A2E'; bg = '#FDF7ED'; label = 'Повышенный кредитный риск'; }
+  else if (pdAnnual < 0.15) { color = '#D4764E'; bg = '#FDF2EC'; label = 'Высокий кредитный риск'; }
+  else { color = '#B44040'; bg = '#FDF0F0'; label = 'Очень высокий кредитный риск'; }
+  v.style.background = bg; v.style.color = color;
+  v.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + label + ' · годовая PD ' + (pdAnnual * 100).toFixed(2) + '%';
+
+  // Implied rating
+  const implied = getImpliedRating(pdAnnual * 100, pdCum * 100, T);
+  const formalRating = document.getElementById('formalRating').value;
+  renderRatingCard(implied, formalRating, pdAnnual * 100, pdCum * 100, T);
+
+  // Cash flows table
+  document.getElementById('cfCard').classList.remove('hidden');
+  const tbl = document.getElementById('cfTable');
+  let html = '<table><thead><tr><th>Дата</th><th>Дней</th><th>T, лет</th><th>Купон</th><th>Аморт.</th><th>Итого</th><th>Ставка КБД</th><th>КБД + Z</th><th>DF</th><th>PV</th></tr></thead><tbody>';
+  let totalPV = 0;
+  cashFlows.forEach(cf => {
+    const days = Math.round((cf.date - today) / 86400000);
+    const kbd = nsRate(cf.t, gcurveParams);
+    const kbdz = kbd + zSpread;
+    const df = Math.pow(1 + kbdz / 100, -cf.t);
+    const pv = cf.total * df;
+    totalPV += pv;
+    html += '<tr><td>' + cf.date.toLocaleDateString('ru-RU') + '</td><td>' + days + '</td><td>' + cf.t.toFixed(3) + '</td>';
+    html += '<td>' + cf.coupon.toFixed(2) + '</td><td>' + cf.amort.toFixed(2) + '</td><td>' + cf.total.toFixed(2) + '</td>';
+    html += '<td>' + kbd.toFixed(2) + '%</td><td>' + kbdz.toFixed(2) + '%</td><td>' + df.toFixed(5) + '</td><td>' + pv.toFixed(2) + '</td></tr>';
+  });
+  html += '<tr style="font-weight:600;border-top:2px solid var(--border)"><td colspan="5"></td><td></td><td colspan="3" style="text-align:right">Σ PV =</td><td>' + totalPV.toFixed(2) + '</td></tr>';
+  html += '<tr><td colspan="5"></td><td></td><td colspan="3" style="text-align:right;color:var(--text2)">Грязная цена =</td><td style="color:var(--text2)">' + dirtyPriceAbs.toFixed(2) + '</td></tr>';
+  html += '</tbody></table>';
+  tbl.innerHTML = html;
+
+  st.className = 'status ok';
+  st.textContent = 'Z-spread = ' + zSpreadBps + ' бп · расхождение PV: ' + Math.abs(totalPV - dirtyPriceAbs).toFixed(4) + ' ₽';
+}
+
+// ======================== EVENTS ========================
+document.getElementById('rrSlider').addEventListener('input', function() {
+  document.getElementById('rrVal').textContent = this.value + '%';
+});
+
+document.getElementById('isinInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') loadBond();
+});
+
+document.getElementById('formalRating').addEventListener('change', function() {
+  if (document.getElementById('resultsCard').classList.contains('hidden')) return;
+  calcZspread();
+});
+
+// Init
+loadGcurve();
+</script>
+</body>
+</html>

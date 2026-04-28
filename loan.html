@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кредитный калькулятор · Досрочное погашение</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--red:#B44040;--red-bg:#FDF0F0;--green:#2D7A4F;--green-bg:#EDF7F1;--orange:#C46A2E;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:860px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.input-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:0.72rem;color:var(--text2);font-weight:500}
+.field input{font-family:var(--mono);font-size:0.92rem;font-weight:500;padding:0.5rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:100%}
+.field input:focus{border-color:var(--accent)}
+.field .hint{font-size:0.65rem;color:var(--text3)}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1rem}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;text-align:center}
+.metric.hl{background:var(--accent-light);border:1px solid rgba(45,90,61,0.15)}.hl .metric-value{color:var(--green)}
+.metric.hl2{background:var(--accent2-light);border:1px solid rgba(27,107,154,0.15)}.hl2 .metric-value{color:var(--accent2)}
+.metric.warn{background:var(--red-bg);border:1px solid rgba(180,64,64,0.15)}.warn .metric-value{color:var(--red)}
+.metric.neutral{background:var(--surface2)}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.15rem;font-weight:600}
+.metric-sub{font-size:0.65rem;color:var(--text3)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:1.25rem}
+@media(max-width:600px){.compare{grid-template-columns:1fr}}
+.compare-col{border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.compare-col h3{font-size:0.85rem;font-weight:600;margin-bottom:1rem}
+.compare-col .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--surface2);font-size:0.82rem}
+.compare-col .item:last-child{border-bottom:none}
+.compare-col .item .lbl{color:var(--text2)}
+.compare-col .item .val{font-family:var(--mono);font-weight:500}
+.compare-col.best{border-color:var(--green);background:rgba(45,122,79,0.03)}
+.compare-col.best h3{color:var(--green)}
+.saving-badge{display:inline-block;background:var(--green-bg);color:var(--green);font-family:var(--mono);font-size:0.75rem;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:6px}
+.chart-container{position:relative;width:100%;height:280px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.table-wrap{overflow-x:auto;margin-top:1rem}
+table{width:100%;border-collapse:collapse;font-size:0.75rem}
+th{text-align:right;font-weight:500;color:var(--text2);padding:0.35rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.65rem;text-transform:uppercase}
+th:first-child{text-align:center}
+td{text-align:right;padding:0.35rem 0.5rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.75rem}
+td:first-child{text-align:center;color:var(--text2)}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.toggle-detail{font-family:var(--sans);font-size:0.75rem;color:var(--accent2);background:none;border:none;cursor:pointer;margin-top:8px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Кредитный калькулятор</h1>
+<p class="subtitle">Аннуитетный платёж · досрочное погашение · сравнение стратегий</p>
+
+<div class="card">
+  <div class="card-title">Параметры кредита</div>
+  <div class="input-grid">
+    <div class="field"><label>Сумма кредита</label><input type="text" id="loan" value="8000000" inputmode="decimal"><span class="hint">₽</span></div>
+    <div class="field"><label>Срок, лет</label><input type="text" id="term" value="30" inputmode="decimal"></div>
+    <div class="field"><label>Ставка, % годовых</label><input type="text" id="rate" value="5" inputmode="decimal"></div>
+    <div class="field"><label>Платежей в год</label><input type="text" id="freq" value="12" inputmode="decimal"><span class="hint">12 = ежемесячно</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Досрочное погашение</div>
+  <div class="input-grid">
+    <div class="field"><label>Через сколько платежей</label><input type="text" id="epPeriod" value="12" inputmode="decimal"><span class="hint">номер платежа, после которого вносится доп. сумма</span></div>
+    <div class="field"><label>Сумма досрочного погашения</label><input type="text" id="epAmount" value="1000000" inputmode="decimal"><span class="hint">₽</span></div>
+  </div>
+</div>
+
+<div class="card" id="resCard">
+  <div class="card-title">Базовый кредит (без досрочного)</div>
+  <div class="results-grid" id="baseGrid"></div>
+</div>
+
+<div class="card" id="compareCard">
+  <div class="card-title">Сравнение стратегий досрочного погашения</div>
+  <div class="compare" id="compareBlock"></div>
+  <div class="chart-container"><canvas id="mainChart"></canvas></div>
+</div>
+
+<div class="card" id="scheduleCard">
+  <div class="card-title">График платежей (без досрочного)</div>
+  <button class="toggle-detail" onclick="toggleSchedule()">Показать / скрыть таблицу</button>
+  <div class="table-wrap" id="scheduleWrap" style="display:none"></div>
+</div>
+
+<p class="footer-note">
+  Аннуитетный платёж: ПЛТ = P × r / (1 − (1+r)^−n), где P — сумма, r — ставка за период, n — количество платежей.<br>
+  При уменьшении платежа — срок остаётся прежним, платёж пересчитывается на остаток долга.<br>
+  При уменьшении срока — платёж остаётся прежним, срок сокращается.
+</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function pv(id){const v=document.getElementById(id).value.replace(/\s/g,'').replace(',','.');return v===''?0:parseFloat(v)}
+function fm(v){return Math.round(Math.abs(v)).toLocaleString('ru-RU')+' ₽'}
+function fmy(v){if(Math.abs(v)>=1e6)return(v/1e6).toFixed(2)+' млн';return Math.round(v).toLocaleString('ru-RU')}
+
+function pmt(rate,nper,pv){if(rate===0)return-pv/nper;return-pv*rate/(1-Math.pow(1+rate,-nper))}
+function fv(rate,nper,pmt,pv){return-(pv*Math.pow(1+rate,nper)+pmt*(Math.pow(1+rate,nper)-1)/rate)}
+function nper(rate,pmt,pv){if(rate===0)return-pv/pmt;return Math.log(-pmt/(pmt+pv*rate))/Math.log(1+rate)}
+function cumipmt(rate,nper,pv,start,end){let total=0;let bal=pv;const p=pmt(rate,nper,pv);for(let i=1;i<=end;i++){const interest=bal*rate;if(i>=start)total+=interest;bal=bal+p-interest}return total}
+
+let mainChart=null;
+
+function calc(){
+  const L=pv('loan'),Y=pv('term'),F=pv('freq'),R=pv('rate')/100;
+  const epP=pv('epPeriod'),epA=pv('epAmount');
+  if(L<=0||Y<=0||F<=0||R<=0)return;
+
+  const r=R/F, n=Y*F;
+  const payment=Math.abs(pmt(r,n,L));
+  const totalPaid=payment*n;
+  const totalInterest=totalPaid-L;
+
+  // Base results
+  const bg=document.getElementById('baseGrid');bg.innerHTML='';
+  [{l:'Ежемесячный платёж',v:fm(payment),s:'аннуитет',c:'hl2'},
+   {l:'Всего выплат',v:fm(totalPaid),s:n+' платежей × '+fm(payment),c:'neutral'},
+   {l:'Переплата (проценты)',v:fm(totalInterest),s:((totalInterest/L)*100).toFixed(0)+'% от суммы кредита',c:'warn'}
+  ].forEach(m=>{const e=document.createElement('div');e.className='metric '+m.c;e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';bg.appendChild(e)});
+
+  // Early repayment scenarios
+  if(epP>0&&epA>0&&epP<n){
+    // Balance at moment of early repayment
+    const balAtEP=Math.abs(fv(r,epP,pmt(r,n,L),L));
+    const newBal=balAtEP-epA;
+
+    // Interest paid before early repayment
+    const intBefore=Math.abs(cumipmt(r,n,L,1,epP));
+    const paidBefore=payment*epP;
+
+    // Option 1: Reduce payment (keep same term)
+    const remainingPeriods1=n-epP;
+    const newPayment1=Math.abs(pmt(r,remainingPeriods1,newBal));
+    const totalAfter1=newPayment1*remainingPeriods1;
+    const intAfter1=totalAfter1-newBal;
+    const totalInt1=intBefore+intAfter1;
+    const saving1=totalInterest-totalInt1;
+    const totalPaid1=paidBefore+epA+totalAfter1;
+
+    // Option 2: Reduce term (keep same payment)
+    const newNper2=Math.ceil(nper(r,-payment,newBal));
+    const totalAfter2=payment*newNper2;
+    const intAfter2=totalAfter2-newBal;
+    const totalInt2=intBefore+intAfter2;
+    const saving2=totalInterest-totalInt2;
+    const totalPaid2=paidBefore+epA+totalAfter2;
+    const savedMonths=n-epP-newNper2;
+    const savedYears=Math.floor(savedMonths/F);
+    const savedMo=savedMonths%F;
+
+    const cb=document.getElementById('compareBlock');cb.innerHTML='';
+
+    const best=saving2>saving1?'term':'payment';
+
+    // Option 1 card
+    let h1='<div class="compare-col'+(best==='payment'?' best':'')+'"><h3>Уменьшение платежа'+(best==='payment'?' ✓':'')+'</h3>';
+    h1+='<div class="item"><span class="lbl">Новый платёж</span><span class="val">'+fm(newPayment1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Снижение платежа</span><span class="val">−'+fm(payment-newPayment1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Оставшийся срок</span><span class="val">'+remainingPeriods1+' мес.</span></div>';
+    h1+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Экономия на %%</span><span class="val" style="color:var(--green)">'+fm(saving1)+'</span></div>';
+    h1+='</div>';
+
+    // Option 2 card
+    let h2='<div class="compare-col'+(best==='term'?' best':'')+'"><h3>Уменьшение срока'+(best==='term'?' ✓':'')+'</h3>';
+    h2+='<div class="item"><span class="lbl">Платёж</span><span class="val">'+fm(payment)+' (без изм.)</span></div>';
+    h2+='<div class="item"><span class="lbl">Оставшийся срок</span><span class="val">'+newNper2+' мес.</span></div>';
+    h2+='<div class="item"><span class="lbl">Сокращение срока</span><span class="val">−'+(savedYears>0?savedYears+' лет ':'')+(savedMo>0?savedMo+' мес.':'')+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter2)+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt2)+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Экономия на %%</span><span class="val" style="color:var(--green)">'+fm(saving2)+'</span></div>';
+    h2+='</div>';
+
+    cb.innerHTML=h1+h2;
+
+    // Chart: cumulative interest over time for 3 scenarios
+    const scenarios=[
+      {label:'Без досрочного',color:'#B44040',data:[]},
+      {label:'↓ Платёж',color:'#1B6B9A',data:[]},
+      {label:'↓ Срок',color:'#2D5A3D',data:[]}
+    ];
+
+    // Scenario 0: no early repayment
+    let b0=L,ci0=0;
+    for(let i=1;i<=n;i++){const int=b0*r;ci0+=int;b0=b0+(-payment)-(-int);scenarios[0].data.push(ci0)}
+
+    // Scenario 1: reduce payment
+    let b1=L,ci1=0;
+    for(let i=1;i<=n;i++){
+      const p=i<=epP?payment:(i===epP+1?(b1-=epA,newPayment1):newPayment1);
+      if(i===epP+1)b1=newBal;
+      const int=b1*r;ci1+=int;b1=b1-p+int;
+      if(b1<0)b1=0;
+      scenarios[1].data.push(ci1);
+    }
+
+    // Scenario 2: reduce term
+    let b2=L,ci2=0;const maxP2=epP+newNper2;
+    for(let i=1;i<=n;i++){
+      if(i===epP+1)b2=newBal;
+      if(i>maxP2){scenarios[2].data.push(ci2);continue}
+      const int=b2*r;ci2+=int;b2=b2-payment+int;
+      if(b2<0)b2=0;
+      scenarios[2].data.push(ci2);
+    }
+
+    const labels=Array.from({length:n},(_,i)=>i+1);
+    const ctx=document.getElementById('mainChart').getContext('2d');
+    if(mainChart)mainChart.destroy();
+    mainChart=new Chart(ctx,{type:'line',data:{labels,datasets:scenarios.map(s=>({
+      label:s.label,data:s.data,borderColor:s.color,borderWidth:s.label.includes('Без')?2:1.5,
+      borderDash:s.label.includes('Без')?[]:[],pointRadius:0,fill:false,tension:0.1
+    }))},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}},
+        title:{display:true,text:'Накопленные проценты',font:{size:12,family:'DM Sans'},color:'#6B6A65'}},
+      scales:{x:{title:{display:true,text:'Платёж №'},ticks:{maxTicksLimit:15,font:{size:9}},grid:{display:false}},
+        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fmy(v)},grid:{color:'rgba(0,0,0,0.04)'}}}
+    }});
+  }
+
+  // Payment schedule (base)
+  buildSchedule(L,r,n,payment);
+}
+
+function buildSchedule(L,r,n,payment){
+  let bal=L;
+  let html='<table><thead><tr><th>№</th><th>Платёж</th><th>Проценты</th><th>Тело долга</th><th>Остаток</th></tr></thead><tbody>';
+  for(let i=1;i<=n;i++){
+    const interest=bal*r;
+    const principal=payment-interest;
+    bal-=principal;if(bal<0)bal=0;
+    if(i<=24||i>n-6||(i%12===0)){
+      html+='<tr><td>'+i+'</td><td>'+fm(payment)+'</td><td>'+fm(interest)+'</td><td>'+fm(principal)+'</td><td>'+fm(bal)+'</td></tr>';
+    } else if(i===25){
+      html+='<tr><td colspan="5" style="text-align:center;color:var(--text3)">...</td></tr>';
+    }
+  }
+  html+='</tbody></table>';
+  document.getElementById('scheduleWrap').innerHTML=html;
+}
+
+function toggleSchedule(){
+  const w=document.getElementById('scheduleWrap');
+  w.style.display=w.style.display==='none'?'':'none';
+}
+
+document.querySelectorAll('#loan,#term,#rate,#freq,#epPeriod,#epAmount').forEach(e=>e.addEventListener('input',calc));
+calc();
+</script>
+</body>
+</html>

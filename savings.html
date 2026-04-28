@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор накоплений и пассивного дохода</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--red:#B44040;--green:#2D7A4F;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:860px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.input-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:0.72rem;color:var(--text2);font-weight:500}
+.field input,.field select{font-family:var(--mono);font-size:0.92rem;font-weight:500;padding:0.5rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:100%}
+.field input:focus{border-color:var(--accent)}
+.field .hint{font-size:0.65rem;color:var(--text3)}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1rem}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;text-align:center}
+.metric.hl{background:var(--accent-light);border:1px solid rgba(45,90,61,0.15)}.hl .metric-value{color:var(--green)}
+.metric.hl2{background:var(--accent2-light);border:1px solid rgba(27,107,154,0.15)}.hl2 .metric-value{color:var(--accent2)}
+.metric.neutral{background:var(--surface2)}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.2rem;font-weight:600}
+.metric-sub{font-size:0.65rem;color:var(--text3)}
+.chart-container{position:relative;width:100%;height:280px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.divider{display:flex;align-items:center;gap:12px;margin:2rem 0 1.5rem}
+.divider-line{flex:1;height:1px;background:var(--border)}
+.divider-text{font-size:0.8rem;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap}
+.btn-transfer{font-family:var(--sans);font-size:0.78rem;font-weight:500;padding:0.4rem 1rem;border:1px solid var(--accent2);border-radius:var(--radius);background:var(--accent2-light);color:var(--accent2);cursor:pointer;margin-top:0.75rem}
+.btn-transfer:hover{background:var(--accent2);color:#fff}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.table-wrap{overflow-x:auto;margin-top:1rem}
+table{width:100%;border-collapse:collapse;font-size:0.78rem}
+th{text-align:right;font-weight:500;color:var(--text2);padding:0.4rem 0.6rem;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase}
+th:first-child{text-align:center}
+td{text-align:right;padding:0.4rem 0.6rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.78rem}
+td:first-child{text-align:center;color:var(--text2)}
+.hidden{display:none}
+.mode-btn{font-family:var(--sans);font-size:0.75rem;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);cursor:pointer;transition:all 0.2s}
+.mode-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mode-btn:hover{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Накопления и пассивный доход</h1>
+<p class="subtitle">Сколько накопите и сколько сможете получать · с учётом инфляции</p>
+
+<div class="card">
+  <div class="card-title">Фаза накопления</div>
+  <div class="input-grid">
+    <div class="field"><label>Начальная сумма</label><input type="text" id="a_initial" value="500000" inputmode="decimal"><span class="hint">₽</span></div>
+    <div class="field"><label>Пополнение</label><input type="text" id="a_contrib" value="50000" inputmode="decimal"><span class="hint">₽ за период</span></div>
+    <div class="field"><label>Частота пополнений</label><select id="a_freq"><option value="12">Ежемесячно</option><option value="4">Ежеквартально</option><option value="2">Раз в полгода</option><option value="1">Раз в год</option></select></div>
+    <div class="field"><label>Срок, лет</label><input type="text" id="a_years" value="15" inputmode="decimal"></div>
+  </div>
+  <div style="margin-top:14px">
+    <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px">Доходность</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="mode-btn active" id="modeManual" onclick="setMode('manual')">Ввести вручную</button>
+      <button class="mode-btn" id="modeHist" onclick="setMode('hist')">Историческая (РФ 2003–2025)</button>
+    </div>
+    <div id="manualBlock">
+      <div class="input-grid">
+        <div class="field"><label>Доходность, % годовых</label><input type="text" id="a_rate" value="12" inputmode="decimal"><span class="hint">номинальная</span></div>
+        <div class="field"><label>Инфляция, % годовых</label><input type="text" id="a_inflation" value="6" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div id="histBlock" style="display:none">
+      <div class="input-grid">
+        <div class="field"><label>Акции / облигации</label><select id="a_alloc"><option value="0">0% акций / 100% облиг.</option><option value="10">10 / 90</option><option value="20">20 / 80</option><option value="30">30 / 70</option><option value="40">40 / 60</option><option value="50" selected>50 / 50</option><option value="60">60 / 40</option><option value="70">70 / 30</option><option value="80">80 / 20</option><option value="90">90 / 10</option><option value="100">100% акций / 0% облиг.</option></select></div>
+        <div class="field"><label>Период</label><select id="a_period"><option value="all">Весь (2003–2025)</option><option value="10">Последние 10 лет</option><option value="5">Последние 5 лет</option></select></div>
+      </div>
+      <div id="histInfo" style="margin-top:8px;padding:0.6rem 0.8rem;background:var(--accent-light);border-radius:var(--radius);font-size:0.78rem;color:var(--accent);font-weight:500"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card hidden" id="a_res"><div class="card-title">Результат накопления</div><div class="results-grid" id="a_grid"></div><div class="chart-container"><canvas id="a_chart"></canvas></div><div class="table-wrap"><table id="a_table"></table></div><button class="btn-transfer" onclick="transfer()">Перенести в калькулятор пассивного дохода ↓</button></div>
+
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Пассивный доход</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-title">Фаза дохода</div>
+  <div class="input-grid">
+    <div class="field"><label>Капитал</label><input type="text" id="i_capital" value="10000000" inputmode="decimal"><span class="hint">₽</span></div>
+    <div class="field"><label>Доходность, % годовых</label><input type="text" id="i_rate" value="10" inputmode="decimal"></div>
+    <div class="field"><label>Инфляция, % годовых</label><input type="text" id="i_inflation" value="6" inputmode="decimal"></div>
+    <div class="field"><label>Стратегия</label><select id="i_strat"><option value="perpetual">Вечная рента (капитал сохраняется)</option><option value="deplete">Проедать за N лет</option></select></div>
+    <div class="field hidden" id="i_dfield"><label>Проесть за, лет</label><input type="text" id="i_dyears" value="30" inputmode="decimal"></div>
+  </div>
+</div>
+
+<div class="card hidden" id="i_res"><div class="card-title">Пассивный доход</div><div class="results-grid" id="i_grid"></div><div class="chart-container"><canvas id="i_chart"></canvas></div><div class="table-wrap"><table id="i_table"></table></div></div>
+
+<p class="footer-note">Реальная доходность ≈ номинальная − инфляция. «Реальные» суммы = в сегодняшней покупательной способности.<br>Вечная рента: доход = капитал × реальная ставка / 12. Капитал сохраняется бесконечно.<br>Историческая доходность: акции — индекс МосБиржи полной доходности, облигации — Cbonds CBI RU Middle Market. Геометрическое среднее. Данные: УК «Доход» (доходность.рф).<br>⚠ Прошлая доходность не гарантирует будущих результатов.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function pv(id){const v=document.getElementById(id).value.replace(/\s/g,'').replace(',','.');return v===''?0:parseFloat(v)}
+function fm(v){if(Math.abs(v)>=1e6)return(v/1e6).toFixed(2)+' млн';return Math.round(v).toLocaleString('ru-RU')}
+function fr(v){return Math.round(v).toLocaleString('ru-RU')+' ₽'}
+
+const HR={0:[22.5,13.2,11.2,8.2,7.0,-7.1,28.8,12.2,6.0,9.1,8.9,0.1,17.6,12.7,12.2,4.4,15.0,11.1,4.3,11.8,6.0,5.1,27.5],10:[25.9,12.6,18.6,14.4,7.6,-13.0,38.5,13.5,4.0,9.1,8.7,-0.1,19.1,14.7,10.9,5.9,17.3,11.5,6.1,6.9,10.8,4.7,25.0],20:[29.3,12.0,26.0,20.5,8.2,-19.0,48.3,14.8,1.9,9.0,8.4,-0.3,20.5,16.7,9.7,7.3,19.7,11.8,7.8,2.0,15.6,4.4,22.6],30:[32.7,11.4,33.3,26.7,8.7,-24.9,58.0,16.1,-0.1,9.0,8.1,-0.5,22.0,18.7,8.5,8.8,22.0,12.2,9.6,-2.9,20.4,4.0,20.1],40:[36.1,10.8,40.7,32.8,9.3,-30.9,67.7,17.4,-2.2,9.0,7.9,-0.6,23.5,20.7,7.2,10.3,24.4,12.6,11.3,-7.8,25.2,3.7,17.7],50:[39.5,10.2,48.0,39.0,9.8,-36.8,77.5,18.7,-4.2,8.9,7.6,-0.8,24.9,22.7,6.0,11.7,26.7,13.0,13.1,-12.7,29.9,3.4,15.2],60:[43.0,9.6,55.4,45.2,10.4,-42.8,87.2,20.0,-6.3,8.9,7.4,-1.0,26.4,24.7,4.8,13.2,29.1,13.3,14.8,-17.6,34.7,3.0,12.8],70:[46.4,9.0,62.8,51.3,11.0,-48.7,96.9,21.3,-8.3,8.9,7.1,-1.2,27.9,26.7,3.5,14.7,31.4,13.7,16.6,-22.5,39.5,2.7,10.3],80:[49.8,8.5,70.1,57.5,11.5,-54.7,106.6,22.7,-10.4,8.8,6.8,-1.4,29.3,28.8,2.3,17.6,33.8,14.1,18.3,-27.4,44.3,2.3,7.8],90:[53.2,7.9,77.5,63.6,12.1,-60.7,116.4,24.0,-12.4,8.8,6.6,-1.6,30.8,30.8,1.1,17.6,36.1,14.5,20.0,-32.4,49.1,2.0,5.4],100:[56.6,7.3,84.9,69.8,12.7,-66.6,126.1,25.3,-14.5,8.8,6.3,-1.8,32.3,32.8,-0.2,19.1,38.5,14.8,21.8,-37.3,53.8,1.6,2.9]};
+const HI=[12.0,11.7,10.9,9.0,11.9,13.3,8.8,8.8,6.1,6.6,6.5,11.4,12.9,5.4,2.5,4.3,3.0,4.9,8.4,11.9,7.4,9.5,6.1];
+
+function gm(arr,n){const s=n==='all'?arr:arr.slice(-Math.min(parseInt(n),arr.length));let p=1;s.forEach(r=>p*=(1+r/100));return(Math.pow(p,1/s.length)-1)*100}
+
+let mode='manual';
+function setMode(m){mode=m;document.getElementById('modeManual').classList.toggle('active',m==='manual');document.getElementById('modeHist').classList.toggle('active',m==='hist');document.getElementById('manualBlock').style.display=m==='manual'?'':'none';document.getElementById('histBlock').style.display=m==='hist'?'':'none';if(m==='hist')updHist();calcA()}
+
+function updHist(){
+  const a=parseInt(document.getElementById('a_alloc').value),p=document.getElementById('a_period').value;
+  const r=gm(HR[a],p),inf=gm(HI,p),real=((1+r/100)/(1+inf/100)-1)*100;
+  const pl=p==='all'?'2003–2025':'посл. '+p+' лет';
+  document.getElementById('histInfo').innerHTML='Доходность: <strong>'+r.toFixed(1)+'%</strong> · инфляция: <strong>'+inf.toFixed(1)+'%</strong> · реальная: <strong>'+real.toFixed(1)+'%</strong> ('+pl+')<br><span style="font-size:0.68rem;color:var(--text3)">Данные: УК «Доход» (доходность.рф). Акции — индекс МосБиржи полной доходности, облигации — Cbonds CBI RU Middle Market. Геометрическое среднее.</span><br><span style="font-size:0.68rem;color:var(--red,#B44040)">⚠ Расчёт основан на исторических данных. Прошлая доходность не гарантирует будущих результатов. Фактический результат может существенно отличаться от расчётного.</span>';
+  document.getElementById('a_rate').value=r.toFixed(1);document.getElementById('a_inflation').value=inf.toFixed(1);calcA()
+}
+document.getElementById('a_alloc').addEventListener('change',updHist);
+document.getElementById('a_period').addEventListener('change',updHist);
+
+let aC=null,iC=null;
+
+function calcA(){
+  const ini=pv('a_initial'),c=pv('a_contrib'),f=parseInt(document.getElementById('a_freq').value),y=pv('a_years'),rn=pv('a_rate')/100,inf=pv('a_inflation')/100;
+  if(y<=0)return;const rp=rn/f,tp=Math.round(y*f);const yd=[];let b=ini,tc=ini;
+  for(let i=1;i<=Math.ceil(y);i++){const pp=Math.min(f,tp-(i-1)*f);for(let p=0;p<pp;p++){b=b*(1+rp)+c;tc+=c}yd.push({y:i,n:b,r:b/Math.pow(1+inf,i),c:tc,g:b-tc})}
+  const L=yd[yd.length-1];document.getElementById('a_res').classList.remove('hidden');
+  const g=document.getElementById('a_grid');g.innerHTML='';
+  [{l:'Итого (номинал)',v:fm(L.n)+' ₽',s:'будущие деньги',c:'hl'},{l:'Итого (реальные)',v:fm(L.r)+' ₽',s:'сегодняшние деньги',c:'hl'},{l:'Внесено',v:fm(L.c)+' ₽',s:'нач. + пополнения',c:'neutral'},{l:'Доход',v:fm(L.g)+' ₽',s:'сложный %',c:'neutral'},{l:'Множитель',v:(L.n/L.c).toFixed(1)+'×',s:'итого / внесено',c:'neutral'},{l:'Покуп. сила',v:((L.r/L.n)*100).toFixed(0)+'%',s:'через '+y+' лет',c:'neutral'}].forEach(m=>{const e=document.createElement('div');e.className='metric '+m.c;e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';g.appendChild(e)});
+  const x=document.getElementById('a_chart').getContext('2d');if(aC)aC.destroy();
+  aC=new Chart(x,{type:'bar',data:{labels:yd.map(d=>''+d.y),datasets:[{label:'Внесено',data:yd.map(d=>d.c),backgroundColor:'rgba(27,107,154,0.25)',borderColor:'#1B6B9A',borderWidth:1,order:2},{label:'Номинал',data:yd.map(d=>d.n),backgroundColor:'rgba(45,90,61,0.25)',borderColor:'#2D5A3D',borderWidth:1,order:1},{label:'Реальные',data:yd.map(d=>d.r),type:'line',borderColor:'#B44040',borderWidth:2,pointRadius:2,fill:false,order:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}}},scales:{x:{title:{display:true,text:'Год'},ticks:{font:{size:9}},grid:{display:false}},y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fm(v)},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  let h='<thead><tr><th>Год</th><th>Внесено</th><th>Номинал</th><th>Реальные</th><th>Доход</th></tr></thead><tbody>';yd.forEach(d=>{h+='<tr><td>'+d.y+'</td><td>'+fr(d.c)+'</td><td>'+fr(d.n)+'</td><td>'+fr(d.r)+'</td><td>'+fr(d.g)+'</td></tr>'});document.getElementById('a_table').innerHTML=h+'</tbody>'
+}
+
+function calcI(){
+  const K=pv('i_capital'),rn=pv('i_rate')/100,inf=pv('i_inflation')/100,st=document.getElementById('i_strat').value;if(K<=0)return;
+  const rr=(1+rn)/(1+inf)-1,rm=Math.pow(1+rr,1/12)-1;let mR;
+  if(st==='perpetual')mR=K*rm;else{const n=pv('i_dyears')*12;if(n<=0)return;mR=rm===0?K/n:K*rm/(1-Math.pow(1+rm,-n))}
+  const aR=mR*12,yoc=(aR/K)*100,pY=st==='perpetual'?30:Math.ceil(pv('i_dyears'));const yd=[];let b=K;
+  for(let y=1;y<=pY;y++){const nd=Math.pow(1+inf,y);for(let m=0;m<12;m++)b=b*(1+rn/12)-mR*Math.pow(1+inf,(y-1)+m/12);yd.push({y,b:Math.max(b,0),br:Math.max(b,0)/nd,wn:mR*12*nd,wr:mR*12});if(b<=0)break}
+  document.getElementById('i_res').classList.remove('hidden');const g=document.getElementById('i_grid');g.innerHTML='';
+  [{l:'Доход/мес',v:fm(mR)+' ₽',s:'сегодняшние деньги',c:'hl2'},{l:'Доход/год',v:fm(aR)+' ₽',s:'сегодняшние деньги',c:'hl2'},{l:'Реальная ставка',v:(rr*100).toFixed(2)+'%',s:'номинал − инфляция',c:'neutral'},{l:'Стратегия',v:st==='perpetual'?'Вечная рента':'Проесть '+pv('i_dyears')+' лет',s:st==='perpetual'?'капитал цел':'→ 0',c:'neutral'},{l:'Капитал ('+yd.length+' лет)',v:fm(yd[yd.length-1].br)+' ₽',s:'реальный',c:'neutral'},{l:'Yield on capital',v:yoc.toFixed(1)+'%',s:'реальный',c:'neutral'}].forEach(m=>{const e=document.createElement('div');e.className='metric '+m.c;e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';g.appendChild(e)});
+  const x=document.getElementById('i_chart').getContext('2d');if(iC)iC.destroy();
+  iC=new Chart(x,{type:'line',data:{labels:yd.map(d=>''+d.y),datasets:[{label:'Капитал (реальный)',data:yd.map(d=>d.br),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.08)',fill:true,pointRadius:2,borderWidth:2,tension:0.2},{label:'Капитал (номинальный)',data:yd.map(d=>d.b),borderColor:'#1B6B9A',borderDash:[4,4],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}}},scales:{x:{title:{display:true,text:'Год'},ticks:{font:{size:9}},grid:{display:false}},y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fm(v)},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+  let h='<thead><tr><th>Год</th><th>Снятие (ном.)</th><th>Снятие (реал.)</th><th>Капитал (ном.)</th><th>Капитал (реал.)</th></tr></thead><tbody>';yd.forEach(d=>{h+='<tr><td>'+d.y+'</td><td>'+fr(d.wn)+'</td><td>'+fr(d.wr)+'</td><td>'+fr(d.b)+'</td><td>'+fr(d.br)+'</td></tr>'});document.getElementById('i_table').innerHTML=h+'</tbody>'
+}
+
+function transfer(){
+  const ini=pv('a_initial'),c=pv('a_contrib'),f=parseInt(document.getElementById('a_freq').value),y=pv('a_years'),rn=pv('a_rate')/100;
+  let b=ini;for(let p=0;p<Math.round(y*f);p++)b=b*(1+rn/f)+c;
+  document.getElementById('i_capital').value=Math.round(b);document.getElementById('i_rate').value=document.getElementById('a_rate').value;document.getElementById('i_inflation').value=document.getElementById('a_inflation').value;
+  calcI();document.getElementById('i_res').scrollIntoView({behavior:'smooth'})
+}
+
+document.getElementById('i_strat').addEventListener('change',function(){document.getElementById('i_dfield').classList.toggle('hidden',this.value==='perpetual');calcI()});
+document.querySelectorAll('#a_initial,#a_contrib,#a_years,#a_rate,#a_inflation').forEach(e=>e.addEventListener('input',calcA));
+document.getElementById('a_freq').addEventListener('change',calcA);
+document.querySelectorAll('#i_capital,#i_rate,#i_inflation,#i_dyears').forEach(e=>e.addEventListener('input',calcI));
+calcA();calcI()
+</script>
+</body>
+</html>

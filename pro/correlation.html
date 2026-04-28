@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Корреляция и волатильность акций · MOEX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;
+--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--red:#B44040;--red-bg:#FDF0F0;
+--orange:#C46A2E;--yellow:#A67A2E;
+--green:#2D7A4F;--green-bg:#EDF7F1;
+--border:#E5E4DF;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.input-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:0.72rem;color:var(--text2);font-weight:500}
+.field input{
+font-family:var(--mono);font-size:0.95rem;font-weight:500;
+padding:0.55rem 0.75rem;border:1px solid var(--border);border-radius:var(--radius);
+background:var(--surface2);color:var(--text);outline:none;width:100%;text-transform:uppercase;
+}
+.field input:focus{border-color:var(--accent)}
+.field .hint{font-size:0.65rem;color:var(--text3)}
+.btn{
+font-family:var(--sans);font-size:0.85rem;font-weight:500;
+padding:0.55rem 1.3rem;border:none;border-radius:var(--radius);
+background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;
+}
+.btn:hover{opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.status.err{color:var(--red)}.status.ok{color:var(--green)}
+.results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.results-grid{grid-template-columns:repeat(2,1fr)}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;border:1px solid transparent;text-align:center}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.2rem;font-weight:600}
+.metric-sub{font-size:0.65rem;color:var(--text3)}
+.section-title{font-size:0.85rem;font-weight:600;color:var(--text);margin:1.5rem 0 0.75rem}
+.chart-container{position:relative;width:100%;height:300px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.corr-pos{background:var(--green-bg);border-color:rgba(45,122,79,0.15)}.corr-pos .metric-value{color:var(--green)}
+.corr-neg{background:var(--red-bg);border-color:rgba(180,64,64,0.15)}.corr-neg .metric-value{color:var(--red)}
+.corr-low{background:var(--surface2)}.corr-low .metric-value{color:var(--yellow)}
+.vol-low{background:var(--green-bg);border-color:rgba(45,122,79,0.15)}.vol-low .metric-value{color:var(--green)}
+.vol-mid{background:#FDF7ED;border-color:rgba(166,122,46,0.15)}.vol-mid .metric-value{color:var(--yellow)}
+.vol-high{background:var(--red-bg);border-color:rgba(180,64,64,0.15)}.vol-high .metric-value{color:var(--red)}
+.hidden{display:none}
+.info-block{margin-top:1rem;padding:1rem;background:var(--surface2);border-radius:var(--radius);border-left:3px solid var(--accent);font-size:0.78rem;color:var(--text2);line-height:1.6}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vol-table{width:100%;border-collapse:collapse;margin-top:0.75rem;font-size:0.8rem}
+.vol-table th{text-align:center;font-weight:500;color:var(--text2);padding:0.4rem 0.6rem;border-bottom:1px solid var(--border);font-size:0.7rem;text-transform:uppercase}
+.vol-table td{text-align:center;padding:0.4rem 0.6rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.82rem}
+.vol-table td:first-child{text-align:left;font-family:var(--sans);font-weight:500}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Корреляция и волатильность акций</h1>
+<p class="subtitle">Московская биржа · MOEX ISS API · дневные данные</p>
+
+<div class="card">
+  <div class="card-title">Тикеры</div>
+  <div class="input-row">
+    <div class="field" style="flex:1;min-width:120px">
+      <label>Акция 1</label>
+      <input type="text" id="ticker1" value="SBER" placeholder="SBER">
+    </div>
+    <div class="field" style="flex:1;min-width:120px">
+      <label>Акция 2</label>
+      <input type="text" id="ticker2" value="GAZP" placeholder="GAZP">
+    </div>
+    <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
+  </div>
+  <div class="hint" style="margin-top:6px">Тикеры с Мосбиржи: SBER, GAZP, LKOH, ROSN, YNDX, OZON, MGNT, NVTK, POLY, MTSS и т.д.</div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="corrCard">
+  <div class="card-title" id="corrTitle">Корреляция</div>
+  <div class="results-grid" id="corrGrid"></div>
+  <div class="info-block" id="corrInfo"></div>
+</div>
+
+<div class="card hidden" id="volCard">
+  <div class="card-title">Волатильность (годовая, аннуализированная)</div>
+  <table class="vol-table" id="volTable"></table>
+</div>
+
+<div class="card hidden" id="chartCard">
+  <div class="card-title">Нормализованная динамика цен (база = 100)</div>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>
+</div>
+
+<div class="card hidden" id="corrChartCard">
+  <div class="card-title" id="corrChartTitle">Скользящая корреляция (60 дней)</div>
+  <div class="chart-container"><canvas id="corrChart"></canvas></div>
+</div>
+
+<p class="footer-note">
+  Корреляция рассчитывается по дневным логарифмическим доходностям. Волатильность = стандартное отклонение дневных доходностей × √252 (аннуализация).<br>
+  Данные: MOEX ISS API, доска TQBR, дневные свечи.
+</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let _jp = 0;
+function moexFetch(url) {
+  return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .catch(() => new Promise((resolve, reject) => {
+    const cb = '_mc' + (++_jp) + '_' + Date.now();
+    const sep = url.includes('?') ? '&' : '?';
+    const s = document.createElement('script');
+    const t = setTimeout(() => { cl(); reject(new Error('Timeout')); }, 15000);
+    function cl() { clearTimeout(t); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = d => { cl(); resolve(d); };
+    s.src = url + sep + 'callback=' + cb;
+    s.onerror = () => { cl(); reject(new Error('JSONP error')); };
+    document.body.appendChild(s);
+  }));
+}
+
+async function fetchCandles(ticker, fromDate, tillDate) {
+  let allCandles = [];
+  let start = 0;
+  while (true) {
+    const url = 'https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/' +
+      ticker + '/candles.json?interval=24&from=' + fromDate + '&till=' + tillDate +
+      '&iss.meta=off&start=' + start;
+    const d = await moexFetch(url);
+    const cols = d.candles.columns;
+    const rows = d.candles.data;
+    if (!rows || rows.length === 0) break;
+    const closeIdx = cols.indexOf('close');
+    const beginIdx = cols.indexOf('begin');
+    rows.forEach(r => {
+      allCandles.push({ date: r[beginIdx].slice(0, 10), close: r[closeIdx] });
+    });
+    if (rows.length < 500) break;
+    start += 500;
+  }
+  return allCandles;
+}
+
+function logReturns(candles) {
+  const ret = [];
+  for (let i = 1; i < candles.length; i++) {
+    ret.push({ date: candles[i].date, r: Math.log(candles[i].close / candles[i - 1].close) });
+  }
+  return ret;
+}
+
+function correlation(r1, r2) {
+  const n = Math.min(r1.length, r2.length);
+  if (n < 5) return null;
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    sx += r1[i]; sy += r2[i];
+    sxx += r1[i] * r1[i]; syy += r2[i] * r2[i];
+    sxy += r1[i] * r2[i];
+  }
+  const denom = Math.sqrt((n * sxx - sx * sx) * (n * syy - sy * sy));
+  if (denom === 0) return null;
+  return (n * sxy - sx * sy) / denom;
+}
+
+function volatility(returns) {
+  if (returns.length < 5) return null;
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / (returns.length - 1);
+  return Math.sqrt(variance) * Math.sqrt(252) * 100; // annualized, in %
+}
+
+function rollingCorrelation(r1, r2, window) {
+  const result = [];
+  for (let i = window; i <= r1.length && i <= r2.length; i++) {
+    const s1 = r1.slice(i - window, i);
+    const s2 = r2.slice(i - window, i);
+    const c = correlation(s1, s2);
+    result.push(c);
+  }
+  return result;
+}
+
+function corrClass(v) {
+  if (v === null) return 'corr-low';
+  if (v >= 0.5) return 'corr-pos';
+  if (v <= -0.3) return 'corr-neg';
+  return 'corr-low';
+}
+
+function volClass(v) {
+  if (v === null) return '';
+  if (v <= 25) return 'vol-low';
+  if (v <= 45) return 'vol-mid';
+  return 'vol-high';
+}
+
+function fmt(v) { return v === null ? '—' : v.toFixed(2); }
+function fmtPct(v) { return v === null ? '—' : v.toFixed(1) + '%'; }
+
+const periods = [
+  { label: '6 мес', months: 6 },
+  { label: '1 год', months: 12 },
+  { label: '3 года', months: 36 },
+  { label: '5 лет', months: 60 }
+];
+
+let priceChart = null, corrChartObj = null;
+
+async function run() {
+  const t1 = document.getElementById('ticker1').value.trim().toUpperCase();
+  const t2 = document.getElementById('ticker2').value.trim().toUpperCase();
+  if (!t1 || !t2) return;
+
+  const st = document.getElementById('status');
+  const btn = document.getElementById('calcBtn');
+  btn.disabled = true;
+  st.className = 'status';
+  st.innerHTML = '<span class="loader"></span>Загрузка ' + t1 + ' и ' + t2 + '...';
+
+  try {
+    const today = new Date();
+    const fiveYearsAgo = new Date(today);
+    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    const fromStr = fiveYearsAgo.toISOString().slice(0, 10);
+    const tillStr = today.toISOString().slice(0, 10);
+
+    st.innerHTML = '<span class="loader"></span>Загрузка ' + t1 + '...';
+    const candles1 = await fetchCandles(t1, fromStr, tillStr);
+    st.innerHTML = '<span class="loader"></span>Загрузка ' + t2 + '...';
+    const candles2 = await fetchCandles(t2, fromStr, tillStr);
+
+    if (candles1.length < 10) throw new Error(t1 + ': недостаточно данных (' + candles1.length + ' дней)');
+    if (candles2.length < 10) throw new Error(t2 + ': недостаточно данных (' + candles2.length + ' дней)');
+
+    // Align dates
+    const dates1 = new Set(candles1.map(c => c.date));
+    const dates2 = new Set(candles2.map(c => c.date));
+    const commonDates = [...dates1].filter(d => dates2.has(d)).sort();
+
+    const map1 = {}; candles1.forEach(c => map1[c.date] = c.close);
+    const map2 = {}; candles2.forEach(c => map2[c.date] = c.close);
+
+    const aligned1 = commonDates.map(d => ({ date: d, close: map1[d] }));
+    const aligned2 = commonDates.map(d => ({ date: d, close: map2[d] }));
+
+    // Individual returns (all own dates) for volatility
+    const ownRet1 = logReturns(candles1);
+    const ownRet2 = logReturns(candles2);
+
+    // Aligned returns (common dates only) for correlation
+    const ret1 = logReturns(aligned1);
+    const ret2 = logReturns(aligned2);
+
+    st.innerHTML = '<span class="loader"></span>Считаю корреляцию и волатильность...';
+
+    // Correlations by period
+    const corrGrid = document.getElementById('corrGrid');
+    corrGrid.innerHTML = '';
+    const corrResults = [];
+
+    periods.forEach(p => {
+      const cutoff = new Date(today);
+      cutoff.setMonth(cutoff.getMonth() - p.months);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      const r1 = ret1.filter(r => r.date >= cutoffStr).map(r => r.r);
+      const r2 = ret2.filter(r => r.date >= cutoffStr).map(r => r.r);
+      const corr = correlation(r1, r2);
+      corrResults.push({ label: p.label, corr, days: r1.length });
+
+      const el = document.createElement('div');
+      el.className = 'metric ' + corrClass(corr);
+      el.innerHTML = '<span class="metric-label">' + p.label + '</span><span class="metric-value">' + fmt(corr) + '</span><span class="metric-sub">' + r1.length + ' дней</span>';
+      corrGrid.appendChild(el);
+    });
+
+    // Correlation interpretation
+    const corrInfo = document.getElementById('corrInfo');
+    const c1y = corrResults.find(c => c.label === '1 год');
+    const c6m = corrResults.find(c => c.label === '6 мес');
+    let interp = '';
+    if (c1y && c1y.corr !== null) {
+      if (c1y.corr > 0.7) interp = t1 + ' и ' + t2 + ' движутся очень синхронно (корреляция ' + c1y.corr.toFixed(2) + ' за год). Диверсификационный эффект минимален.';
+      else if (c1y.corr > 0.4) interp = t1 + ' и ' + t2 + ' умеренно коррелированы (' + c1y.corr.toFixed(2) + ' за год). Есть частичный диверсификационный эффект.';
+      else if (c1y.corr > 0) interp = t1 + ' и ' + t2 + ' слабо коррелированы (' + c1y.corr.toFixed(2) + ' за год). Хорошая пара для диверсификации.';
+      else interp = t1 + ' и ' + t2 + ' отрицательно коррелированы (' + c1y.corr.toFixed(2) + ' за год). Отличная диверсификационная пара.';
+    }
+    if (c1y && c6m && c1y.corr !== null && c6m.corr !== null) {
+      const diff = c6m.corr - c1y.corr;
+      if (Math.abs(diff) > 0.15) {
+        interp += ' Корреляция за полгода (' + c6m.corr.toFixed(2) + ') ' + (diff > 0 ? 'выросла' : 'снизилась') + ' относительно годовой — структура связи меняется.';
+      }
+    }
+    corrInfo.textContent = interp;
+
+    document.getElementById('corrTitle').textContent = 'Корреляция ' + t1 + ' / ' + t2;
+    document.getElementById('corrCard').classList.remove('hidden');
+
+    // Volatility table
+    const volTable = document.getElementById('volTable');
+    let vhtml = '<thead><tr><th></th>';
+    periods.forEach(p => vhtml += '<th>' + p.label + '</th>');
+    vhtml += '</tr></thead><tbody>';
+
+    [{ ticker: t1, rets: ownRet1 }, { ticker: t2, rets: ownRet2 }].forEach(({ ticker, rets }) => {
+      vhtml += '<tr><td>' + ticker + '</td>';
+      periods.forEach(p => {
+        const cutoff = new Date(today);
+        cutoff.setMonth(cutoff.getMonth() - p.months);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        const r = rets.filter(x => x.date >= cutoffStr).map(x => x.r);
+        const vol = volatility(r);
+        const cls = volClass(vol);
+        vhtml += '<td class="' + cls + '">' + fmtPct(vol) + '</td>';
+      });
+      vhtml += '</tr>';
+    });
+    vhtml += '</tbody>';
+    volTable.innerHTML = vhtml;
+    document.getElementById('volCard').classList.remove('hidden');
+
+    // Price chart (normalized)
+    const chartCard = document.getElementById('chartCard');
+    chartCard.classList.remove('hidden');
+    const base1 = aligned1[0].close;
+    const base2 = aligned2[0].close;
+    const norm1 = aligned1.map(c => (c.close / base1) * 100);
+    const norm2 = aligned2.map(c => (c.close / base2) * 100);
+    const labels = commonDates;
+
+    const ctx1 = document.getElementById('priceChart').getContext('2d');
+    if (priceChart) priceChart.destroy();
+    priceChart = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: t1, data: norm1, borderColor: '#2D5A3D', backgroundColor: 'rgba(45,90,61,0.05)', fill: false, pointRadius: 0, borderWidth: 1.5, tension: 0.1 },
+          { label: t2, data: norm2, borderColor: '#1B6B9A', backgroundColor: 'rgba(27,107,154,0.05)', fill: false, pointRadius: 0, borderWidth: 1.5, tension: 0.1 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { font: { size: 12, family: 'DM Sans' } } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { ticks: { font: { size: 10, family: 'JetBrains Mono' } }, grid: { color: 'rgba(0,0,0,0.04)' } }
+        }
+      }
+    });
+
+    // Rolling correlation chart
+    document.getElementById('corrChartCard').classList.remove('hidden');
+    const rollCorr = rollingCorrelation(ret1.map(r => r.r), ret2.map(r => r.r), 60);
+    const rollDates = ret1.slice(60).map(r => r.date);
+    const currentRollCorr = rollCorr.length > 0 ? rollCorr[rollCorr.length - 1] : null;
+    document.getElementById('corrChartTitle').textContent = 'Скользящая корреляция (60 дней)' + (currentRollCorr !== null ? ' · сейчас: ' + currentRollCorr.toFixed(2) : '');
+
+    const ctx2 = document.getElementById('corrChart').getContext('2d');
+    if (corrChartObj) corrChartObj.destroy();
+    corrChartObj = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels: rollDates.slice(0, rollCorr.length),
+        datasets: [{
+          label: 'Корреляция (60д)',
+          data: rollCorr,
+          borderColor: '#7B4FA0',
+          backgroundColor: 'rgba(123,79,160,0.08)',
+          fill: true, pointRadius: 0, borderWidth: 1.5, tension: 0.2
+        },{
+          label: 'Ноль',
+          data: rollCorr.map(() => 0),
+          borderColor: 'rgba(0,0,0,0.15)',
+          borderDash: [4,4],
+          borderWidth: 1, pointRadius: 0, fill: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          annotation: {}
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { min: -1, max: 1, ticks: { stepSize: 0.25, font: { size: 10, family: 'JetBrains Mono' } }, grid: { color: 'rgba(0,0,0,0.04)' } }
+        }
+      }
+    });
+
+    st.className = 'status ok';
+    st.textContent = 'Загружено: ' + t1 + ' (' + candles1.length + ' дней) и ' + t2 + ' (' + candles2.length + ' дней). Общих дат: ' + commonDates.length;
+  } catch (e) {
+    st.className = 'status err';
+    st.textContent = 'Ошибка: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+document.querySelectorAll('#ticker1,#ticker2').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+});
+</script>
+</body>
+</html>
