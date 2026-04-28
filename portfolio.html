@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Портфельный анализ · MOEX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;
+--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--red:#B44040;--red-bg:#FDF0F0;
+--green:#2D7A4F;--green-bg:#EDF7F1;
+--yellow:#A67A2E;
+--border:#E5E4DF;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:960px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.port-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.port-row input{font-family:var(--mono);font-size:0.85rem;padding:0.45rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none}
+.port-row input.ticker{width:100px;text-transform:uppercase}
+.port-row input.weight{width:70px;text-align:right}
+.port-row .num{font-family:var(--mono);font-size:0.72rem;color:var(--text3);width:20px;text-align:right}
+.port-row .remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:0 4px}
+.port-row .remove:hover{color:var(--red)}
+.btn{font-family:var(--sans);font-size:0.82rem;font-weight:500;padding:0.5rem 1.2rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;transition:opacity 0.2s}
+.btn:hover{opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-sm{font-size:0.75rem;padding:0.35rem 0.8rem;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-sm:hover{border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.weight-total{font-family:var(--mono);font-size:0.82rem;margin-left:auto}
+.status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.status.err{color:var(--red)}.status.ok{color:var(--green)}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;text-align:center;background:var(--surface2)}
+.metric.hl{background:var(--accent-light);border:1px solid rgba(45,90,61,0.15)}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.2rem;font-weight:600}
+.metric-sub{font-size:0.65rem;color:var(--text3)}
+.matrix-wrap{overflow-x:auto;margin-top:0.75rem}
+.matrix{border-collapse:collapse;font-size:0.75rem;width:100%}
+.matrix th,.matrix td{padding:6px 8px;text-align:center;border:1px solid var(--surface2)}
+.matrix th{background:var(--surface2);font-weight:500;color:var(--text2);font-size:0.7rem}
+.matrix td{font-family:var(--mono);font-size:0.78rem}
+.matrix td.diag{background:var(--surface2);color:var(--text3)}
+.vol-compare{margin-top:1rem}
+.vol-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.vol-bar-label{width:80px;font-size:0.78rem;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vol-bar-wrap{flex:1;height:20px;background:var(--surface2);border-radius:3px;overflow:hidden;position:relative}
+.vol-bar{height:100%;border-radius:3px;transition:width 0.3s}
+.vol-bar-val{font-family:var(--mono);font-size:0.78rem;min-width:50px}
+.chart-container{position:relative;width:100%;height:300px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.hidden{display:none}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Портфельный анализ</h1>
+<p class="subtitle">Корреляционная матрица · волатильность портфеля · MOEX ISS API</p>
+
+<div class="card">
+  <div class="card-title">Состав портфеля</div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.7rem;color:var(--text3)">
+    <span style="width:20px"></span>
+    <span style="width:100px">Тикер</span>
+    <span style="width:70px;text-align:right">Доля, %</span>
+  </div>
+  <div id="portRows"></div>
+  <div class="btn-row">
+    <button class="btn-sm" onclick="addRow()">+ Добавить бумагу</button>
+    <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
+    <span class="weight-total" id="weightTotal">Итого: 0%</span>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="summaryCard">
+  <div class="card-title">Доходность, волатильность и просадка (1 год)</div>
+  <div class="results-grid" id="summaryGrid"></div>
+  <div class="vol-compare" id="volCompare"></div>
+</div>
+
+<div class="card hidden" id="matrixCard">
+  <div class="card-title" id="matrixTitle">Корреляционная матрица (1 год)</div>
+  <div class="matrix-wrap" id="matrixWrap"></div>
+</div>
+
+<div class="card hidden" id="chartCard">
+  <div class="card-title">Нормализованная динамика (1 год, база = 100)</div>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>
+</div>
+
+<p class="footer-note">
+  Корреляция по дневным логарифмическим доходностям. Волатильность = σ_daily × √252.<br>
+  Волатильность портфеля = √(w' × Σ × w), где Σ — ковариационная матрица доходностей.<br>
+  Эффект диверсификации = 1 − (волатильность портфеля / средневзвешенная волатильность).
+</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+
+async function fetchCandles(ticker,from,till){
+  let all=[];let start=0;
+  while(true){
+    const url='https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/'+ticker+'/candles.json?interval=24&from='+from+'&till='+till+'&iss.meta=off&start='+start;
+    const d=await moexFetch(url);const cols=d.candles.columns;const rows=d.candles.data;
+    if(!rows||rows.length===0)break;
+    const ci=cols.indexOf('close'),bi=cols.indexOf('begin');
+    rows.forEach(r=>all.push({date:r[bi].slice(0,10),close:r[ci]}));
+    if(rows.length<500)break;start+=500;
+  }
+  return all;
+}
+
+function logReturns(candles){
+  const r=[];for(let i=1;i<candles.length;i++)r.push({date:candles[i].date,r:Math.log(candles[i].close/candles[i-1].close)});return r;
+}
+
+// Portfolio rows
+const portContainer=document.getElementById('portRows');
+let rowCount=0;
+
+function addRow(ticker,weight){
+  rowCount++;
+  const div=document.createElement('div');div.className='port-row';div.dataset.idx=rowCount;
+  div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="ticker" value="'+(ticker||'')+'" placeholder="SBER"><input type="text" class="weight" value="'+(weight||'')+'" placeholder="%" inputmode="decimal"><button class="remove" onclick="removeRow(this)" title="Удалить">×</button>';
+  portContainer.appendChild(div);
+  div.querySelectorAll('input').forEach(el=>el.addEventListener('input',updateTotal));
+  updateTotal();
+}
+
+function removeRow(btn){btn.closest('.port-row').remove();renumber();updateTotal();}
+
+function renumber(){
+  let i=1;portContainer.querySelectorAll('.port-row').forEach(r=>{r.querySelector('.num').textContent=i++;});
+}
+
+function updateTotal(){
+  let total=0;
+  portContainer.querySelectorAll('.weight').forEach(el=>{const v=parseFloat(el.value.replace(',','.'));if(!isNaN(v))total+=v;});
+  const tt=document.getElementById('weightTotal');
+  tt.textContent='Итого: '+total.toFixed(1)+'%';
+  tt.style.color=Math.abs(total-100)<0.5?'var(--green)':'var(--red)';
+}
+
+function getPortfolio(){
+  const items=[];
+  portContainer.querySelectorAll('.port-row').forEach(r=>{
+    const t=r.querySelector('.ticker').value.trim().toUpperCase();
+    const w=parseFloat(r.querySelector('.weight').value.replace(',','.'));
+    if(t&&!isNaN(w)&&w>0)items.push({ticker:t,weight:w/100});
+  });
+  return items;
+}
+
+// Init with sample
+['SBER','GAZP','LKOH','ROSN','YNDX'].forEach((t,i)=>addRow(t,[30,20,20,15,15][i]));
+
+let priceChart=null;
+
+async function run(){
+  const port=getPortfolio();
+  if(port.length<2){document.getElementById('status').className='status err';document.getElementById('status').textContent='Нужно минимум 2 бумаги';return;}
+  const totalW=port.reduce((a,b)=>a+b.weight,0);
+  if(Math.abs(totalW-1)>0.02){document.getElementById('status').className='status err';document.getElementById('status').textContent='Сумма долей должна быть 100% (сейчас '+(totalW*100).toFixed(1)+'%)';return;}
+
+  const st=document.getElementById('status');const btn=document.getElementById('calcBtn');
+  btn.disabled=true;
+
+  try{
+    const today=new Date();const oneYearAgo=new Date(today);oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
+    const fromStr=oneYearAgo.toISOString().slice(0,10);const tillStr=today.toISOString().slice(0,10);
+
+    // Fetch all
+    const allCandles={};
+    for(let i=0;i<port.length;i++){
+      st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].ticker+' ('+(i+1)+'/'+port.length+')...';
+      allCandles[port[i].ticker]=await fetchCandles(port[i].ticker,fromStr,tillStr);
+      if(allCandles[port[i].ticker].length<10)throw new Error(port[i].ticker+': недостаточно данных');
+    }
+
+    st.innerHTML='<span class="loader"></span>Рассчитываю...';
+
+    // Find common dates
+    const dateSets=Object.values(allCandles).map(c=>new Set(c.map(x=>x.date)));
+    let common=[...dateSets[0]];dateSets.slice(1).forEach(ds=>{common=common.filter(d=>ds.has(d))});
+    common.sort();
+    if(common.length<20)throw new Error('Слишком мало общих торговых дней: '+common.length);
+
+    // Build aligned close maps and returns
+    const tickers=port.map(p=>p.ticker);
+    const weights=port.map(p=>p.weight);
+    const closeMap={};const retMap={};
+    tickers.forEach(t=>{
+      const m={};allCandles[t].forEach(c=>m[c.date]=c.close);
+      const aligned=common.map(d=>({date:d,close:m[d]}));
+      closeMap[t]=aligned;
+      retMap[t]=logReturns(aligned).map(r=>r.r);
+    });
+    const n=retMap[tickers[0]].length;
+    const retDates=logReturns(closeMap[tickers[0]]).map(r=>r.date);
+
+    // Covariance matrix
+    const N=tickers.length;
+    const means=tickers.map(t=>{const r=retMap[t];return r.reduce((a,b)=>a+b,0)/r.length});
+    const covMatrix=[];
+    for(let i=0;i<N;i++){
+      covMatrix[i]=[];
+      for(let j=0;j<N;j++){
+        let s=0;
+        for(let k=0;k<n;k++)s+=(retMap[tickers[i]][k]-means[i])*(retMap[tickers[j]][k]-means[j]);
+        covMatrix[i][j]=s/(n-1);
+      }
+    }
+
+    // Correlation matrix
+    const corrMatrix=[];
+    for(let i=0;i<N;i++){
+      corrMatrix[i]=[];
+      for(let j=0;j<N;j++){
+        corrMatrix[i][j]=covMatrix[i][j]/Math.sqrt(covMatrix[i][i]*covMatrix[j][j]);
+      }
+    }
+
+    // Individual volatilities (annualized)
+    const vols=tickers.map((t,i)=>Math.sqrt(covMatrix[i][i])*Math.sqrt(252)*100);
+
+    // Portfolio volatility: sqrt(w' * Cov * w) * sqrt(252)
+    let portVar=0;
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++)portVar+=weights[i]*weights[j]*covMatrix[i][j];
+    const portVol=Math.sqrt(portVar)*Math.sqrt(252)*100;
+
+    // Weighted average vol
+    const waVol=tickers.reduce((s,t,i)=>s+weights[i]*vols[i],0);
+    const divEffect=(1-portVol/waVol)*100;
+
+    // Portfolio daily values (normalized to 100)
+    const portDaily=common.map((d,di)=>{
+      let val=0;tickers.forEach((t,i)=>{val+=weights[i]*(closeMap[t][di].close/closeMap[t][0].close)*100;});return val;
+    });
+
+    // Max drawdown
+    let peak=portDaily[0], maxDD=0, ddStart=0, ddEnd=0, ddPeak=0;
+    let currentPeak=0;
+    for(let i=0;i<portDaily.length;i++){
+      if(portDaily[i]>peak){peak=portDaily[i];currentPeak=i;}
+      const dd=(peak-portDaily[i])/peak;
+      if(dd>maxDD){maxDD=dd;ddStart=currentPeak;ddEnd=i;ddPeak=peak;}
+    }
+
+    // Individual max drawdowns
+    const indDD=tickers.map(t=>{
+      const prices=closeMap[t].map(c=>c.close);
+      let pk=prices[0],mdd=0;
+      for(let i=0;i<prices.length;i++){
+        if(prices[i]>pk)pk=prices[i];
+        const dd=(pk-prices[i])/pk;
+        if(dd>mdd)mdd=dd;
+      }
+      return mdd*100;
+    });
+
+    // Expected return (annualized from total return)
+    const totalReturn=(portDaily[portDaily.length-1]/portDaily[0]-1);
+    const yearsInPeriod=common.length/252;
+    const annualReturn=(Math.pow(1+totalReturn,1/yearsInPeriod)-1)*100;
+
+    // Individual returns
+    const indReturns=tickers.map(t=>{
+      const prices=closeMap[t];
+      const tr=prices[prices.length-1].close/prices[0].close-1;
+      return(Math.pow(1+tr,1/yearsInPeriod)-1)*100;
+    });
+
+    // Summary
+    document.getElementById('summaryCard').classList.remove('hidden');
+    const sg=document.getElementById('summaryGrid');
+    sg.innerHTML='';
+    [{l:'Доходность портфеля',v:annualReturn.toFixed(1)+'%',s:'годовая',c:'hl'},
+     {l:'Волатильность портфеля',v:portVol.toFixed(1)+'%',s:'с учётом корреляций',c:'hl'},
+     {l:'Макс. просадка портфеля',v:'-'+(maxDD*100).toFixed(1)+'%',s:common[ddStart]+' → '+common[ddEnd],c:'dd'},
+     {l:'Средневзвеш. волатильность',v:waVol.toFixed(1)+'%',s:'без диверсификации',c:''},
+     {l:'Эффект диверсификации',v:divEffect.toFixed(1)+'%',s:'снижение риска',c:'hl'},
+     {l:'Sharpe (упрощ.)',v:(annualReturn/portVol).toFixed(2),s:'доходность / волатильность',c:''}
+    ].forEach(m=>{
+      const el=document.createElement('div');el.className='metric '+(m.c||'');
+      if(m.c==='dd'){el.style.background='#FDF0F0';el.style.border='1px solid rgba(180,64,64,0.15)';el.querySelector||0;
+        el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value" style="color:#B44040">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';}
+      else{el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';}
+      sg.appendChild(el);
+    });
+
+    // Vol & drawdown comparison bars
+    const vc=document.getElementById('volCompare');vc.innerHTML='';
+    // Return bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:4px">ДОХОДНОСТЬ (ГОДОВАЯ)</div>';
+    const allRets=[{label:'ПОРТФЕЛЬ',val:annualReturn,color:'#2D5A3D'},...tickers.map((t,i)=>({label:t,val:indReturns[i],color:'#1B6B9A'}))];
+    const maxRet=Math.max(...allRets.map(v=>Math.abs(v.val)),1);
+    allRets.forEach(v=>{
+      const pct=Math.abs(v.val)/maxRet*100;
+      const row=document.createElement('div');row.className='vol-bar-row';
+      row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:'+(v.val>=0?v.color:'#B44040')+'"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+(v.val<0?';color:#B44040':'')+'">'+v.val.toFixed(1)+'%</span>';
+      vc.appendChild(row);
+    });
+    // Vol bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:16px">ВОЛАТИЛЬНОСТЬ</div>';
+    const maxVol=Math.max(portVol,...vols);
+    const allVols=[{label:'ПОРТФЕЛЬ',vol:portVol,color:'#2D5A3D'},...tickers.map((t,i)=>({label:t,vol:vols[i],color:'#1B6B9A'}))];
+    allVols.forEach(v=>{
+      const pct=(v.vol/maxVol)*100;
+      const row=document.createElement('div');row.className='vol-bar-row';
+      row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:'+v.color+'"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'">'+v.vol.toFixed(1)+'%</span>';
+      vc.appendChild(row);
+    });
+    // Drawdown bars
+    vc.innerHTML+='<div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px;margin-top:16px">МАКС. ПРОСАДКА</div>';
+    const allDD=[{label:'ПОРТФЕЛЬ',dd:maxDD*100},...tickers.map((t,i)=>({label:t,dd:indDD[i]}))];
+    const maxDDval=Math.max(...allDD.map(v=>v.dd));
+    allDD.forEach(v=>{
+      const pct=v.dd/maxDDval*100;
+      const row=document.createElement('div');row.className='vol-bar-row';
+      row.innerHTML='<span class="vol-bar-label" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+'" title="'+v.label+'">'+v.label+'</span><div class="vol-bar-wrap"><div class="vol-bar" style="width:'+pct+'%;background:#B44040"></div></div><span class="vol-bar-val" style="'+(v.label==='ПОРТФЕЛЬ'?'font-weight:600':'')+';color:#B44040">-'+v.dd.toFixed(1)+'%</span>';
+      vc.appendChild(row);
+    });
+
+    // Correlation matrix table
+    document.getElementById('matrixCard').classList.remove('hidden');
+    document.getElementById('matrixTitle').textContent='Корреляционная матрица ('+common.length+' дней, 1 год)';
+    const mw=document.getElementById('matrixWrap');
+    let mhtml='<table class="matrix"><thead><tr><th></th>';
+    tickers.forEach(t=>mhtml+='<th>'+t+'</th>');
+    mhtml+='</tr></thead><tbody>';
+    for(let i=0;i<N;i++){
+      mhtml+='<tr><th>'+tickers[i]+'</th>';
+      for(let j=0;j<N;j++){
+        const v=corrMatrix[i][j];
+        let bg='';
+        if(i===j)bg=' class="diag"';
+        else if(v>0.7)bg=' style="background:#f8d7da;color:#721c24"';
+        else if(v>0.35)bg=' style="background:#fff3cd;color:#856404"';
+        else bg=' style="background:#d4edda;color:#2D7A4F"';
+        mhtml+='<td'+bg+'>'+v.toFixed(2)+'</td>';
+      }
+      mhtml+='</tr>';
+    }
+    mhtml+='</tbody></table>';
+    mw.innerHTML=mhtml;
+
+    // Price chart
+    document.getElementById('chartCard').classList.remove('hidden');
+    const ctx=document.getElementById('priceChart').getContext('2d');
+    if(priceChart)priceChart.destroy();
+    const colors=['#2D5A3D','#1B6B9A','#7B4FA0','#C46A2E','#B44040','#A67A2E','#4A8B62','#5A7BA6','#9B6BA0','#D49A6A'];
+    const datasets=tickers.map((t,i)=>{
+      const base=closeMap[t][0].close;
+      return{label:t,data:closeMap[t].map(c=>(c.close/base)*100),borderColor:colors[i%colors.length],pointRadius:0,borderWidth:1.5,tension:0.1,fill:false};
+    });
+    // Add portfolio line
+    datasets.unshift({label:'ПОРТФЕЛЬ',data:portDaily,borderColor:'#1A1A18',borderWidth:2.5,pointRadius:0,tension:0.1,fill:false,borderDash:[]});
+
+    priceChart=new Chart(ctx,{type:'line',data:{labels:common,datasets},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'},usePointStyle:true,pointStyle:'line'}}},
+      scales:{x:{ticks:{maxTicksLimit:12,font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},y:{ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}}}
+    }});
+
+    st.className='status ok';
+    st.textContent='Готово · '+common.length+' общих торговых дней · эффект диверсификации '+divEffect.toFixed(1)+'%';
+  }catch(e){
+    st.className='status err';st.textContent='Ошибка: '+e.message;
+  }
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
