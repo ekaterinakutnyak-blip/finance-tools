@@ -166,7 +166,7 @@ async function loadBond(isin){
   if(!sec)throw new Error(isin+': не найдена на Мосбирже');
 
   const ytm=parseFloat(sec.YIELDATPREVWAPRICE||sec.YIELD||md.YIELD||'0');
-  const duration=parseFloat(sec.DURATION||'0');
+  const durationRaw=parseFloat(sec.DURATION||md.DURATION||'0');
   const couponVal=parseFloat(sec.COUPONVALUE||'0');
   const couponPeriod=parseInt(sec.COUPONPERIOD||'182');
   const couponRate=parseFloat(sec.COUPONPERCENT||'0');
@@ -176,9 +176,46 @@ async function loadBond(isin){
   const matDate=sec.MATDATE||'';
   const nextCoupon=sec.NEXTCOUPON||'';
   const lotSize=parseInt(sec.LOTSIZE||'1');
+
+  // Duration in years
+  let durationYears=durationRaw/365;
+
+  // If duration is 0 or missing, calculate approximate Macaulay duration
+  if(durationYears<=0 && matDate && ytm>0){
+    const today=new Date();
+    const mat=new Date(matDate);
+    const T=(mat-today)/(365.25*24*60*60*1000); // years to maturity
+    if(T>0){
+      const y=ytm/100;
+      const c=couponRate/100;
+      const n=Math.round(T*365/couponPeriod); // number of remaining coupons
+      const freq=Math.round(365/couponPeriod);
+      const yf=y/freq; // yield per period
+      const cf=c/freq; // coupon rate per period
+
+      if(n>0 && yf>0){
+        // Macaulay duration formula
+        let numerator=0;
+        let denominator=0;
+        for(let i=1;i<=n;i++){
+          const t=i/freq; // time in years
+          const pv=cf/Math.pow(1+yf,i);
+          numerator+=t*pv;
+          denominator+=pv;
+        }
+        // Add principal
+        const pvPrincipal=1/Math.pow(1+yf,n);
+        numerator+=(n/freq)*pvPrincipal;
+        denominator+=pvPrincipal;
+        durationYears=numerator/denominator;
+      } else {
+        durationYears=T; // fallback: duration = maturity for zero-coupon
+      }
+    }
+  }
   
   // Calc modified duration
-  const modDuration=duration/365/(1+ytm/100);
+  const modDuration=ytm>0?durationYears/(1+ytm/100):0;
 
   // Calc annual coupon (per face value)
   const couponsPerYear=Math.round(365/couponPeriod);
@@ -186,7 +223,7 @@ async function loadBond(isin){
   const currentYield=faceValue>0?(annualCoupon/(price/100*faceValue))*100:0;
 
   return{
-    secid,shortname,ytm,duration:duration/365,modDuration,
+    secid,shortname,ytm,duration:durationYears,modDuration,
     couponVal,couponPeriod,couponRate,annualCoupon,currentYield,
     faceValue,price,nkd,matDate,nextCoupon,couponsPerYear,board
   };
