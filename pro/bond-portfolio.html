@@ -96,8 +96,15 @@ canvas{width:100%!important;height:100%!important}
 
 <div class="card hidden" id="stressCard">
   <div class="card-title">Стресс-тест: изменение стоимости портфеля при сдвиге КС</div>
+  <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+    <div class="field" style="width:180px">
+      <label style="font-size:0.72rem;color:var(--text2)">Свой сдвиг ставки, бп</label>
+      <input type="text" id="customShift" placeholder="напр. +150 или -75" inputmode="numeric" style="font-family:var(--mono);font-size:0.85rem;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);outline:none">
+    </div>
+    <div id="customResult" style="font-family:var(--mono);font-size:0.9rem;font-weight:600;padding-bottom:6px"></div>
+  </div>
   <div class="stress-grid" id="stressGrid"></div>
-  <div style="font-size:0.7rem;color:var(--text3);margin-top:8px">Оценка через модифицированную дюрацию: ΔP ≈ −D_mod × Δy. Для крупных сдвигов учитывается выпуклость (convexity): ΔP ≈ −D_mod × Δy + ½ × C × (Δy)²</div>
+  <div style="font-size:0.7rem;color:var(--text3);margin-top:8px">Оценка через модифицированную дюрацию: ΔP ≈ −D_mod × Δy</div>
 </div>
 
 <div class="card hidden" id="couponCard">
@@ -256,6 +263,19 @@ function getPortfolio(){
 ['RU000A10EYJ1','RU000A10EAC6','RU000A10EMU3','RU000A10EYV6','RU000A10DZU7'].forEach((b,i)=>addRow(b,[50,40,40,40,30][i]));
 
 let couponChart=null;
+let _portModDur=0, _portValue=0;
+
+document.getElementById('customShift').addEventListener('input',function(){
+  const bp=parseInt(this.value.replace(/[^0-9\-]/g,''));
+  const res=document.getElementById('customResult');
+  if(isNaN(bp)||_portModDur===0){res.textContent='';return}
+  const dy=bp/10000;
+  const pctChange=(-_portModDur*dy)*100;
+  const rubChange=_portValue*pctChange/100;
+  const isNeg=pctChange<0;
+  const color=isNeg?'#B44040':'#2D7A4F';
+  res.innerHTML='<span style="color:'+color+'">'+(pctChange>0?'+':'')+pctChange.toFixed(2)+'% ('+(rubChange>0?'+':'')+Math.round(rubChange).toLocaleString('ru-RU')+' ₽)</span>';
+});
 
 async function run(){
   const port=getPortfolio();
@@ -326,6 +346,7 @@ async function run(){
     html+='</tbody>';ht.innerHTML=html;
 
     // Stress test
+    _portModDur=wModDuration;_portValue=totalValue;
     document.getElementById('stressCard').classList.remove('hidden');
     const sg2=document.getElementById('stressGrid');sg2.innerHTML='';
     const shifts=[-200,-100,-50,+50,+100,+200,+300,+400,+500];
