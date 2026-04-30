@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Портфель облигаций · MOEX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--red:#B44040;--red-bg:#FDF0F0;--green:#2D7A4F;--green-bg:#EDF7F1;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:960px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.bond-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.bond-row input{font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none}
+.bond-row input.isin{width:160px;text-transform:uppercase}
+.bond-row input.weight{width:65px;text-align:right}
+.bond-row .num{font-family:var(--mono);font-size:0.72rem;color:var(--text3);width:18px;text-align:right}
+.bond-row .remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:0 4px}
+.bond-row .remove:hover{color:var(--red)}
+.bond-row .name{font-size:0.72rem;color:var(--accent);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{font-family:var(--sans);font-size:0.82rem;font-weight:500;padding:0.5rem 1.2rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;transition:opacity 0.2s}
+.btn:hover{opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-sm{font-size:0.75rem;padding:0.35rem 0.8rem;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-sm:hover{border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.weight-total{font-family:var(--mono);font-size:0.82rem;margin-left:auto}
+.status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.status.err{color:var(--red)}.status.ok{color:var(--green)}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.85rem 1rem;display:flex;flex-direction:column;gap:2px;text-align:center;background:var(--surface2)}
+.metric.hl{background:var(--accent-light);border:1px solid rgba(45,90,61,0.15)}
+.metric.hl2{background:var(--accent2-light);border:1px solid rgba(27,107,154,0.15)}
+.metric.warn{background:var(--red-bg);border:1px solid rgba(180,64,64,0.15)}
+.metric-label{font-size:0.68rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.15rem;font-weight:600}
+.metric-sub{font-size:0.65rem;color:var(--text3)}
+.hl .metric-value{color:var(--green)}
+.hl2 .metric-value{color:var(--accent2)}
+.warn .metric-value{color:var(--red)}
+.table-wrap{overflow-x:auto;margin-top:1rem}
+table{width:100%;border-collapse:collapse;font-size:0.75rem}
+th{text-align:right;font-weight:500;color:var(--text2);padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.65rem;text-transform:uppercase}
+th:first-child,th:nth-child(2){text-align:left}
+td{text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.75rem}
+td:first-child,td:nth-child(2){text-align:left;font-family:var(--sans)}
+.chart-container{position:relative;width:100%;height:280px;margin:1rem 0}
+canvas{width:100%!important;height:100%!important}
+.hidden{display:none}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stress-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:1rem}
+@media(max-width:600px){.stress-grid{grid-template-columns:repeat(3,1fr)}}
+.stress-item{text-align:center;padding:0.6rem 0.4rem;border-radius:var(--radius);font-size:0.75rem}
+.stress-label{font-size:0.65rem;color:var(--text2)}
+.stress-val{font-family:var(--mono);font-weight:600;font-size:0.9rem}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Портфель облигаций</h1>
+<p class="subtitle">Дюрация · доходность · купонный поток · стресс-тест · MOEX ISS API</p>
+
+<div class="card">
+  <div class="card-title">Состав портфеля</div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.68rem;color:var(--text3)">
+    <span style="width:18px"></span>
+    <span style="width:160px">ISIN или тикер</span>
+    <span style="width:65px;text-align:right">Доля, %</span>
+  </div>
+  <div id="bondRows"></div>
+  <div class="btn-row">
+    <button class="btn-sm" onclick="addRow()">+ Добавить облигацию</button>
+    <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
+    <span class="weight-total" id="weightTotal">Итого: 0%</span>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="summaryCard">
+  <div class="card-title">Портфель</div>
+  <div class="results-grid" id="summaryGrid"></div>
+</div>
+
+<div class="card hidden" id="holdingsCard">
+  <div class="card-title">Позиции</div>
+  <div class="table-wrap"><table id="holdingsTable"></table></div>
+</div>
+
+<div class="card hidden" id="stressCard">
+  <div class="card-title">Стресс-тест: изменение стоимости портфеля при сдвиге КС</div>
+  <div class="stress-grid" id="stressGrid"></div>
+  <div style="font-size:0.7rem;color:var(--text3);margin-top:8px">Оценка через модифицированную дюрацию: ΔP ≈ −D_mod × Δy. Для крупных сдвигов учитывается выпуклость (convexity): ΔP ≈ −D_mod × Δy + ½ × C × (Δy)²</div>
+</div>
+
+<div class="card hidden" id="couponCard">
+  <div class="card-title">Купонный поток (ближайшие 12 месяцев)</div>
+  <div class="chart-container"><canvas id="couponChart"></canvas></div>
+</div>
+
+<p class="footer-note">
+  Данные: MOEX ISS API (доски TQCB/TQOB). Дюрация и доходность — с биржи.<br>
+  Средневзвешенные показатели по долям в портфеле. Стресс-тест через дюрацию (линейное приближение).
+</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+
+async function loadBond(isin){
+  // Search for bond
+  const searchUrl='https://iss.moex.com/iss/securities.json?q='+encodeURIComponent(isin)+'&iss.meta=off&limit=10';
+  const sd=await moexFetch(searchUrl);
+  const cols=sd.securities.columns;const rows=sd.securities.data;
+  const secidIdx=cols.indexOf('secid'),nameIdx=cols.indexOf('name'),isTraded=cols.indexOf('is_traded'),groupIdx=cols.indexOf('group');
+  
+  // Find bond
+  let secid=null,shortname='';
+  for(const r of rows){
+    if((r[groupIdx]||'').includes('bond')&&r[isTraded]===1){
+      secid=r[secidIdx];shortname=r[nameIdx];break;
+    }
+  }
+  if(!secid){
+    // Try direct as secid on TQCB
+    secid=isin.toUpperCase();
+  }
+
+  // Try boards: TQCB, TQOB, TQIR
+  const boards=['TQCB','TQOB','TQIR'];
+  let sec=null,md=null,board='';
+  for(const b of boards){
+    try{
+      const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/'+b+'/securities/'+secid+'.json?iss.meta=off';
+      const d=await moexFetch(url);
+      const sCols=d.securities.columns;const sRows=d.securities.data;
+      const mCols=d.marketdata.columns;const mRows=d.marketdata.data;
+      if(sRows.length>0){
+        sec={};sCols.forEach((c,i)=>sec[c]=sRows[0][i]);
+        md={};mCols.forEach((c,i)=>md[c]=mRows[0][i]);
+        board=b;
+        if(sec.SHORTNAME)shortname=sec.SHORTNAME;
+        break;
+      }
+    }catch(e){}
+  }
+  if(!sec)throw new Error(isin+': не найдена на Мосбирже');
+
+  const ytm=parseFloat(sec.YIELDATPREVWAPRICE||sec.YIELD||md.YIELD||'0');
+  const duration=parseFloat(sec.DURATION||'0');
+  const couponVal=parseFloat(sec.COUPONVALUE||'0');
+  const couponPeriod=parseInt(sec.COUPONPERIOD||'182');
+  const couponRate=parseFloat(sec.COUPONPERCENT||'0');
+  const faceValue=parseFloat(sec.FACEVALUE||'1000');
+  const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
+  const nkd=parseFloat(sec.ACCRUEDINT||'0');
+  const matDate=sec.MATDATE||'';
+  const nextCoupon=sec.NEXTCOUPON||'';
+  const lotSize=parseInt(sec.LOTSIZE||'1');
+  
+  // Calc modified duration
+  const modDuration=duration/365/(1+ytm/100);
+
+  // Calc annual coupon (per face value)
+  const couponsPerYear=Math.round(365/couponPeriod);
+  const annualCoupon=couponVal*couponsPerYear;
+  const currentYield=faceValue>0?(annualCoupon/(price/100*faceValue))*100:0;
+
+  return{
+    secid,shortname,ytm,duration:duration/365,modDuration,
+    couponVal,couponPeriod,couponRate,annualCoupon,currentYield,
+    faceValue,price,nkd,matDate,nextCoupon,couponsPerYear,board
+  };
+}
+
+// Bond rows
+const rowsContainer=document.getElementById('bondRows');
+let rowCount=0;
+
+function addRow(isin,weight){
+  rowCount++;
+  const div=document.createElement('div');div.className='bond-row';
+  div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A..."><input type="text" class="weight" value="'+(weight||'')+'" placeholder="%" inputmode="decimal"><span class="name"></span><button class="remove" onclick="removeRow(this)">×</button>';
+  rowsContainer.appendChild(div);
+  div.querySelectorAll('input').forEach(el=>el.addEventListener('input',updateTotal));
+  updateTotal();
+}
+
+function removeRow(btn){btn.closest('.bond-row').remove();renumber();updateTotal();}
+function renumber(){let i=1;rowsContainer.querySelectorAll('.bond-row').forEach(r=>{r.querySelector('.num').textContent=i++})}
+function updateTotal(){
+  let t=0;rowsContainer.querySelectorAll('.weight').forEach(el=>{const v=parseFloat(el.value.replace(',','.'));if(!isNaN(v))t+=v});
+  const tt=document.getElementById('weightTotal');tt.textContent='Итого: '+t.toFixed(1)+'%';
+  tt.style.color=Math.abs(t-100)<0.5?'var(--green)':'var(--red)';
+}
+function getPortfolio(){
+  const items=[];
+  rowsContainer.querySelectorAll('.bond-row').forEach(r=>{
+    const isin=r.querySelector('.isin').value.trim().toUpperCase();
+    const w=parseFloat(r.querySelector('.weight').value.replace(',','.'));
+    if(isin&&!isNaN(w)&&w>0)items.push({isin,weight:w/100,row:r});
+  });
+  return items;
+}
+
+// Default bonds
+['RU000A108Y99','RU000A1038V6','RU000A106EM0','RU000A105PP2','RU000A107KT2'].forEach((b,i)=>addRow(b,[25,20,20,20,15][i]));
+
+let couponChart=null;
+
+async function run(){
+  const port=getPortfolio();
+  if(port.length<1){document.getElementById('status').className='status err';document.getElementById('status').textContent='Добавьте хотя бы 1 облигацию';return}
+  const totalW=port.reduce((a,b)=>a+b.weight,0);
+  if(Math.abs(totalW-1)>0.05){document.getElementById('status').className='status err';document.getElementById('status').textContent='Сумма долей должна быть ~100% (сейчас '+(totalW*100).toFixed(1)+'%)';return}
+
+  const st=document.getElementById('status');const btn=document.getElementById('calcBtn');
+  btn.disabled=true;
+
+  try{
+    const bonds=[];
+    for(let i=0;i<port.length;i++){
+      st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
+      const b=await loadBond(port[i].isin);
+      b.weight=port[i].weight;
+      bonds.push(b);
+      // Show name in row
+      port[i].row.querySelector('.name').textContent=b.shortname;
+    }
+
+    st.innerHTML='<span class="loader"></span>Рассчитываю...';
+
+    // Weighted averages
+    const wYTM=bonds.reduce((s,b)=>s+b.weight*b.ytm,0);
+    const wDuration=bonds.reduce((s,b)=>s+b.weight*b.duration,0);
+    const wModDuration=bonds.reduce((s,b)=>s+b.weight*b.modDuration,0);
+    const wCouponRate=bonds.reduce((s,b)=>s+b.weight*b.couponRate,0);
+    const wCurrentYield=bonds.reduce((s,b)=>s+b.weight*b.currentYield,0);
+
+    // Summary
+    document.getElementById('summaryCard').classList.remove('hidden');
+    const sg=document.getElementById('summaryGrid');sg.innerHTML='';
+    [
+      {l:'Доходность (YTM)',v:wYTM.toFixed(2)+'%',s:'средневзвешенная',c:'hl'},
+      {l:'Текущая доходность',v:wCurrentYield.toFixed(2)+'%',s:'купон / цена',c:'hl'},
+      {l:'Купонная ставка',v:wCouponRate.toFixed(2)+'%',s:'средневзвешенная',c:''},
+      {l:'Дюрация',v:wDuration.toFixed(2)+' лет',s:'средневзвешенная',c:'hl2'},
+      {l:'Мод. дюрация',v:wModDuration.toFixed(2),s:'чувствительность к ставке',c:'hl2'},
+      {l:'Позиций',v:bonds.length,s:'облигаций в портфеле',c:''}
+    ].forEach(m=>{
+      const el=document.createElement('div');el.className='metric '+(m.c||'');
+      el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
+      sg.appendChild(el);
+    });
+
+    // Holdings table
+    document.getElementById('holdingsCard').classList.remove('hidden');
+    const ht=document.getElementById('holdingsTable');
+    let html='<thead><tr><th>Бумага</th><th>ISIN</th><th>Доля</th><th>YTM</th><th>Купон</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
+    bonds.forEach(b=>{
+      html+='<tr><td>'+b.shortname+'</td><td style="font-family:var(--mono);font-size:0.7rem">'+b.secid+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td>'+b.ytm.toFixed(2)+'%</td><td>'+b.couponRate.toFixed(1)+'%</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
+    });
+    html+='</tbody>';ht.innerHTML=html;
+
+    // Stress test
+    document.getElementById('stressCard').classList.remove('hidden');
+    const sg2=document.getElementById('stressGrid');sg2.innerHTML='';
+    const shifts=[-200,-100,-50,+50,+100,+200,+300,+400,+500];
+    shifts.forEach(bp=>{
+      const dy=bp/10000;
+      const pctChange=(-wModDuration*dy)*100;
+      const isNeg=pctChange<0;
+      const el=document.createElement('div');
+      el.className='stress-item';
+      el.style.background=isNeg?'#FDF0F0':'#EDF7F1';
+      el.innerHTML='<div class="stress-label">'+(bp>0?'+':'')+bp+' бп</div><div class="stress-val" style="color:'+(isNeg?'#B44040':'#2D7A4F')+'">'+(pctChange>0?'+':'')+pctChange.toFixed(2)+'%</div>';
+      sg2.appendChild(el);
+    });
+
+    // Coupon flow chart (next 12 months)
+    document.getElementById('couponCard').classList.remove('hidden');
+    const today=new Date();
+    const months={};
+    for(let m=0;m<12;m++){
+      const d=new Date(today.getFullYear(),today.getMonth()+m,1);
+      const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      months[key]=0;
+    }
+
+    bonds.forEach(b=>{
+      if(!b.nextCoupon||!b.couponVal||!b.couponPeriod)return;
+      let nc=new Date(b.nextCoupon);
+      const endDate=new Date(today);endDate.setFullYear(endDate.getFullYear()+1);
+      while(nc<=endDate){
+        const key=nc.getFullYear()+'-'+String(nc.getMonth()+1).padStart(2,'0');
+        if(months.hasOwnProperty(key)){
+          // Coupon per 1000 nominal, weighted by portfolio share
+          months[key]+=b.couponVal*b.weight;
+        }
+        nc=new Date(nc.getTime()+b.couponPeriod*24*60*60*1000);
+      }
+    });
+
+    const labels=Object.keys(months).map(k=>{const[y,m]=k.split('-');return['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][parseInt(m)-1]+' '+y.slice(2)});
+    const values=Object.values(months);
+
+    const ctx=document.getElementById('couponChart').getContext('2d');
+    if(couponChart)couponChart.destroy();
+    couponChart=new Chart(ctx,{type:'bar',data:{
+      labels,
+      datasets:[{label:'Купон (₽ на 1000₽ номинала)',data:values,backgroundColor:'rgba(45,90,61,0.3)',borderColor:'#2D5A3D',borderWidth:1}]
+    },options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:10}},grid:{display:false}},
+        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>v.toFixed(1)+' ₽'},grid:{color:'rgba(0,0,0,0.04)'}}
+      }
+    }});
+
+    st.className='status ok';
+    st.textContent='Загружено '+bonds.length+' облигаций · средневзвеш. дюрация '+wDuration.toFixed(2)+' лет · YTM '+wYTM.toFixed(2)+'%';
+  }catch(e){
+    st.className='status err';st.textContent='Ошибка: '+e.message;
+  }
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
