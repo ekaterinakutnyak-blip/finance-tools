@@ -163,6 +163,7 @@ function calc(){
     const newPayment1=Math.abs(pmt(r,remainingPeriods1,newBal));
     let b1sim=newBal, intAfter1=0;
     for(let i=0;i<remainingPeriods1;i++){const interest=b1sim*r;intAfter1+=interest;b1sim=b1sim+interest-newPayment1;}
+    const totalAfter1=newPayment1*remainingPeriods1;
     const totalInt1=intBefore+intAfter1;
     const saving1=totalInterest-totalInt1;
     const totalPaid1=paidBefore+epA+totalAfter1;
