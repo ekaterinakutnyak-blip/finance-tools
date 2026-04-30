@@ -122,8 +122,11 @@ function calc(){
   const r=R/F, n=Y*F;
   const payment=Math.abs(pmt(r,n,L));
   const totalPaid=payment*n;
-  const totalInterest=totalPaid-L;
-
+  
+  // Calculate total interest via simulation for consistency
+  let baseBal=L, totalInterest=0;
+  for(let i=0;i<n;i++){const interest=baseBal*r;totalInterest+=interest;baseBal=baseBal+interest-payment;}
+  
   // Base results
   const bg=document.getElementById('baseGrid');bg.innerHTML='';
   [{l:'Ежемесячный платёж',v:fm(payment),s:'аннуитет',c:'hl2'},
@@ -133,9 +136,12 @@ function calc(){
 
   // Early repayment scenarios
   if(epP>0&&epA>0&&epP<n){
-    // Balance at moment of early repayment
-    const balAtEP=Math.abs(fv(r,epP,pmt(r,n,L),L));
+    // Interest paid before early repayment (via simulation)
+    let bSim=L, intBefore=0;
+    for(let i=0;i<epP;i++){const interest=bSim*r;intBefore+=interest;bSim=bSim+interest-payment;}
+    const balAtEP=bSim;
     const newBal=balAtEP-epA;
+    const paidBefore=payment*epP;
 
     // Check if early payment exceeds balance
     if(newBal<=0){
@@ -152,15 +158,11 @@ function calc(){
       return;
     }
 
-    // Interest paid before early repayment
-    const intBefore=Math.abs(cumipmt(r,n,L,1,epP));
-    const paidBefore=payment*epP;
-
     // Option 1: Reduce payment (keep same term)
     const remainingPeriods1=n-epP;
     const newPayment1=Math.abs(pmt(r,remainingPeriods1,newBal));
-    const totalAfter1=newPayment1*remainingPeriods1;
-    const intAfter1=totalAfter1-newBal;
+    let b1sim=newBal, intAfter1=0;
+    for(let i=0;i<remainingPeriods1;i++){const interest=b1sim*r;intAfter1+=interest;b1sim=b1sim+interest-newPayment1;}
     const totalInt1=intBefore+intAfter1;
     const saving1=totalInterest-totalInt1;
     const totalPaid1=paidBefore+epA+totalAfter1;
