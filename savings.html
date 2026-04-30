@@ -14,6 +14,8 @@ h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
 .subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
 .card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.card-header .card-title{margin-bottom:0}
 .input-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:500px){.input-grid{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:3px}
@@ -48,6 +50,10 @@ td:first-child{text-align:center;color:var(--text2)}
 .mode-btn{font-family:var(--sans);font-size:0.75rem;padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);cursor:pointer;transition:all 0.2s}
 .mode-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .mode-btn:hover{border-color:var(--accent)}
+.toggle{display:inline-flex;background:var(--surface2);border-radius:8px;padding:3px;gap:2px}
+.toggle button{font-family:var(--sans);font-size:0.72rem;font-weight:500;padding:5px 12px;border:none;border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;transition:all 0.15s}
+.toggle button.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,0.06)}
+.toggle button:hover:not(.active){color:var(--text)}
 </style>
 </head>
 <body>
@@ -92,7 +98,7 @@ td:first-child{text-align:center;color:var(--text2)}
 <div class="card">
   <div class="card-title">Фаза дохода</div>
   <div class="input-grid">
-    <div class="field"><label>Капитал</label><input type="text" id="i_capital" value="10000000" inputmode="decimal"><span class="hint">₽</span></div>
+    <div class="field"><label>Капитал</label><input type="text" id="i_capital" value="10000000" inputmode="decimal"><span class="hint">₽ (номинал)</span></div>
     <div class="field"><label>Доходность, % годовых</label><input type="text" id="i_rate" value="10" inputmode="decimal"></div>
     <div class="field"><label>Инфляция, % годовых</label><input type="text" id="i_inflation" value="6" inputmode="decimal"></div>
     <div class="field"><label>Стратегия</label><select id="i_strat"><option value="perpetual">Вечная рента (капитал сохраняется)</option><option value="deplete">Проедать за N лет</option></select></div>
@@ -100,9 +106,26 @@ td:first-child{text-align:center;color:var(--text2)}
   </div>
 </div>
 
-<div class="card hidden" id="i_res"><div class="card-title">Пассивный доход</div><div class="results-grid" id="i_grid"></div><div class="chart-container"><canvas id="i_chart"></canvas></div><div class="table-wrap"><table id="i_table"></table></div></div>
+<div class="card hidden" id="i_res">
+  <div class="card-header">
+    <div class="card-title">Пассивный доход</div>
+    <div class="toggle">
+      <button id="vNom" class="active" onclick="setView('nom')">Номинальные</button>
+      <button id="vReal" onclick="setView('real')">Реальные</button>
+    </div>
+  </div>
+  <div class="results-grid" id="i_grid"></div>
+  <div class="chart-container"><canvas id="i_chart"></canvas></div>
+  <div class="table-wrap"><table id="i_table"></table></div>
+</div>
 
-<p class="footer-note">Реальная доходность ≈ номинальная − инфляция. «Реальные» суммы = в сегодняшней покупательной способности.<br>Вечная рента: доход = капитал × реальная ставка / 12. Капитал сохраняется бесконечно.<br>Историческая доходность: акции — индекс МосБиржи полной доходности, облигации — Cbonds CBI RU Middle Market. Геометрическое среднее. Данные: УК «Доход» (доходность.рф).<br>⚠ Прошлая доходность не гарантирует будущих результатов.</p>
+<p class="footer-note">
+<strong>Номинальные</strong> — деньги, которые реально приходят на счёт через N лет (с учётом инфляционного роста выплат).<br>
+<strong>Реальные</strong> — те же суммы в покупательной способности сегодняшнего дня.<br>
+Реальная доходность ≈ номинальная − инфляция. Вечная рента: доход растёт с инфляцией, реальный капитал сохраняется. «Проесть за N лет»: ежемесячное снятие индексируется на инфляцию, реальный капитал линейно идёт к 0.<br>
+Историческая доходность: акции — индекс МосБиржи полной доходности, облигации — Cbonds CBI RU Middle Market. Геометрическое среднее. Данные: УК «Доход» (доходность.рф).<br>
+⚠ Прошлая доходность не гарантирует будущих результатов.
+</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -143,24 +166,179 @@ function calcA(){
   let h='<thead><tr><th>Год</th><th>Внесено</th><th>Номинал</th><th>Реальные</th><th>Доход</th></tr></thead><tbody>';yd.forEach(d=>{h+='<tr><td>'+d.y+'</td><td>'+fr(d.c)+'</td><td>'+fr(d.n)+'</td><td>'+fr(d.r)+'</td><td>'+fr(d.g)+'</td></tr>'});document.getElementById('a_table').innerHTML=h+'</tbody>'
 }
 
+// ============================================================
+// ФАЗА ДОХОДА
+// Логика:
+// 1. Вход: капитал в номинале (то, что человек реально имеет).
+// 2. Считаем РЕАЛЬНУЮ ставку rr = (1+rn)/(1+inf)-1.
+// 3. Снятие в реальном выражении (mR_real) одинаково каждый год —
+//    это и есть "сегодняшние деньги", удобные для планирования.
+//    Для perpetual: mR_real = K * rr_m
+//    Для deplete:   mR_real = K * rr_m / (1 - (1+rr_m)^-n)
+// 4. Снятие в номинале в год y: mR_real * 12 * (1+inf)^(y-0.5)
+//    (середина года для аккуратной агрегации).
+// 5. Симуляция помесячно в НОМИНАЛЕ:
+//    b *= (1 + rn/12); b -= mR_real * (1+inf)^(y-1+m/12)
+//    Это математически эквивалентно тому, что в реале капитал
+//    линейно (по аннуитету) идёт к 0 за n лет.
+// 6. Реальный капитал = b / (1+inf)^y.
+// 7. Для устранения хвоста округления — последний месяц зануляем
+//    остаток принудительно (если стратегия deplete).
+// ============================================================
+
+let lastSim=null; // {yd, mR_real, mR_nom_y1, aR_real, aR_nom_y1, yoc_real, yoc_nom, st, dyears, rr}
+let view='nom';   // 'nom' | 'real'
+
 function calcI(){
-  const K=pv('i_capital'),rn=pv('i_rate')/100,inf=pv('i_inflation')/100,st=document.getElementById('i_strat').value;if(K<=0)return;
-  const rr=(1+rn)/(1+inf)-1,rm=Math.pow(1+rr,1/12)-1;let mR;
-  if(st==='perpetual')mR=K*rm;else{const n=pv('i_dyears')*12;if(n<=0)return;mR=rm===0?K/n:K*rm/(1-Math.pow(1+rm,-n))}
-  const aR=mR*12,yoc=(aR/K)*100,pY=st==='perpetual'?30:Math.ceil(pv('i_dyears'));const yd=[];let b=K;
-  for(let y=1;y<=pY;y++){const nd=Math.pow(1+inf,y);for(let m=0;m<12;m++)b=b*(1+rn/12)-mR*Math.pow(1+inf,(y-1)+m/12);yd.push({y,b:Math.max(b,0),br:Math.max(b,0)/nd,wn:mR*12*nd,wr:mR*12});if(b<=0)break}
-  document.getElementById('i_res').classList.remove('hidden');const g=document.getElementById('i_grid');g.innerHTML='';
-  [{l:'Доход/мес',v:fm(mR)+' ₽',s:'сегодняшние деньги',c:'hl2'},{l:'Доход/год',v:fm(aR)+' ₽',s:'сегодняшние деньги',c:'hl2'},{l:'Реальная ставка',v:(rr*100).toFixed(2)+'%',s:'номинал − инфляция',c:'neutral'},{l:'Стратегия',v:st==='perpetual'?'Вечная рента':'Проесть '+pv('i_dyears')+' лет',s:st==='perpetual'?'капитал цел':'→ 0',c:'neutral'},{l:'Капитал ('+yd.length+' лет)',v:fm(yd[yd.length-1].br)+' ₽',s:'реальный',c:'neutral'},{l:'Yield on capital',v:yoc.toFixed(1)+'%',s:'реальный',c:'neutral'}].forEach(m=>{const e=document.createElement('div');e.className='metric '+m.c;e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';g.appendChild(e)});
-  const x=document.getElementById('i_chart').getContext('2d');if(iC)iC.destroy();
-  iC=new Chart(x,{type:'line',data:{labels:yd.map(d=>''+d.y),datasets:[{label:'Капитал (реальный)',data:yd.map(d=>d.br),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.08)',fill:true,pointRadius:2,borderWidth:2,tension:0.2},{label:'Капитал (номинальный)',data:yd.map(d=>d.b),borderColor:'#1B6B9A',borderDash:[4,4],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}}},scales:{x:{title:{display:true,text:'Год'},ticks:{font:{size:9}},grid:{display:false}},y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fm(v)},grid:{color:'rgba(0,0,0,0.04)'}}}}});
-  let h='<thead><tr><th>Год</th><th>Снятие (ном.)</th><th>Снятие (реал.)</th><th>Капитал (ном.)</th><th>Капитал (реал.)</th></tr></thead><tbody>';yd.forEach(d=>{h+='<tr><td>'+d.y+'</td><td>'+fr(d.wn)+'</td><td>'+fr(d.wr)+'</td><td>'+fr(d.b)+'</td><td>'+fr(d.br)+'</td></tr>'});document.getElementById('i_table').innerHTML=h+'</tbody>'
+  const K=pv('i_capital'),rn=pv('i_rate')/100,inf=pv('i_inflation')/100,st=document.getElementById('i_strat').value;
+  if(K<=0)return;
+  const rr=(1+rn)/(1+inf)-1;
+  const rm_nom=Math.pow(1+rn,1/12)-1;
+  const rm_real=Math.pow(1+rr,1/12)-1;
+  let mR_real;
+  if(st==='perpetual'){
+    mR_real = K * rm_real;
+  } else {
+    const n=pv('i_dyears')*12;
+    if(n<=0)return;
+    mR_real = rm_real===0 ? K/n : K*rm_real/(1-Math.pow(1+rm_real,-n));
+  }
+  const pY = st==='perpetual' ? 30 : Math.ceil(pv('i_dyears'));
+  const yd=[];
+  let b=K;
+  for(let y=1;y<=pY;y++){
+    let withdrawnNom=0;
+    for(let m=0;m<12;m++){
+      // Капитал растёт по номинальной ставке
+      b = b * (1 + rm_nom);
+      // Снятие в номинале в этом месяце = mR_real (в сегодняшних) * инфляционный коэф к моменту снятия
+      const t = (y-1) + (m+1)/12; // конец месяца
+      const wNom = mR_real * Math.pow(1+inf, t);
+      // На последнем месяце deplete-стратегии — забираем остаток если он близок к нулю
+      if(st==='deplete' && y===pY && m===11){
+        withdrawnNom += b;
+        b = 0;
+        break;
+      }
+      b -= wNom;
+      withdrawnNom += wNom;
+      if(b<0){b=0;}
+    }
+    const inflFactor = Math.pow(1+inf, y);
+    const wRealY = mR_real * 12; // снятие в реале — константа (по году)
+    yd.push({
+      y,
+      bNom: Math.max(b,0),
+      bReal: Math.max(b,0)/inflFactor,
+      wNom: withdrawnNom,
+      wReal: wRealY
+    });
+    if(b<=0 && st==='deplete') break;
+  }
+
+  // Метрики для года 1 (то, что увидит клиент в первый год получения)
+  const wNom_y1 = yd[0].wNom;
+  const mNom_y1 = wNom_y1/12;
+  const wReal_y1 = yd[0].wReal;
+  const mReal_y1 = wReal_y1/12;
+  const yoc_nom = (wNom_y1/K)*100;
+  const yoc_real = (wReal_y1/K)*100;
+
+  lastSim = {
+    yd, K, rr, st,
+    dyears: pv('i_dyears'),
+    mNom_y1, mReal_y1,
+    wNom_y1, wReal_y1,
+    yoc_nom, yoc_real,
+    inf
+  };
+
+  document.getElementById('i_res').classList.remove('hidden');
+  renderI();
+}
+
+function renderI(){
+  if(!lastSim)return;
+  const S=lastSim;
+  const isNom = view==='nom';
+  const monthly = isNom ? S.mNom_y1 : S.mReal_y1;
+  const annual  = isNom ? S.wNom_y1 : S.wReal_y1;
+  const yoc     = isNom ? S.yoc_nom : S.yoc_real;
+  const lastCap = isNom ? S.yd[S.yd.length-1].bNom : S.yd[S.yd.length-1].bReal;
+  const monLabel = isNom ? 'будущие деньги (год 1)' : 'сегодняшние деньги';
+  const stratLabel = S.st==='perpetual' ? 'Вечная рента' : 'Проесть '+S.dyears+' лет';
+  const stratSub = S.st==='perpetual' ? (isNom?'капитал растёт с инфл.':'реал. капитал цел') : '→ 0';
+
+  const g=document.getElementById('i_grid');g.innerHTML='';
+  [
+    {l:'Доход/мес',v:fm(monthly)+' ₽',s:monLabel,c:'hl2'},
+    {l:'Доход/год',v:fm(annual)+' ₽',s:monLabel,c:'hl2'},
+    {l:'Реальная ставка',v:(S.rr*100).toFixed(2)+'%',s:'номинал − инфляция',c:'neutral'},
+    {l:'Стратегия',v:stratLabel,s:stratSub,c:'neutral'},
+    {l:'Капитал ('+S.yd.length+' лет)',v:fm(lastCap)+' ₽',s:isNom?'номинальный':'реальный',c:'neutral'},
+    {l:'Yield on capital',v:yoc.toFixed(1)+'%',s:isNom?'номинальный (год 1)':'реальный',c:'neutral'}
+  ].forEach(m=>{
+    const e=document.createElement('div');e.className='metric '+m.c;
+    e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
+    g.appendChild(e);
+  });
+
+  const ctx=document.getElementById('i_chart').getContext('2d');
+  if(iC)iC.destroy();
+
+  const dsMain  = isNom ? S.yd.map(d=>d.bNom)  : S.yd.map(d=>d.bReal);
+  const dsAlt   = isNom ? S.yd.map(d=>d.bReal) : S.yd.map(d=>d.bNom);
+  const mainLabel = isNom ? 'Капитал (номинальный)' : 'Капитал (реальный)';
+  const altLabel  = isNom ? 'Капитал (реальный)' : 'Капитал (номинальный)';
+  const mainColor = isNom ? '#1B6B9A' : '#2D5A3D';
+  const altColor  = isNom ? '#2D5A3D' : '#1B6B9A';
+  const mainBg    = isNom ? 'rgba(27,107,154,0.08)' : 'rgba(45,90,61,0.08)';
+
+  iC=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:S.yd.map(d=>''+d.y),
+      datasets:[
+        {label:mainLabel,data:dsMain,borderColor:mainColor,backgroundColor:mainBg,fill:true,pointRadius:2,borderWidth:2.5,tension:0.2,order:1},
+        {label:altLabel,data:dsAlt,borderColor:altColor,borderDash:[4,4],pointRadius:0,borderWidth:1.5,fill:false,tension:0.2,order:2}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}}},
+      scales:{
+        x:{title:{display:true,text:'Год'},ticks:{font:{size:9}},grid:{display:false}},
+        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fm(v)},grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true}
+      }
+    }
+  });
+
+  let h='<thead><tr><th>Год</th><th>Снятие ('+(isNom?'ном.':'реал.')+')</th><th>Снятие ('+(isNom?'реал.':'ном.')+')</th><th>Капитал ('+(isNom?'ном.':'реал.')+')</th><th>Капитал ('+(isNom?'реал.':'ном.')+')</th></tr></thead><tbody>';
+  S.yd.forEach(d=>{
+    const w1 = isNom ? d.wNom : d.wReal;
+    const w2 = isNom ? d.wReal: d.wNom;
+    const c1 = isNom ? d.bNom : d.bReal;
+    const c2 = isNom ? d.bReal: d.bNom;
+    h+='<tr><td>'+d.y+'</td><td>'+fr(w1)+'</td><td>'+fr(w2)+'</td><td>'+fr(c1)+'</td><td>'+fr(c2)+'</td></tr>';
+  });
+  document.getElementById('i_table').innerHTML=h+'</tbody>';
+}
+
+function setView(v){
+  view=v;
+  document.getElementById('vNom').classList.toggle('active',v==='nom');
+  document.getElementById('vReal').classList.toggle('active',v==='real');
+  renderI();
 }
 
 function transfer(){
   const ini=pv('a_initial'),c=pv('a_contrib'),f=parseInt(document.getElementById('a_freq').value),y=pv('a_years'),rn=pv('a_rate')/100;
   let b=ini;for(let p=0;p<Math.round(y*f);p++)b=b*(1+rn/f)+c;
-  document.getElementById('i_capital').value=Math.round(b);document.getElementById('i_rate').value=document.getElementById('a_rate').value;document.getElementById('i_inflation').value=document.getElementById('a_inflation').value;
-  calcI();document.getElementById('i_res').scrollIntoView({behavior:'smooth'})
+  document.getElementById('i_capital').value=Math.round(b);
+  document.getElementById('i_rate').value=document.getElementById('a_rate').value;
+  document.getElementById('i_inflation').value=document.getElementById('a_inflation').value;
+  calcI();
+  document.getElementById('i_res').scrollIntoView({behavior:'smooth'})
 }
 
 document.getElementById('i_strat').addEventListener('change',function(){document.getElementById('i_dfield').classList.toggle('hidden',this.value==='perpetual');calcI()});
