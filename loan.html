@@ -137,6 +137,21 @@ function calc(){
     const balAtEP=Math.abs(fv(r,epP,pmt(r,n,L),L));
     const newBal=balAtEP-epA;
 
+    // Check if early payment exceeds balance
+    if(newBal<=0){
+      const cb=document.getElementById('compareBlock');
+      cb.innerHTML='<div style="padding:1rem;background:#EDF7F1;border-radius:10px;text-align:center;font-size:0.9rem;color:#2D7A4F;font-weight:500">Досрочное погашение полностью покрывает остаток долга ('+Math.round(balAtEP).toLocaleString('ru-RU')+' ₽). Кредит будет закрыт после платежа №'+epP+'.</div>';
+      // Simple chart
+      const labels2=Array.from({length:epP},(_,i)=>i+1);
+      let b0=L,ci0=0;const d0=[];
+      for(let i=1;i<=epP;i++){const int=b0*r;ci0+=int;b0=b0-payment+int;d0.push(ci0)}
+      const ctx=document.getElementById('mainChart').getContext('2d');
+      if(mainChart)mainChart.destroy();
+      mainChart=new Chart(ctx,{type:'line',data:{labels:labels2,datasets:[{label:'Проценты',data:d0,borderColor:'#2D5A3D',borderWidth:2,pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmy(v)},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+      buildSchedule(L,r,n,payment);
+      return;
+    }
+
     // Interest paid before early repayment
     const intBefore=Math.abs(cumipmt(r,n,L,1,epP));
     const paidBefore=payment*epP;
@@ -151,7 +166,9 @@ function calc(){
     const totalPaid1=paidBefore+epA+totalAfter1;
 
     // Option 2: Reduce term (keep same payment)
-    const newNper2=Math.ceil(nper(r,-payment,newBal));
+    let newNper2=Math.ceil(nper(r,-payment,newBal));
+    if(isNaN(newNper2)||newNper2<1)newNper2=1;
+    if(newNper2>n-epP)newNper2=n-epP;
     const totalAfter2=payment*newNper2;
     const intAfter2=totalAfter2-newBal;
     const totalInt2=intBefore+intAfter2;
