@@ -73,7 +73,7 @@ canvas{width:100%!important;height:100%!important}
   <div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.68rem;color:var(--text3)">
     <span style="width:18px"></span>
     <span style="width:160px">ISIN или тикер</span>
-    <span style="width:65px;text-align:right">Доля, %</span>
+    <span style="width:65px;text-align:right">Кол-во, шт</span>
   </div>
   <div id="bondRows"></div>
   <div class="btn-row">
@@ -233,42 +233,33 @@ async function loadBond(isin){
 const rowsContainer=document.getElementById('bondRows');
 let rowCount=0;
 
-function addRow(isin,weight){
+function addRow(isin,qty){
   rowCount++;
   const div=document.createElement('div');div.className='bond-row';
-  div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A..."><input type="text" class="weight" value="'+(weight||'')+'" placeholder="%" inputmode="decimal"><span class="name"></span><button class="remove" onclick="removeRow(this)">×</button>';
+  div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A..."><input type="text" class="qty" value="'+(qty||'')+'" placeholder="шт" inputmode="numeric"><span class="name"></span><button class="remove" onclick="removeRow(this)">×</button>';
   rowsContainer.appendChild(div);
-  div.querySelectorAll('input').forEach(el=>el.addEventListener('input',updateTotal));
-  updateTotal();
 }
 
-function removeRow(btn){btn.closest('.bond-row').remove();renumber();updateTotal();}
+function removeRow(btn){btn.closest('.bond-row').remove();renumber();}
 function renumber(){let i=1;rowsContainer.querySelectorAll('.bond-row').forEach(r=>{r.querySelector('.num').textContent=i++})}
-function updateTotal(){
-  let t=0;rowsContainer.querySelectorAll('.weight').forEach(el=>{const v=parseFloat(el.value.replace(',','.'));if(!isNaN(v))t+=v});
-  const tt=document.getElementById('weightTotal');tt.textContent='Итого: '+t.toFixed(1)+'%';
-  tt.style.color=Math.abs(t-100)<0.5?'var(--green)':'var(--red)';
-}
 function getPortfolio(){
   const items=[];
   rowsContainer.querySelectorAll('.bond-row').forEach(r=>{
     const isin=r.querySelector('.isin').value.trim().toUpperCase();
-    const w=parseFloat(r.querySelector('.weight').value.replace(',','.'));
-    if(isin&&!isNaN(w)&&w>0)items.push({isin,weight:w/100,row:r});
+    const qty=parseInt(r.querySelector('.qty').value.replace(/\s/g,''));
+    if(isin&&!isNaN(qty)&&qty>0)items.push({isin,qty,row:r});
   });
   return items;
 }
 
 // Default bonds
-['RU000A108Y99','RU000A1038V6','RU000A106EM0','RU000A105PP2','RU000A107KT2'].forEach((b,i)=>addRow(b,[25,20,20,20,15][i]));
+['RU000A10EYJ1','RU000A10EAC6','RU000A10EMU3','RU000A10EYV6','RU000A10DZU7'].forEach((b,i)=>addRow(b,[50,40,40,40,30][i]));
 
 let couponChart=null;
 
 async function run(){
   const port=getPortfolio();
   if(port.length<1){document.getElementById('status').className='status err';document.getElementById('status').textContent='Добавьте хотя бы 1 облигацию';return}
-  const totalW=port.reduce((a,b)=>a+b.weight,0);
-  if(Math.abs(totalW-1)>0.05){document.getElementById('status').className='status err';document.getElementById('status').textContent='Сумма долей должна быть ~100% (сейчас '+(totalW*100).toFixed(1)+'%)';return}
 
   const st=document.getElementById('status');const btn=document.getElementById('calcBtn');
   btn.disabled=true;
@@ -278,13 +269,26 @@ async function run(){
     for(let i=0;i<port.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
       const b=await loadBond(port[i].isin);
-      b.weight=port[i].weight;
+      b.qty=port[i].qty;
+      // Market value = price% * faceValue / 100 * qty
+      b.marketValue=b.price/100*b.faceValue*b.qty;
+      // Annual coupon in rubles
+      b.annualCouponRub=b.annualCoupon*b.qty;
       bonds.push(b);
-      // Show name in row
       port[i].row.querySelector('.name').textContent=b.shortname;
     }
 
     st.innerHTML='<span class="loader"></span>Рассчитываю...';
+
+    // Total portfolio value
+    const totalValue=bonds.reduce((s,b)=>s+b.marketValue,0);
+
+    // Calculate weights from market values
+    bonds.forEach(b=>{b.weight=b.marketValue/totalValue});
+
+    // Update weight display
+    document.getElementById('weightTotal').textContent='Портфель: '+Math.round(totalValue).toLocaleString('ru-RU')+' ₽';
+    document.getElementById('weightTotal').style.color='var(--green)';
 
     // Weighted averages
     const wYTM=bonds.reduce((s,b)=>s+b.weight*b.ytm,0);
@@ -292,17 +296,18 @@ async function run(){
     const wModDuration=bonds.reduce((s,b)=>s+b.weight*b.modDuration,0);
     const wCouponRate=bonds.reduce((s,b)=>s+b.weight*b.couponRate,0);
     const wCurrentYield=bonds.reduce((s,b)=>s+b.weight*b.currentYield,0);
+    const totalAnnualCoupon=bonds.reduce((s,b)=>s+b.annualCouponRub,0);
 
     // Summary
     document.getElementById('summaryCard').classList.remove('hidden');
     const sg=document.getElementById('summaryGrid');sg.innerHTML='';
     [
+      {l:'Стоимость портфеля',v:Math.round(totalValue).toLocaleString('ru-RU')+' ₽',s:'по рыночным ценам',c:'hl'},
       {l:'Доходность (YTM)',v:wYTM.toFixed(2)+'%',s:'средневзвешенная',c:'hl'},
-      {l:'Текущая доходность',v:wCurrentYield.toFixed(2)+'%',s:'купон / цена',c:'hl'},
-      {l:'Купонная ставка',v:wCouponRate.toFixed(2)+'%',s:'средневзвешенная',c:''},
+      {l:'Купонный доход/год',v:Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+' ₽',s:'до вычета налогов',c:'hl'},
       {l:'Дюрация',v:wDuration.toFixed(2)+' лет',s:'средневзвешенная',c:'hl2'},
       {l:'Мод. дюрация',v:wModDuration.toFixed(2),s:'чувствительность к ставке',c:'hl2'},
-      {l:'Позиций',v:bonds.length,s:'облигаций в портфеле',c:''}
+      {l:'Текущая доходность',v:wCurrentYield.toFixed(2)+'%',s:'купон / цена',c:''}
     ].forEach(m=>{
       const el=document.createElement('div');el.className='metric '+(m.c||'');
       el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
@@ -312,10 +317,12 @@ async function run(){
     // Holdings table
     document.getElementById('holdingsCard').classList.remove('hidden');
     const ht=document.getElementById('holdingsTable');
-    let html='<thead><tr><th>Бумага</th><th>ISIN</th><th>Доля</th><th>YTM</th><th>Купон</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
+    let html='<thead><tr><th>Бумага</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
     bonds.forEach(b=>{
-      html+='<tr><td>'+b.shortname+'</td><td style="font-family:var(--mono);font-size:0.7rem">'+b.secid+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td>'+b.ytm.toFixed(2)+'%</td><td>'+b.couponRate.toFixed(1)+'%</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
+      html+='<tr><td>'+b.shortname+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.marketValue).toLocaleString('ru-RU')+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
     });
+    // Total row
+    html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td></td><td></td></tr>';
     html+='</tbody>';ht.innerHTML=html;
 
     // Stress test
@@ -325,15 +332,16 @@ async function run(){
     shifts.forEach(bp=>{
       const dy=bp/10000;
       const pctChange=(-wModDuration*dy)*100;
+      const rubChange=totalValue*pctChange/100;
       const isNeg=pctChange<0;
       const el=document.createElement('div');
       el.className='stress-item';
       el.style.background=isNeg?'#FDF0F0':'#EDF7F1';
-      el.innerHTML='<div class="stress-label">'+(bp>0?'+':'')+bp+' бп</div><div class="stress-val" style="color:'+(isNeg?'#B44040':'#2D7A4F')+'">'+(pctChange>0?'+':'')+pctChange.toFixed(2)+'%</div>';
+      el.innerHTML='<div class="stress-label">'+(bp>0?'+':'')+bp+' бп</div><div class="stress-val" style="color:'+(isNeg?'#B44040':'#2D7A4F')+'">'+(pctChange>0?'+':'')+pctChange.toFixed(2)+'%</div><div style="font-size:0.65rem;color:var(--text3)">'+(rubChange>0?'+':'')+Math.round(rubChange).toLocaleString('ru-RU')+' ₽</div>';
       sg2.appendChild(el);
     });
 
-    // Coupon flow chart (next 12 months)
+    // Coupon flow chart (next 12 months) in rubles
     document.getElementById('couponCard').classList.remove('hidden');
     const today=new Date();
     const months={};
@@ -350,8 +358,7 @@ async function run(){
       while(nc<=endDate){
         const key=nc.getFullYear()+'-'+String(nc.getMonth()+1).padStart(2,'0');
         if(months.hasOwnProperty(key)){
-          // Coupon per 1000 nominal, weighted by portfolio share
-          months[key]+=b.couponVal*b.weight;
+          months[key]+=b.couponVal*b.qty;
         }
         nc=new Date(nc.getTime()+b.couponPeriod*24*60*60*1000);
       }
@@ -364,18 +371,18 @@ async function run(){
     if(couponChart)couponChart.destroy();
     couponChart=new Chart(ctx,{type:'bar',data:{
       labels,
-      datasets:[{label:'Купон (₽ на 1000₽ номинала)',data:values,backgroundColor:'rgba(45,90,61,0.3)',borderColor:'#2D5A3D',borderWidth:1}]
+      datasets:[{label:'Купон, ₽',data:values,backgroundColor:'rgba(45,90,61,0.3)',borderColor:'#2D5A3D',borderWidth:1}]
     },options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{font:{size:10}},grid:{display:false}},
-        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>v.toFixed(1)+' ₽'},grid:{color:'rgba(0,0,0,0.04)'}}
+        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>Math.round(v).toLocaleString('ru-RU')+' ₽'},grid:{color:'rgba(0,0,0,0.04)'}}
       }
     }});
 
     st.className='status ok';
-    st.textContent='Загружено '+bonds.length+' облигаций · средневзвеш. дюрация '+wDuration.toFixed(2)+' лет · YTM '+wYTM.toFixed(2)+'%';
+    st.textContent='Загружено '+bonds.length+' облигаций · стоимость '+Math.round(totalValue).toLocaleString('ru-RU')+' ₽ · YTM '+wYTM.toFixed(2)+'% · дюрация '+wDuration.toFixed(2)+' лет';
   }catch(e){
     st.className='status err';st.textContent='Ошибка: '+e.message;
   }
