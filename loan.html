@@ -166,18 +166,14 @@ function calc(){
     const totalPaid1=paidBefore+epA+totalAfter1;
 
     // Option 2: Reduce term (keep same payment)
-    let newNper2Raw=nper(r,-payment,newBal);
-    let newNper2=Math.ceil(newNper2Raw);
-    if(isNaN(newNper2)||newNper2<1)newNper2=1;
-    if(newNper2>n-epP)newNper2=n-epP;
-    
-    // Calculate actual interest after by simulating payments
-    let b2sim=newBal, intAfter2=0;
-    for(let i=0;i<newNper2;i++){
+    // Simulate month by month until balance reaches 0
+    let b2sim=newBal, intAfter2=0, newNper2=0;
+    while(b2sim>0.01 && newNper2<n*2){
       const interest=b2sim*r;
       intAfter2+=interest;
       b2sim=b2sim+interest-payment;
-      if(b2sim<=0){newNper2=i+1;break;}
+      newNper2++;
+      if(b2sim<=0)break;
     }
     const totalAfter2=payment*newNper2;
     const totalInt2=intBefore+intAfter2;
