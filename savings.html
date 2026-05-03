@@ -99,7 +99,7 @@ td:first-child{text-align:center;color:var(--text2)}
   <div class="card-title">Фаза дохода</div>
   <div class="input-grid">
     <div class="field"><label>Капитал</label><input type="text" id="i_capital" value="10000000" inputmode="decimal"><span class="hint">₽ (номинал на момент выхода)</span></div>
-    <div class="field"><label>Лет до выхода</label><input type="text" id="i_yto" value="0" inputmode="decimal"><span class="hint">для пересчёта реал. покуп. способности</span></div>
+    <div class="field" style="display:none"><label>Лет до выхода</label><input type="text" id="i_yto" value="0" inputmode="decimal"><span class="hint">для пересчёта реал. покуп. способности</span></div>
     <div class="field"><label>Доходность, % годовых</label><input type="text" id="i_rate" value="10" inputmode="decimal"></div>
     <div class="field"><label>Инфляция, % годовых</label><input type="text" id="i_inflation" value="6" inputmode="decimal"></div>
     <div class="field"><label>Стратегия</label><select id="i_strat"><option value="perpetual">Вечная рента (капитал сохраняется)</option><option value="deplete">Проедать за N лет</option></select></div>
@@ -339,8 +339,10 @@ function transfer(){
 
 document.getElementById('i_strat').addEventListener('change',function(){document.getElementById('i_dfield').classList.toggle('hidden',this.value==='perpetual');calcI()});
 document.querySelectorAll('#a_initial,#a_contrib,#a_years,#a_rate,#a_inflation').forEach(e=>e.addEventListener('input',calcA));
+document.getElementById('a_years').addEventListener('input',function(){document.getElementById('i_yto').value=this.value;calcI()});
 document.getElementById('a_freq').addEventListener('change',calcA);
 document.querySelectorAll('#i_capital,#i_rate,#i_inflation,#i_dyears,#i_yto').forEach(e=>e.addEventListener('input',calcI));
+document.getElementById('i_yto').value=document.getElementById('a_years').value;
 calcA();calcI()
 </script>
 </body>
