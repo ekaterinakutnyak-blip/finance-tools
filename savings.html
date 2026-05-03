@@ -102,7 +102,10 @@ td:first-child{text-align:center;color:var(--text2)}
     <div class="field" style="display:none"><label>Лет до выхода</label><input type="text" id="i_yto" value="0" inputmode="decimal"><span class="hint">для пересчёта реал. покуп. способности</span></div>
     <div class="field"><label>Доходность, % годовых</label><input type="text" id="i_rate" value="10" inputmode="decimal"></div>
     <div class="field"><label>Инфляция, % годовых</label><input type="text" id="i_inflation" value="6" inputmode="decimal"></div>
-    <div class="field"><label>Стратегия</label><select id="i_strat"><option value="perpetual">Вечная рента (капитал сохраняется)</option><option value="deplete">Проедать за N лет</option></select></div>
+    <div class="field"><label>Стратегия</label><select id="i_strat">
+      <option value="perpetual">Вечная рента (тратим только %)</option>
+      <option value="deplete_nom">Проесть за N лет</option>
+    </select></div>
     <div class="field hidden" id="i_dfield"><label>Проесть за, лет</label><input type="text" id="i_dyears" value="30" inputmode="decimal"></div>
   </div>
 </div>
@@ -121,9 +124,12 @@ td:first-child{text-align:center;color:var(--text2)}
 </div>
 
 <p class="footer-note">
-<strong>Номинальные</strong> — расчёт без учёта инфляции. Берётся номинальная ставка, снятие постоянное.<br>
-<strong>Реальные</strong> — расчёт с учётом инфляции. Капитал на входе считается как сегодняшние деньги, ставка — реальная (≈ номинал − инфляция), снятие постоянное в сегодняшней покупательной способности.<br>
-В обоих режимах капитал линейно идёт к 0 («Проесть N лет») или сохраняется (вечная рента).<br>
+<strong>Стратегия</strong>:<br>
+• <em>Вечная рента</em> — снимаем только проценты с капитала, тело не трогаем. Капитал в номинале сохраняется.<br>
+• <em>Проесть за N лет</em> — постоянная номинальная сумма каждый месяц. Капитал к концу периода = 0.<br><br>
+<strong>Переключатель «Номинальные / Реальные»</strong>:<br>
+<em>Номинал</em> — то, что физически приходит на счёт.<br>
+<em>Реал</em> — те же деньги, пересчитанные в сегодняшнюю покупательную способность через накопленную инфляцию (срок накопления + год пенсии).<br><br>
 Историческая доходность: акции — индекс МосБиржи полной доходности, облигации — Cbonds CBI RU Middle Market. Геометрическое среднее. Данные: УК «Доход» (доходность.рф).<br>
 ⚠ Прошлая доходность не гарантирует будущих результатов.
 </p>
@@ -169,49 +175,67 @@ function calcA(){
 
 // ============================================================
 // ФАЗА ДОХОДА
-// Два независимых режима, переключаются кнопкой:
 //
-// НОМИНАЛЬНЫЕ (инфляция игнорируется):
-//   - Капитал на входе = номинальная сумма.
-//   - Используется номинальная ставка.
-//   - Снятие постоянное по аннуитету: mR = K*r_m / (1-(1+r_m)^-n)
-//     для deplete; mR = K*r_m для perpetual.
-//   - Капитал линейно идёт к 0 (deplete) или сохраняется (perpetual).
+// Две стратегии (выпадашка "Стратегия"):
 //
-// РЕАЛЬНЫЕ (с учётом инфляции):
-//   - Капитал на входе = сегодняшние деньги (та же сумма ввода).
-//     Это позволяет клиенту планировать: "я хочу столько ЭТИХ денег".
-//   - Используется реальная ставка rr = (1+rn)/(1+inf)-1.
-//   - Снятие постоянное по аннуитету в реальных деньгах.
-//   - Капитал линейно идёт к 0 (deplete) или сохраняется (perpetual).
+//   1. perpetual — Вечная рента в номинале.
+//      Снимаем mR = K * r_n / 12 каждый месяц.
+//      Капитал в номинале стабилен. Покупательная способность снятия и
+//      капитала медленно тает с инфляцией.
 //
-// При переключении ВСЕ цифры пересчитываются с нуля.
+//   2. deplete_nom — Проесть за N лет постоянной номинальной суммой.
+//      mR = K * r_n_m / (1 - (1+r_n_m)^-n) — простой аннуитет.
+//      Покупательная способность снятия убывает с инфляцией.
+//      Капитал в номинале к концу N лет = 0.
+//
+// Переключатель «Номинальные / Реальные» НЕ меняет сценарий.
+// Это просто оптика на одну траекторию:
+//   - Номинал — то, что физически приходит на счёт.
+//   - Реал — то же самое, дисконтированное к сегодняшним деньгам через
+//     накопленную инфляцию (yto + текущий год пенсии).
+//
+// Поле «Лет до выхода» (yto) скрыто, синхронизируется со сроком накопления.
 // ============================================================
 
 let lastSim=null;
 let view='nom';
 
-function buildSimulation(K, rate_annual, st, dyears, pY_default){
-  // Универсальный расчёт аннуитета по заданной ставке.
-  // Возвращает массив yd с {y, balance, withdrawn} и mR (мес. снятие), aR (год.снятие).
-  const r_m = Math.pow(1+rate_annual, 1/12) - 1;
-  let mR;
+function buildSimulation(K, rn, inf, st, dyears, pY_default){
+  // Возвращает массив yd с {y, balance_nom, withdrawn_nom} — всё в номинале.
+  // Реальные значения вычисляются на лету в renderI через дисконтирование.
+  const r_n_m = rn / 12;
+  const rr = (1+rn)/(1+inf) - 1;
+  const rr_m = rr / 12;
+
+  let pY;
+  let mR_year_func; // функция, возвращающая месячное снятие для года y (1-based)
+
   if(st==='perpetual'){
-    mR = K * r_m;
-  } else {
-    const n = dyears*12;
+    // Вечная рента: снимаем процент с номинального капитала.
+    // mR постоянна в номинале.
+    const mR = K * r_n_m;
+    pY = pY_default;
+    mR_year_func = (y) => mR;
+  } else if(st==='deplete_nom'){
+    // Проесть за N лет, постоянная номинальная сумма.
+    const n = dyears * 12;
     if(n<=0) return null;
-    mR = r_m===0 ? K/n : K*r_m/(1-Math.pow(1+r_m,-n));
+    const mR = r_n_m===0 ? K/n : K*r_n_m/(1-Math.pow(1+r_n_m,-n));
+    pY = Math.ceil(dyears);
+    mR_year_func = (y) => mR;
+  } else {
+    return null;
   }
-  const pY = st==='perpetual' ? pY_default : Math.ceil(dyears);
+
   const yd = [];
   let b = K;
   for(let y=1; y<=pY; y++){
+    const mR = mR_year_func(y);
     let withdrawn = 0;
     for(let m=0; m<12; m++){
-      b = b * (1+r_m);
-      // Последний месяц deplete — зануляем остаток
-      if(st==='deplete' && y===pY && m===11){
+      b = b * (1+r_n_m);
+      // Последний месяц deplete-стратегии — зануляем остаток
+      if(st==='deplete_nom' && y===pY && m===11){
         withdrawn += b;
         b = 0;
         break;
@@ -220,32 +244,30 @@ function buildSimulation(K, rate_annual, st, dyears, pY_default){
       withdrawn += mR;
       if(b<0) b=0;
     }
-    yd.push({y, balance: Math.max(b,0), withdrawn});
-    if(b<=0 && st==='deplete') break;
+    yd.push({y, balance_nom: Math.max(b,0), withdrawn_nom: withdrawn, mR_nom: mR});
+    if(b<=0 && st==='deplete_nom') break;
   }
-  return {yd, mR, aR: mR*12, r_m};
+
+  // Снятие в первый год — для «главной» цифры в карточке.
+  const firstYearMonthly = mR_year_func(1);
+  return {yd, firstYearMonthly, st};
 }
 
 function calcI(){
   const K=pv('i_capital'),rn=pv('i_rate')/100,inf=pv('i_inflation')/100,st=document.getElementById('i_strat').value;
   if(K<=0)return;
-  const rr = (1+rn)/(1+inf) - 1;
   const dyears = pv('i_dyears');
   const yto = pv('i_yto'); // лет до выхода на пенсию
   const pY_default = 30;
 
-  // В режиме «Реальные» капитал переводится в сегодняшние деньги через накопленную инфляцию
-  const K_real = K / Math.pow(1+inf, yto);
+  const sim = buildSimulation(K, rn, inf, st, dyears, pY_default);
+  if(!sim) return;
 
-  // Считаем оба сценария независимо
-  const simNom = buildSimulation(K, rn, st, dyears, pY_default);
-  const simReal = buildSimulation(K_real, rr, st, dyears, pY_default);
-  if(!simNom || !simReal) return;
+  const rr = (1+rn)/(1+inf) - 1;
 
   lastSim = {
-    K, K_real, rn, inf, rr, st, dyears, yto,
-    nom: simNom,
-    real: simReal
+    K, rn, inf, rr, st, dyears, yto,
+    sim
   };
 
   document.getElementById('i_res').classList.remove('hidden');
@@ -256,19 +278,45 @@ function renderI(){
   if(!lastSim)return;
   const S=lastSim;
   const isNom = view==='nom';
-  const sim = isNom ? S.nom : S.real;
-  const yd = sim.yd;
-  const K_used = isNom ? S.K : S.K_real;
-  const monthly = sim.mR;
-  const annual  = sim.aR;
-  const yoc     = (annual/K_used)*100;
-  const lastCap = yd[yd.length-1].balance;
-  const monLabel = isNom ? 'будущие деньги' : 'сегодняшние деньги';
-  const stratLabel = S.st==='perpetual' ? 'Вечная рента' : 'Проесть '+S.dyears+' лет';
-  const stratSub = S.st==='perpetual' ? 'капитал сохраняется' : '→ 0';
+  const yd_nom = S.sim.yd;
+  // Дисконт-фактор: на год y от старта пенсии в реальных = 1/(1+inf)^(yto+y)
+  // При y=1 (первый год пенсии) — это сегодняшние деньги через yto+1 лет инфляции.
+  // Но "первый год пенсии" логично оценивать как "момент начала пенсии" → дисконт по yto.
+  // Удобнее: дисконт капитала по yto (это момент перехода), а снятий — по yto + (y-1) или yto + y.
+  // Используем: для снятия в году y — дисконт (1+inf)^(yto + y - 1), т.е. на начало года y пенсии.
+  const discY = (y) => Math.pow(1+S.inf, S.yto + y - 1);
+  const discCap = (y) => Math.pow(1+S.inf, S.yto + y);
+  // Стартовый капитал в реале — на момент выхода на пенсию (через yto лет инфляции)
+  const K_real_start = S.K / Math.pow(1+S.inf, S.yto);
+
+  // Для главной цифры "Доход/мес" берём первый год пенсии.
+  // В номинале — что физически приходит. В реале — что это в сегодняшних деньгах.
+  const monthly_nom_y1 = S.sim.firstYearMonthly;
+  const monthly_real_y1 = monthly_nom_y1 / discY(1);
+  const monthly = isNom ? monthly_nom_y1 : monthly_real_y1;
+  const annual  = monthly * 12;
+
+  // Капитал на старте пенсии
+  const K_used = isNom ? S.K : K_real_start;
+  // Капитал на конец последнего года
+  const lastY = yd_nom[yd_nom.length-1];
+  const lastCap_nom = lastY.balance_nom;
+  const lastCap_real = lastCap_nom / discCap(lastY.y);
+  const lastCap = isNom ? lastCap_nom : lastCap_real;
+
+  // Yield: годовой доход первого года к капиталу на старте, в той же валюте.
+  const yoc = (annual / K_used) * 100;
+
+  const monLabel = isNom ? 'будущие деньги, год 1' : 'сегодн. деньги, год 1';
+
+  // Подпись стратегии
+  let stratLabel, stratSub;
+  if(S.st==='perpetual'){ stratLabel='Вечная рента'; stratSub='только %, тело не трогаем'; }
+  else { stratLabel='Проесть '+S.dyears+' лет'; stratSub='капитал → 0'; }
+
   const rateLabel = isNom ? 'Номинальная ставка' : 'Реальная ставка';
   const rateValue = isNom ? (S.rn*100).toFixed(2)+'%' : (S.rr*100).toFixed(2)+'%';
-  const rateSub = isNom ? 'инфляция = 0' : 'номинал − инфляция';
+  const rateSub = isNom ? 'до инфляции' : 'после инфляции (Фишер)';
   const capLabel = isNom ? 'Капитал на старте' : 'Капитал на старте (реал.)';
   const capValue = fm(K_used)+' ₽';
   const capSub = isNom ? 'номинал' : (S.yto>0 ? 'через '+S.yto+' лет накопл.' : 'сегодняшние деньги');
@@ -279,7 +327,7 @@ function renderI(){
     {l:'Доход/год',v:fm(annual)+' ₽',s:monLabel,c:'hl2'},
     {l:rateLabel,v:rateValue,s:rateSub,c:'neutral'},
     {l:capLabel,v:capValue,s:capSub,c:'neutral'},
-    {l:'Капитал ('+yd.length+' лет)',v:fm(lastCap)+' ₽',s:isNom?'номинальный':'реальный',c:'neutral'},
+    {l:'Капитал ('+yd_nom.length+' лет)',v:fm(lastCap)+' ₽',s:isNom?'номинальный':'реальный',c:'neutral'},
     {l:'Yield on capital',v:yoc.toFixed(1)+'%',s:isNom?'номинальный':'реальный',c:'neutral'}
   ].forEach(m=>{
     const e=document.createElement('div');e.className='metric '+m.c;
@@ -292,14 +340,17 @@ function renderI(){
 
   const mainColor = isNom ? '#1B6B9A' : '#2D5A3D';
   const mainBg    = isNom ? 'rgba(27,107,154,0.08)' : 'rgba(45,90,61,0.08)';
-  const mainLabel = isNom ? 'Капитал (номинальный)' : 'Капитал (реальный)';
+  const mainLabel = isNom ? 'Капитал (номинальный)' : 'Капитал (реальный, в сегодн. ₽)';
+
+  // Данные графика — капитал. В реале — каждая точка дисконтируется.
+  const chartData = yd_nom.map(d => isNom ? d.balance_nom : d.balance_nom / discCap(d.y));
 
   iC=new Chart(ctx,{
     type:'line',
     data:{
-      labels:yd.map(d=>''+d.y),
+      labels:yd_nom.map(d=>''+d.y),
       datasets:[
-        {label:mainLabel,data:yd.map(d=>d.balance),borderColor:mainColor,backgroundColor:mainBg,fill:true,pointRadius:2,borderWidth:2.5,tension:0.2}
+        {label:mainLabel,data:chartData,borderColor:mainColor,backgroundColor:mainBg,fill:true,pointRadius:2,borderWidth:2.5,tension:0.2}
       ]
     },
     options:{
@@ -312,9 +363,12 @@ function renderI(){
     }
   });
 
+  // Таблица. В номинале — снятие как было, в реале — снятие и капитал дисконтированы.
   let h='<thead><tr><th>Год</th><th>Снятие/год</th><th>Снятие/мес</th><th>Капитал на конец года</th></tr></thead><tbody>';
-  yd.forEach(d=>{
-    h+='<tr><td>'+d.y+'</td><td>'+fr(d.withdrawn)+'</td><td>'+fr(d.withdrawn/12)+'</td><td>'+fr(d.balance)+'</td></tr>';
+  yd_nom.forEach(d=>{
+    const w_year = isNom ? d.withdrawn_nom : d.withdrawn_nom / discY(d.y);
+    const b_end  = isNom ? d.balance_nom : d.balance_nom / discCap(d.y);
+    h+='<tr><td>'+d.y+'</td><td>'+fr(w_year)+'</td><td>'+fr(w_year/12)+'</td><td>'+fr(b_end)+'</td></tr>';
   });
   document.getElementById('i_table').innerHTML=h+'</tbody>';
 }
