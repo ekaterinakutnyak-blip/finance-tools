@@ -199,21 +199,21 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="card">
-    <div class="card-title">Справедливый спред</div>
-    <div style="font-size:0.82rem;color:var(--text2);margin-bottom:1rem">Какой спред должна давать облигация, чтобы компенсировать кредитный риск?</div>
+    <div class="card-title">Премия за риск</div>
+    <div style="font-size:0.82rem;color:var(--text2);margin-bottom:1rem">Сравниваем фактический спред с математическим минимумом — сколько бумага платит сверх ожидаемых потерь.</div>
     <div class="results-grid">
       <div class="metric" style="background:var(--surface2)">
         <span class="metric-label">Мин. спред (безубыточный)</span>
         <span class="metric-value" id="fsMin">—</span>
-        <span class="metric-sub">PD × (1 − RR) · точка безубыточности</span>
+        <span class="metric-sub">PD × (1 − RR) · покрытие ожидаемых потерь</span>
       </div>
       <div class="metric" style="background:var(--surface2)">
-        <span class="metric-label">Справедливый спред (×2.5)</span>
-        <span class="metric-value" id="fsFair">—</span>
-        <span class="metric-sub">с премией за неопределённость</span>
+        <span class="metric-label">Рыночный спред</span>
+        <span class="metric-value" id="fsMarket">—</span>
+        <span class="metric-sub">фактический спред к ОФЗ</span>
       </div>
       <div class="metric" id="fsVerdict" style="background:var(--surface2)">
-        <span class="metric-label">Рыночный vs справедливый</span>
+        <span class="metric-label">Премия над минимумом</span>
         <span class="metric-value" id="fsVerdictVal">—</span>
         <span class="metric-sub" id="fsVerdictSub"></span>
       </div>
@@ -665,51 +665,65 @@ function calc(){
   // Implied rating
   renderRating(pdAnnual*100, pdCum*100, T);
 
-  // Fair spread calculation
+  // Premium over breakeven minimum
   const minSpreadPct = pdAnnual * lgd; // minimum spread = PD × LGD
-  const fairMultiplier = 2.5;
-  const fairSpreadPct = minSpreadPct * fairMultiplier;
   const minSpreadBps = Math.round(minSpreadPct * 10000);
-  const fairSpreadBps = Math.round(fairSpreadPct * 10000);
   const marketSpreadPct = spread;
+  const marketSpreadBps = spreadBps;
+
+  // Premium over minimum: in pp and in % of minimum
+  const premiumPP = (marketSpreadPct - minSpreadPct) * 100;
+  const premiumPct = minSpreadPct > 0 ? (marketSpreadPct / minSpreadPct - 1) * 100 : 0;
 
   document.getElementById('fsMin').textContent = minSpreadBps + ' бп (' + (minSpreadPct*100).toFixed(1) + '%)';
-  document.getElementById('fsFair').textContent = fairSpreadBps + ' бп (' + (fairSpreadPct*100).toFixed(1) + '%)';
+  document.getElementById('fsMarket').textContent = marketSpreadBps + ' бп (' + (marketSpreadPct*100).toFixed(1) + '%)';
 
   const fsV = document.getElementById('fsVerdictVal');
   const fsS = document.getElementById('fsVerdictSub');
   const fsCard = document.getElementById('fsVerdict');
 
-  if (marketSpreadPct > fairSpreadPct) {
-    fsV.textContent = 'Рынок переплачивает';
-    fsV.style.color = '#2D7A4F';
-    fsS.textContent = 'Спред ' + spreadBps + ' бп > справедливый ' + fairSpreadBps + ' бп · возможность';
-    fsCard.style.background = '#EDF7F1';
-    fsCard.style.borderColor = 'rgba(45,122,79,0.15)';
-  } else if (marketSpreadPct > minSpreadPct) {
-    fsV.textContent = 'Спред ниже справедливого';
-    fsV.style.color = '#A67A2E';
-    fsS.textContent = 'Спред ' + spreadBps + ' бп < справедливый ' + fairSpreadBps + ' бп · недостаточная премия';
-    fsCard.style.background = '#FDF7ED';
-    fsCard.style.borderColor = 'rgba(166,122,46,0.15)';
-  } else {
-    fsV.textContent = 'Спред ниже безубыточного!';
+  // Цветовая шкала: < 0% красный, 0-5% жёлтый, 5-15% светло-зелёный, > 15% зелёный
+  const sign = premiumPP >= 0 ? '+' : '−';
+  const ppAbs = Math.abs(premiumPP).toFixed(2);
+  const pctSign = premiumPct >= 0 ? '+' : '−';
+  const pctAbs = Math.abs(premiumPct).toFixed(1);
+  fsV.textContent = sign + ppAbs + ' п.п.';
+
+  if (premiumPct < 0) {
+    // Ниже минимума
     fsV.style.color = '#B44040';
-    fsS.textContent = 'Спред ' + spreadBps + ' бп < безубыточный ' + minSpreadBps + ' бп · рынок недооценивает риск';
+    fsS.textContent = pctSign + pctAbs + '% от минимума · бумага не покрывает ожидаемые потери';
     fsCard.style.background = '#FDF0F0';
     fsCard.style.borderColor = 'rgba(180,64,64,0.15)';
+  } else if (premiumPct < 5) {
+    // 0-5%: минимальная премия
+    fsV.style.color = '#A67A2E';
+    fsS.textContent = '+' + pctAbs + '% от минимума · минимальная премия за риск';
+    fsCard.style.background = '#FDF7ED';
+    fsCard.style.borderColor = 'rgba(166,122,46,0.15)';
+  } else if (premiumPct < 15) {
+    // 5-15%: умеренная
+    fsV.style.color = '#4A8B62';
+    fsS.textContent = '+' + pctAbs + '% от минимума · умеренная премия за риск';
+    fsCard.style.background = '#F0F7F2';
+    fsCard.style.borderColor = 'rgba(74,139,98,0.15)';
+  } else {
+    // > 15%: хорошая
+    fsV.style.color = '#2D7A4F';
+    fsS.textContent = '+' + pctAbs + '% от минимума · хорошая премия за риск';
+    fsCard.style.background = '#EDF7F1';
+    fsCard.style.borderColor = 'rgba(45,122,79,0.15)';
   }
 
   const ytmBondPct = (ytmB*100).toFixed(1);
   const ytmOFZPct = (ytmF*100).toFixed(1);
-  const fairYTM = (ytmF + fairSpreadPct) * 100;
   const minYTM = (ytmF + minSpreadPct) * 100;
 
   document.getElementById('fsDetail').innerHTML =
     'При годовой PD ' + (pdAnnual*100).toFixed(2) + '% и Recovery Rate ' + Math.round(rr*100) + '% ожидаемые потери = ' + (minSpreadPct*100).toFixed(2) + '% годовых.<br>' +
-    '<strong>Безубыточная доходность:</strong> ОФЗ ' + ytmOFZPct + '% + ' + (minSpreadPct*100).toFixed(1) + '% = ' + minYTM.toFixed(1) + '% — при такой доходности вы в среднем получаете столько же, сколько по ОФЗ.<br>' +
-    '<strong>Справедливая доходность:</strong> ОФЗ ' + ytmOFZPct + '% + ' + (fairSpreadPct*100).toFixed(1) + '% = ' + fairYTM.toFixed(1) + '% — с премией ×' + fairMultiplier + ' за неопределённость и неликвидность.<br>' +
-    '<strong>Рыночная доходность:</strong> ' + ytmBondPct + '% (спред ' + spreadBps + ' бп).';
+    '<strong>Безубыточная доходность:</strong> ОФЗ ' + ytmOFZPct + '% + ' + (minSpreadPct*100).toFixed(1) + '% = ' + minYTM.toFixed(1) + '% — при такой доходности ожидаемые потери от дефолта в среднем компенсируют премию над ОФЗ.<br>' +
+    '<strong>Рыночная доходность:</strong> ' + ytmBondPct + '% (спред ' + marketSpreadBps + ' бп).<br>' +
+    '<strong>Премия над минимумом:</strong> ' + sign + ppAbs + ' п.п. (' + pctSign + pctAbs + '% от минимума) — это компенсация за неопределённость PD, ликвидность и асимметрию риска.';
 
   const tb=document.getElementById('tableBody');
   tb.innerHTML='';
