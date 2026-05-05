@@ -29,6 +29,9 @@ h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
 .row-line{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
 .row-line input{font-family:var(--mono);font-size:0.85rem;padding:0.45rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none}
 .row-line input.ticker{width:120px;text-transform:uppercase}
+.row-line input.myweight{width:75px;text-align:right}
+.row-line input.myshares{width:75px;text-align:right}
+.row-line .myw-label{font-size:0.72rem;color:var(--text3)}
 .row-line .num{font-family:var(--mono);font-size:0.72rem;color:var(--text3);width:20px;text-align:right}
 .row-line .remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:0 4px}
 .row-line .remove:hover{color:var(--red)}
@@ -48,18 +51,22 @@ h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
 .chart-container.tall{height:420px}
 canvas{width:100%!important;height:100%!important}
 .opt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:0.5rem}
-@media(max-width:760px){.opt-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:480px){.opt-grid{grid-template-columns:1fr}}
+.opt-grid.has-user{grid-template-columns:repeat(5,1fr)}
+@media(max-width:900px){.opt-grid.has-user{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.opt-grid,.opt-grid.has-user{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.opt-grid,.opt-grid.has-user{grid-template-columns:1fr}}
 .opt-card{border-radius:var(--radius);padding:1rem;border:1px solid var(--border)}
 .opt-card.sharpe{background:var(--accent-light);border-color:rgba(45,90,61,0.2)}
 .opt-card.minvol{background:var(--accent2-light);border-color:rgba(27,107,154,0.2)}
 .opt-card.mindd{background:var(--purple-bg);border-color:rgba(123,79,160,0.2)}
 .opt-card.equal{background:var(--surface2)}
+.opt-card.user{background:var(--red-bg);border-color:rgba(180,64,64,0.3);border-width:2px}
 .opt-card-title{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
 .opt-card.sharpe .opt-card-title{color:var(--accent)}
 .opt-card.minvol .opt-card-title{color:var(--accent2)}
 .opt-card.mindd .opt-card-title{color:var(--purple)}
 .opt-card.equal .opt-card-title{color:var(--text2)}
+.opt-card.user .opt-card-title{color:var(--red)}
 .opt-card-stats{font-family:var(--mono);font-size:0.72rem;color:var(--text2);line-height:1.7;margin-bottom:8px}
 .opt-card-stats strong{color:var(--text);font-weight:600}
 .opt-weights{font-family:var(--mono);font-size:0.7rem;line-height:1.6}
@@ -92,6 +99,9 @@ table.weights td.zero{color:var(--text3);opacity:0.5}
   <div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.7rem;color:var(--text3)">
     <span style="width:20px"></span>
     <span style="width:120px">Тикер MOEX</span>
+    <span style="width:75px;text-align:right">Шт.</span>
+    <span style="width:75px;text-align:right">Доля, %</span>
+    <span style="font-style:italic;color:var(--text3);margin-left:8px">опционально — для сравнения с оптимумом</span>
   </div>
   <div id="rows"></div>
 
@@ -119,6 +129,7 @@ table.weights td.zero{color:var(--text3);opacity:0.5}
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
     <button class="btn" id="calcBtn" onclick="run()">Оптимизировать</button>
+    <span class="weight-total" id="myWeightStatus" style="font-family:var(--mono);font-size:0.78rem;margin-left:auto"></span>
   </div>
   <div class="status" id="status"></div>
 </div>
@@ -194,19 +205,122 @@ async function fetchCandles(ticker,from,till){
 
 const rowsEl=document.getElementById('rows');
 let rowCount=0;
-function addRow(ticker){
+let lastPrices={}; // последние цены тикеров после загрузки
+function addRow(ticker,shares,weight){
   rowCount++;
   const div=document.createElement('div');div.className='row-line';div.dataset.idx=rowCount;
   div.innerHTML='<span class="num">'+rowCount+'</span>'+
     '<input type="text" class="ticker" value="'+(ticker||'')+'" placeholder="SBER">'+
-    '<button class="remove" onclick="removeRow(this)" title="Удалить">×</button>';
+    '<input type="text" class="myshares" value="'+(shares||'')+'" placeholder="—" inputmode="numeric">'+
+    '<input type="text" class="myweight" value="'+(weight||'')+'" placeholder="—" inputmode="decimal">'+
+    '<button class="remove" onclick="removeRow(this)" title="Удалить">×</button>'+
+    '<div class="row-hint" style="flex-basis:100%;font-size:0.7rem;color:var(--text3);margin-left:28px;font-family:var(--mono);min-height:1em"></div>';
   rowsEl.appendChild(div);
+  div.querySelector('.myshares').addEventListener('input',updateMyTotal);
+  div.querySelector('.myweight').addEventListener('input',updateMyTotal);
+  div.querySelector('.ticker').addEventListener('input',updateMyTotal);
 }
-function removeRow(btn){btn.closest('.row-line').remove();renumber();}
+function removeRow(btn){btn.closest('.row-line').remove();renumber();updateMyTotal();}
 function renumber(){let i=1;rowsEl.querySelectorAll('.row-line').forEach(r=>{r.querySelector('.num').textContent=i++;});rowCount=rowsEl.querySelectorAll('.row-line').length;}
 function getTickers(){
   const arr=[];rowsEl.querySelectorAll('.row-line .ticker').forEach(el=>{const t=el.value.trim().toUpperCase();if(t)arr.push(t);});
   return [...new Set(arr)];
+}
+function getUserWeights(tickers){
+  // Приоритет: если есть штуки - используем их (через цены пересчитываем в стоимостные доли).
+  // Иначе - используем процентные доли напрямую.
+  const sharesMap={};
+  const weightsMap={};
+  let anyShares=false,anyWeights=false;
+  rowsEl.querySelectorAll('.row-line').forEach(r=>{
+    const t=r.querySelector('.ticker').value.trim().toUpperCase();
+    if(!t)return;
+    const sRaw=r.querySelector('.myshares').value.trim().replace(',','.');
+    const wRaw=r.querySelector('.myweight').value.trim().replace(',','.');
+    const s=parseFloat(sRaw);
+    const w=parseFloat(wRaw);
+    if(!isNaN(s)&&s>0){sharesMap[t]=s;anyShares=true;}
+    if(!isNaN(w)&&w>=0){weightsMap[t]=w/100;anyWeights=true;}
+  });
+
+  // Режим штук
+  if(anyShares){
+    const values={};let totalValue=0;
+    let missingPrice=null;
+    tickers.forEach(t=>{
+      const sh=sharesMap[t]||0;
+      if(sh<=0){values[t]=0;return;}
+      const price=lastPrices[t];
+      if(!price){missingPrice=t;return;}
+      values[t]=sh*price;totalValue+=sh*price;
+    });
+    if(missingPrice)return {error:'Нет цены для '+missingPrice+'. Запусти оптимизацию ещё раз.'};
+    if(totalValue<=0)return null;
+    const arr=tickers.map(t=>values[t]/totalValue);
+    return {weights:arr,mode:'shares',totalValue:totalValue};
+  }
+
+  // Режим долей
+  if(anyWeights){
+    const arr=tickers.map(t=>weightsMap[t]||0);
+    const sum=arr.reduce((a,b)=>a+b,0);
+    if(sum<0.01)return null;
+    if(Math.abs(sum-1)>0.02)return {error:'Сумма ваших долей должна быть 100% (сейчас '+(sum*100).toFixed(1)+'%)'};
+    return {weights:arr,mode:'percent'};
+  }
+
+  return null;
+}
+function updateMyTotal(){
+  // Обновляем подсказки в каждой строке + общий статус
+  let totalShares=0,totalValue=0,totalWeight=0;
+  let hasAnyShares=false,hasAnyWeight=false;
+  rowsEl.querySelectorAll('.row-line').forEach(r=>{
+    const t=r.querySelector('.ticker').value.trim().toUpperCase();
+    const sRaw=r.querySelector('.myshares').value.replace(',','.');
+    const wRaw=r.querySelector('.myweight').value.replace(',','.');
+    const s=parseFloat(sRaw);
+    const w=parseFloat(wRaw);
+    const hint=r.querySelector('.row-hint');
+    let hintText='';
+    if(!isNaN(s)&&s>0){
+      hasAnyShares=true;totalShares++;
+      const p=lastPrices[t];
+      if(p){
+        const v=s*p;totalValue+=v;
+        hintText=Math.round(s)+' шт × '+p.toFixed(2)+' ₽ = '+v.toLocaleString('ru',{maximumFractionDigits:0})+' ₽';
+      }else{
+        hintText='цена будет рассчитана после оптимизации';
+      }
+    }
+    if(!isNaN(w)&&w>=0){hasAnyWeight=true;totalWeight+=w;}
+    if(hint)hint.textContent=hintText;
+  });
+  // Если ввели штуки и есть цены - пересчитаем подсказки в доли
+  if(hasAnyShares && totalValue>0){
+    rowsEl.querySelectorAll('.row-line').forEach(r=>{
+      const t=r.querySelector('.ticker').value.trim().toUpperCase();
+      const sRaw=r.querySelector('.myshares').value.replace(',','.');
+      const s=parseFloat(sRaw);
+      const hint=r.querySelector('.row-hint');
+      if(!isNaN(s)&&s>0&&lastPrices[t]){
+        const v=s*lastPrices[t];
+        const pct=(v/totalValue)*100;
+        hint.textContent=Math.round(s)+' шт × '+lastPrices[t].toFixed(2)+' ₽ = '+v.toLocaleString('ru',{maximumFractionDigits:0})+' ₽ ('+pct.toFixed(1)+'%)';
+      }
+    });
+  }
+  const status=document.getElementById('myWeightStatus');
+  if(!status)return;
+  if(hasAnyShares){
+    status.textContent='Портфель: '+totalValue.toLocaleString('ru',{maximumFractionDigits:0})+' ₽';
+    status.style.color='var(--green)';
+  }else if(hasAnyWeight){
+    status.textContent='Сумма долей: '+totalWeight.toFixed(1)+'%';
+    status.style.color=Math.abs(totalWeight-100)<0.5?'var(--green)':'var(--yellow)';
+  }else{
+    status.textContent='';
+  }
 }
 ['SBER','GAZP','LKOH','GMKN','YDEX'].forEach(t=>addRow(t));
 
@@ -297,7 +411,10 @@ async function run(){
       const aligned=common.map(d=>({date:d,close:m[d]}));
       closeMap[t]=aligned;
       retMap[t]=logReturns(aligned.map(x=>x.close));
+      // Сохраняем последнюю цену для расчёта стоимости портфеля по штукам
+      lastPrices[t]=aligned[aligned.length-1].close;
     });
+    updateMyTotal(); // Перерисуем подсказки штук → стоимость
     const yearsActual=common.length/252;
 
     // Equal weights
@@ -339,10 +456,36 @@ async function run(){
     const minvolDaily=dailyValues(bestVol.w,closeMap,tickers,common);
     const minddDaily=dailyValues(bestDD.w,closeMap,tickers,common);
 
+    // User portfolio (если задан)
+    let userPort=null;
+    const userInput=getUserWeights(tickers);
+    if(userInput && !userInput.error){
+      const uw=userInput.weights;
+      const ud=dailyValues(uw,closeMap,tickers,common);
+      const ur=annReturn(ud,yearsActual);
+      const uv=annVolFromReturns(portReturns(uw,retMap,tickers));
+      const umd=maxDrawdown(ud);
+      const us=uv>0?(ur-rf)/uv:0;
+      userPort={w:uw,r:ur,v:uv,d:umd,s:us,daily:ud,mode:userInput.mode,totalValue:userInput.totalValue};
+    } else if(userInput && userInput.error){
+      const st2=document.getElementById('status');
+      if(st2){st2.className='status err';st2.textContent='Ваш портфель: '+userInput.error;}
+    }
+
     // Render frontier chart
     document.getElementById('frontierCard').classList.remove('hidden');
     if(frontierChart)frontierChart.destroy();
     const ctx1=document.getElementById('frontierChart').getContext('2d');
+    const optimaDatasets=[
+      {label:'Max Sharpe',data:[{x:bestSharpe.v*100,y:bestSharpe.r*100}],backgroundColor:'#0F8043',pointRadius:16,pointHoverRadius:18,borderColor:'#000',borderWidth:2,pointStyle:'rectRot'},
+      {label:'Min Volatility',data:[{x:bestVol.v*100,y:bestVol.r*100}],backgroundColor:'#1976D2',pointRadius:16,pointHoverRadius:18,borderColor:'#000',borderWidth:2,pointStyle:'triangle'},
+      {label:'Min Drawdown',data:[{x:bestDD.v*100,y:bestDD.r*100}],backgroundColor:'#8E24AA',pointRadius:15,pointHoverRadius:17,borderColor:'#000',borderWidth:2,pointStyle:'rect'},
+      {label:'Equal Weight',data:[{x:eqV*100,y:eqR*100}],backgroundColor:'#F9A825',pointRadius:15,pointHoverRadius:17,borderColor:'#000',borderWidth:2,pointStyle:'circle'}
+    ];
+    if(userPort){
+      optimaDatasets.push({label:'Ваш портфель',data:[{x:userPort.v*100,y:userPort.r*100}],backgroundColor:'#D32F2F',pointRadius:18,pointHoverRadius:20,borderColor:'#000',borderWidth:2.5,pointStyle:'star'});
+    }
+
     frontierChart=new Chart(ctx1,{
       type:'scatter',
       data:{
@@ -352,22 +495,25 @@ async function run(){
               const t=Math.max(-1,Math.min(2,p.s));
               const norm=(t+1)/3;
               const r=Math.round(180-norm*120),g=Math.round(64+norm*80),b=Math.round(64+norm*30);
-              return 'rgba('+r+','+g+','+b+',0.35)';
+              return 'rgba('+r+','+g+','+b+',0.30)';
             }),
             pointRadius:2,borderWidth:0
           },
-          {label:'Max Sharpe',data:[{x:bestSharpe.v*100,y:bestSharpe.r*100}],backgroundColor:'#2D5A3D',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'rectRot'},
-          {label:'Min Volatility',data:[{x:bestVol.v*100,y:bestVol.r*100}],backgroundColor:'#1B6B9A',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'triangle'},
-          {label:'Min Drawdown',data:[{x:bestDD.v*100,y:bestDD.r*100}],backgroundColor:'#7B4FA0',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'rect'},
-          {label:'Equal Weight',data:[{x:eqV*100,y:eqR*100}],backgroundColor:'#A67A2E',pointRadius:8,borderColor:'#fff',borderWidth:2,pointStyle:'circle'}
+          ...optimaDatasets
         ]
       },
       options:{
         responsive:true,maintainAspectRatio:false,
+        animation:{duration:600},
         plugins:{
           legend:{display:false},
           tooltip:{callbacks:{
-            label:(c)=>'σ '+c.parsed.x.toFixed(1)+'%, r '+c.parsed.y.toFixed(1)+'%'+(c.raw.s!==undefined?', SR '+c.raw.s.toFixed(2):'')
+            label:(c)=>{
+              if(c.dataset.label==='Симуляции'){
+                return 'σ '+c.parsed.x.toFixed(1)+'%, r '+c.parsed.y.toFixed(1)+'%, SR '+c.raw.s.toFixed(2);
+              }
+              return c.dataset.label+': σ '+c.parsed.x.toFixed(1)+'%, r '+c.parsed.y.toFixed(1)+'%';
+            }
           }}
         },
         scales:{
@@ -379,20 +525,27 @@ async function run(){
 
     // Legend
     const lg=document.getElementById('frontierLegend');
-    lg.innerHTML='<span class="lg"><span class="sw" style="background:#2D5A3D"></span>Max Sharpe</span>'+
-      '<span class="lg"><span class="sw" style="background:#1B6B9A"></span>Min Volatility</span>'+
-      '<span class="lg"><span class="sw" style="background:#7B4FA0"></span>Min Drawdown</span>'+
-      '<span class="lg"><span class="sw" style="background:#A67A2E"></span>Equal Weight</span>';
+    lg.innerHTML='<span class="lg"><span class="sw" style="background:#0F8043;border-radius:0;transform:rotate(45deg);width:11px;height:11px"></span>Max Sharpe (ромб)</span>'+
+      '<span class="lg"><span class="sw" style="background:#1976D2;width:0;height:0;border-style:solid;border-width:0 6px 11px 6px;border-color:transparent transparent #1976D2 transparent;border-radius:0"></span>Min Volatility (треугольник)</span>'+
+      '<span class="lg"><span class="sw" style="background:#8E24AA;width:11px;height:11px;border-radius:1px"></span>Min Drawdown (квадрат)</span>'+
+      '<span class="lg"><span class="sw" style="background:#F9A825;width:11px;height:11px;border-radius:50%"></span>Equal Weight (круг)</span>';
+    if(userPort){
+      lg.innerHTML+='<span class="lg"><span class="sw" style="background:#D32F2F;width:13px;height:13px;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);border-radius:0"></span><strong>Ваш портфель (звезда)</strong></span>';
+    }
 
     // Optimal cards
     document.getElementById('optCard').classList.remove('hidden');
     const og=document.getElementById('optGrid');og.innerHTML='';
+    og.classList.toggle('has-user',!!userPort);
     const cards=[
       {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe'},
       {cls:'minvol',title:'Min Volatility',data:bestVol,extraLabel:'Sharpe'},
       {cls:'mindd',title:'Min Drawdown',data:bestDD,extraLabel:'Sharpe'},
       {cls:'equal',title:'Equal Weight',data:{r:eqR,v:eqV,d:eqDD,s:eqS,w:eqW},extraLabel:'Sharpe'}
     ];
+    if(userPort){
+      cards.push({cls:'user',title:'Ваш портфель',data:userPort,extraLabel:'Sharpe'});
+    }
     cards.forEach(c=>{
       const el=document.createElement('div');el.className='opt-card '+c.cls;
       let weightsHtml='';
@@ -400,7 +553,12 @@ async function run(){
         const wp=c.data.w[i]*100;
         weightsHtml+='<div class="w-row'+(wp<0.5?' zero':'')+'"><span>'+t+'</span><span>'+wp.toFixed(1)+'%</span></div>';
       });
+      let extraInfo='';
+      if(c.cls==='user' && c.data.mode==='shares' && c.data.totalValue){
+        extraInfo='<div style="font-size:0.7rem;color:var(--text2);margin-bottom:4px;font-family:var(--mono)">Стоимость: '+c.data.totalValue.toLocaleString('ru',{maximumFractionDigits:0})+' ₽</div>';
+      }
       el.innerHTML='<div class="opt-card-title">'+c.title+'</div>'+
+        extraInfo+
         '<div class="opt-card-stats">Доходность <strong>'+(c.data.r*100).toFixed(1)+'%</strong> · σ <strong>'+(c.data.v*100).toFixed(1)+'%</strong><br>Просадка <strong>−'+(c.data.d*100).toFixed(1)+'%</strong> · '+c.extraLabel+' <strong>'+c.data.s.toFixed(2)+'</strong></div>'+
         '<div class="opt-weights">'+weightsHtml+'</div>';
       og.appendChild(el);
@@ -409,35 +567,43 @@ async function run(){
     // Weights table
     document.getElementById('weightsCard').classList.remove('hidden');
     const wt=document.getElementById('weightsTable');
-    let html='<thead><tr><th style="text-align:left">Тикер</th><th>Max Sharpe</th><th>Min Vol</th><th>Min DD</th><th>Equal</th></tr></thead><tbody>';
+    const userCol=userPort?'<th style="color:var(--red)">Ваш</th>':'';
+    let html='<thead><tr><th style="text-align:left">Тикер</th><th>Max Sharpe</th><th>Min Vol</th><th>Min DD</th><th>Equal</th>'+userCol+'</tr></thead><tbody>';
     tickers.forEach((t,i)=>{
       const a=bestSharpe.w[i]*100,b=bestVol.w[i]*100,c=bestDD.w[i]*100,d=eqW[i]*100;
+      const u=userPort?userPort.w[i]*100:null;
       html+='<tr><td class="tk">'+t+'</td>'+
         '<td'+(a<0.5?' class="zero"':'')+'>'+a.toFixed(1)+'%</td>'+
         '<td'+(b<0.5?' class="zero"':'')+'>'+b.toFixed(1)+'%</td>'+
         '<td'+(c<0.5?' class="zero"':'')+'>'+c.toFixed(1)+'%</td>'+
-        '<td'+(d<0.5?' class="zero"':'')+'>'+d.toFixed(1)+'%</td></tr>';
+        '<td'+(d<0.5?' class="zero"':'')+'>'+d.toFixed(1)+'%</td>'+
+        (userPort?'<td style="color:var(--red);font-weight:500"'+(u<0.5?' class="zero"':'')+'>'+u.toFixed(1)+'%</td>':'')+'</tr>';
     });
+    const userRow=u=>userPort?'<td style="color:var(--red)">'+u+'</td>':'';
     html+='<tr style="border-top:2px solid var(--border);font-weight:600"><td class="tk">Доходность</td>'+
       '<td>'+(bestSharpe.r*100).toFixed(1)+'%</td>'+
       '<td>'+(bestVol.r*100).toFixed(1)+'%</td>'+
       '<td>'+(bestDD.r*100).toFixed(1)+'%</td>'+
-      '<td>'+(eqR*100).toFixed(1)+'%</td></tr>';
+      '<td>'+(eqR*100).toFixed(1)+'%</td>'+
+      userRow(userPort?(userPort.r*100).toFixed(1)+'%':'')+'</tr>';
     html+='<tr style="font-weight:600"><td class="tk">Волатильность</td>'+
       '<td>'+(bestSharpe.v*100).toFixed(1)+'%</td>'+
       '<td>'+(bestVol.v*100).toFixed(1)+'%</td>'+
       '<td>'+(bestDD.v*100).toFixed(1)+'%</td>'+
-      '<td>'+(eqV*100).toFixed(1)+'%</td></tr>';
+      '<td>'+(eqV*100).toFixed(1)+'%</td>'+
+      userRow(userPort?(userPort.v*100).toFixed(1)+'%':'')+'</tr>';
     html+='<tr style="font-weight:600"><td class="tk">Макс. просадка</td>'+
       '<td>−'+(bestSharpe.d*100).toFixed(1)+'%</td>'+
       '<td>−'+(bestVol.d*100).toFixed(1)+'%</td>'+
       '<td>−'+(bestDD.d*100).toFixed(1)+'%</td>'+
-      '<td>−'+(eqDD*100).toFixed(1)+'%</td></tr>';
+      '<td>−'+(eqDD*100).toFixed(1)+'%</td>'+
+      userRow(userPort?'−'+(userPort.d*100).toFixed(1)+'%':'')+'</tr>';
     html+='<tr style="font-weight:600"><td class="tk">Sharpe</td>'+
       '<td>'+bestSharpe.s.toFixed(2)+'</td>'+
       '<td>'+bestVol.s.toFixed(2)+'</td>'+
       '<td>'+bestDD.s.toFixed(2)+'</td>'+
-      '<td>'+eqS.toFixed(2)+'</td></tr>';
+      '<td>'+eqS.toFixed(2)+'</td>'+
+      userRow(userPort?userPort.s.toFixed(2):'')+'</tr>';
     html+='</tbody>';
     wt.innerHTML=html;
 
@@ -453,14 +619,16 @@ async function run(){
       data:{
         labels:reduce(labels),
         datasets:[
-          {label:'Max Sharpe',data:reduce(sharpeDaily),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
-          {label:'Min Volatility',data:reduce(minvolDaily),borderColor:'#1B6B9A',backgroundColor:'rgba(27,107,154,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
-          {label:'Min Drawdown',data:reduce(minddDaily),borderColor:'#7B4FA0',backgroundColor:'rgba(123,79,160,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
-          {label:'Equal Weight',data:reduce(eqDaily),borderColor:'#A67A2E',backgroundColor:'rgba(166,122,46,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1}
+          {label:'Max Sharpe',data:reduce(sharpeDaily),borderColor:'#0F8043',backgroundColor:'rgba(15,128,67,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Min Volatility',data:reduce(minvolDaily),borderColor:'#1976D2',backgroundColor:'rgba(25,118,210,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Min Drawdown',data:reduce(minddDaily),borderColor:'#8E24AA',backgroundColor:'rgba(142,36,170,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Equal Weight',data:reduce(eqDaily),borderColor:'#F9A825',backgroundColor:'rgba(249,168,37,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1},
+          ...(userPort?[{label:'Ваш портфель',data:reduce(userPort.daily),borderColor:'#D32F2F',backgroundColor:'rgba(211,47,47,0.05)',borderWidth:3,pointRadius:0,tension:0.1}]:[])
         ]
       },
       options:{
         responsive:true,maintainAspectRatio:false,
+        animation:{duration:600},
         plugins:{legend:{position:'top',labels:{font:{size:11}}}},
         scales:{
           x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
@@ -483,14 +651,16 @@ async function run(){
       data:{
         labels:reduce(labels),
         datasets:[
-          {label:'Max Sharpe',data:reduce(ddSeries(sharpeDaily)),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
-          {label:'Min Volatility',data:reduce(ddSeries(minvolDaily)),borderColor:'#1B6B9A',backgroundColor:'rgba(27,107,154,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
-          {label:'Min Drawdown',data:reduce(ddSeries(minddDaily)),borderColor:'#7B4FA0',backgroundColor:'rgba(123,79,160,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
-          {label:'Equal Weight',data:reduce(ddSeries(eqDaily)),borderColor:'#A67A2E',backgroundColor:'rgba(166,122,46,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1,fill:false}
+          {label:'Max Sharpe',data:reduce(ddSeries(sharpeDaily)),borderColor:'#0F8043',backgroundColor:'rgba(15,128,67,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Min Volatility',data:reduce(ddSeries(minvolDaily)),borderColor:'#1976D2',backgroundColor:'rgba(25,118,210,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Min Drawdown',data:reduce(ddSeries(minddDaily)),borderColor:'#8E24AA',backgroundColor:'rgba(142,36,170,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Equal Weight',data:reduce(ddSeries(eqDaily)),borderColor:'#F9A825',backgroundColor:'rgba(249,168,37,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1,fill:false},
+          ...(userPort?[{label:'Ваш портфель',data:reduce(ddSeries(userPort.daily)),borderColor:'#D32F2F',backgroundColor:'rgba(211,47,47,0.05)',borderWidth:3,pointRadius:0,tension:0.1,fill:false}]:[])
         ]
       },
       options:{
         responsive:true,maintainAspectRatio:false,
+        animation:{duration:600},
         plugins:{legend:{position:'top',labels:{font:{size:11}}}},
         scales:{
           x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
