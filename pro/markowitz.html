@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оптимизация портфеля · Markowitz · MOEX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;
+--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--red:#B44040;--red-bg:#FDF0F0;
+--green:#2D7A4F;--green-bg:#EDF7F1;
+--yellow:#A67A2E;--yellow-bg:#FDF7ED;
+--purple:#7B4FA0;--purple-bg:#F5EDFA;
+--border:#E5E4DF;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1080px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
+.subtitle{font-size:0.85rem;color:var(--text2);margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+.row-line{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.row-line input{font-family:var(--mono);font-size:0.85rem;padding:0.45rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none}
+.row-line input.ticker{width:120px;text-transform:uppercase}
+.row-line .num{font-family:var(--mono);font-size:0.72rem;color:var(--text3);width:20px;text-align:right}
+.row-line .remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:0 4px}
+.row-line .remove:hover{color:var(--red)}
+.btn{font-family:var(--sans);font-size:0.82rem;font-weight:500;padding:0.5rem 1.2rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;transition:opacity 0.2s}
+.btn:hover{opacity:0.85}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-sm{font-size:0.75rem;padding:0.35rem 0.8rem;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-sm:hover{border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.opts{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:0.82rem}
+.opts label{display:flex;gap:6px;align-items:center;color:var(--text2)}
+.opts select,.opts input{font-family:var(--mono);font-size:0.82rem;padding:0.35rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none}
+.opts input{width:70px;text-align:right}
+.status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.status.err{color:var(--red)}.status.ok{color:var(--green)}
+.chart-container{position:relative;width:100%;height:380px;margin:0.75rem 0}
+.chart-container.tall{height:420px}
+canvas{width:100%!important;height:100%!important}
+.opt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:0.5rem}
+@media(max-width:760px){.opt-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.opt-grid{grid-template-columns:1fr}}
+.opt-card{border-radius:var(--radius);padding:1rem;border:1px solid var(--border)}
+.opt-card.sharpe{background:var(--accent-light);border-color:rgba(45,90,61,0.2)}
+.opt-card.minvol{background:var(--accent2-light);border-color:rgba(27,107,154,0.2)}
+.opt-card.mindd{background:var(--purple-bg);border-color:rgba(123,79,160,0.2)}
+.opt-card.equal{background:var(--surface2)}
+.opt-card-title{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.opt-card.sharpe .opt-card-title{color:var(--accent)}
+.opt-card.minvol .opt-card-title{color:var(--accent2)}
+.opt-card.mindd .opt-card-title{color:var(--purple)}
+.opt-card.equal .opt-card-title{color:var(--text2)}
+.opt-card-stats{font-family:var(--mono);font-size:0.72rem;color:var(--text2);line-height:1.7;margin-bottom:8px}
+.opt-card-stats strong{color:var(--text);font-weight:600}
+.opt-weights{font-family:var(--mono);font-size:0.7rem;line-height:1.6}
+.opt-weights .w-row{display:flex;justify-content:space-between;padding:1px 0}
+.opt-weights .w-row.zero{color:var(--text3);opacity:0.5}
+.matrix-wrap{overflow-x:auto;margin-top:0.75rem}
+table.weights{border-collapse:collapse;font-size:0.78rem;width:100%;margin-top:0.5rem}
+table.weights th,table.weights td{padding:6px 8px;text-align:right;border:1px solid var(--surface2)}
+table.weights th{background:var(--surface2);font-weight:500;color:var(--text2);font-size:0.72rem;text-align:center}
+table.weights td{font-family:var(--mono);font-size:0.78rem}
+table.weights td.tk{text-align:left;font-weight:500}
+table.weights td.zero{color:var(--text3);opacity:0.5}
+.legend-line{display:flex;gap:14px;flex-wrap:wrap;font-size:0.78rem;margin-top:8px}
+.legend-line .lg{display:flex;align-items:center;gap:5px}
+.legend-line .lg .sw{display:inline-block;width:14px;height:3px;border-radius:1px}
+.hidden{display:none}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<script src="../gate.js"></script>
+<div class="container">
+<h1>Оптимизация портфеля</h1>
+<p class="subtitle">Markowitz · эффективная граница · MOEX ISS API</p>
+
+<div class="card">
+  <div class="card-title">Состав</div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;font-size:0.7rem;color:var(--text3)">
+    <span style="width:20px"></span>
+    <span style="width:120px">Тикер MOEX</span>
+  </div>
+  <div id="rows"></div>
+
+  <div class="opts">
+    <label>Период истории
+      <select id="period">
+        <option value="1">1 год</option>
+        <option value="2">2 года</option>
+        <option value="3" selected>3 года</option>
+        <option value="5">5 лет</option>
+      </select>
+    </label>
+    <label>Безрисковая ставка, %
+      <input type="text" id="rf" value="13" inputmode="decimal">
+    </label>
+    <label>Симуляций
+      <select id="nsim">
+        <option value="3000">3 000</option>
+        <option value="5000" selected>5 000</option>
+        <option value="10000">10 000</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
+    <button class="btn" id="calcBtn" onclick="run()">Оптимизировать</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="frontierCard">
+  <div class="card-title">Эффективная граница (риск vs доходность)</div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Каждая точка — случайный портфель. Цветные маркеры — оптимальные веса по разным критериям.</div>
+  <div class="chart-container"><canvas id="frontierChart"></canvas></div>
+  <div class="legend-line" id="frontierLegend"></div>
+</div>
+
+<div class="card hidden" id="optCard">
+  <div class="card-title">Оптимальные портфели</div>
+  <div class="opt-grid" id="optGrid"></div>
+</div>
+
+<div class="card hidden" id="weightsCard">
+  <div class="card-title">Веса по критериям</div>
+  <div class="matrix-wrap">
+    <table class="weights" id="weightsTable"></table>
+  </div>
+</div>
+
+<div class="card hidden" id="equityCard">
+  <div class="card-title">Кумулятивная доходность (база = 100)</div>
+  <div class="chart-container tall"><canvas id="equityChart"></canvas></div>
+</div>
+
+<div class="card hidden" id="ddCard">
+  <div class="card-title">Просадка от пика</div>
+  <div class="chart-container tall"><canvas id="ddChart"></canvas></div>
+</div>
+
+<p class="footer-note">
+  <strong>Метод.</strong> Monte Carlo: генерируем тысячи случайных портфелей (long-only, сумма весов = 100%).
+  Для каждого считаем: годовую доходность, волатильность (σ × √252), максимальную просадку (по дневным значениям портфеля),
+  Sharpe = (доходность − r<sub>f</sub>) / волатильность.<br>
+  <strong>Критерии оптимизации:</strong> Max Sharpe — лучшее соотношение доходность/риск.
+  Min Volatility — минимальная дисперсия. Min Drawdown — минимальная историческая просадка.
+  Equal Weight — равные веса (бенчмарк против оптимизаторов).<br>
+  <strong>Ограничения.</strong> Веса от 0 до 100%, шорт запрещён. Прошлая доходность не гарантирует будущей.
+</p>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+
+async function fetchCandles(ticker,from,till){
+  let all=[];let start=0;
+  while(true){
+    const url='https://iss.moex.com/iss/engines/stock/markets/shares/boards/TQBR/securities/'+ticker+'/candles.json?interval=24&from='+from+'&till='+till+'&iss.meta=off&start='+start;
+    const d=await moexFetch(url);const cols=d.candles.columns;const rows=d.candles.data;
+    if(!rows||rows.length===0)break;
+    const ci=cols.indexOf('close'),bi=cols.indexOf('begin');
+    rows.forEach(r=>all.push({date:r[bi].slice(0,10),close:r[ci]}));
+    if(rows.length<500)break;start+=500;
+  }
+  return all;
+}
+
+const rowsEl=document.getElementById('rows');
+let rowCount=0;
+function addRow(ticker){
+  rowCount++;
+  const div=document.createElement('div');div.className='row-line';div.dataset.idx=rowCount;
+  div.innerHTML='<span class="num">'+rowCount+'</span>'+
+    '<input type="text" class="ticker" value="'+(ticker||'')+'" placeholder="SBER">'+
+    '<button class="remove" onclick="removeRow(this)" title="Удалить">×</button>';
+  rowsEl.appendChild(div);
+}
+function removeRow(btn){btn.closest('.row-line').remove();renumber();}
+function renumber(){let i=1;rowsEl.querySelectorAll('.row-line').forEach(r=>{r.querySelector('.num').textContent=i++;});rowCount=rowsEl.querySelectorAll('.row-line').length;}
+function getTickers(){
+  const arr=[];rowsEl.querySelectorAll('.row-line .ticker').forEach(el=>{const t=el.value.trim().toUpperCase();if(t)arr.push(t);});
+  return [...new Set(arr)];
+}
+['SBER','GAZP','LKOH','GMKN','YDEX'].forEach(t=>addRow(t));
+
+let frontierChart=null,equityChart=null,ddChart=null;
+
+// Random weights generator: long-only, sum to 1, uniform on simplex
+function randomWeights(n){
+  const u=new Array(n);for(let i=0;i<n;i++)u[i]=-Math.log(Math.random());
+  const s=u.reduce((a,b)=>a+b,0);return u.map(x=>x/s);
+}
+
+function dailyValues(weights,closeMap,tickers,common){
+  const arr=new Array(common.length);
+  for(let di=0;di<common.length;di++){
+    let v=0;
+    for(let i=0;i<tickers.length;i++) v+=weights[i]*(closeMap[tickers[i]][di].close/closeMap[tickers[i]][0].close);
+    arr[di]=v*100;
+  }
+  return arr;
+}
+
+function maxDrawdown(daily){
+  let peak=daily[0],mdd=0;
+  for(let i=0;i<daily.length;i++){
+    if(daily[i]>peak)peak=daily[i];
+    const dd=(peak-daily[i])/peak;
+    if(dd>mdd)mdd=dd;
+  }
+  return mdd;
+}
+
+function annReturn(daily,years){
+  const tr=daily[daily.length-1]/daily[0]-1;
+  return Math.pow(1+tr,1/years)-1;
+}
+
+function annVolFromReturns(retSeries){
+  const m=retSeries.reduce((a,b)=>a+b,0)/retSeries.length;
+  let v=0;for(let i=0;i<retSeries.length;i++)v+=(retSeries[i]-m)*(retSeries[i]-m);
+  v/=(retSeries.length-1);
+  return Math.sqrt(v*252);
+}
+
+function portReturns(weights,retMap,tickers){
+  const n=retMap[tickers[0]].length;
+  const out=new Array(n);
+  for(let k=0;k<n;k++){let s=0;for(let i=0;i<tickers.length;i++)s+=weights[i]*retMap[tickers[i]][k];out[k]=s;}
+  return out;
+}
+
+function logReturns(closes){
+  const r=new Array(closes.length-1);
+  for(let i=1;i<closes.length;i++)r[i-1]=Math.log(closes[i]/closes[i-1]);
+  return r;
+}
+
+async function run(){
+  const tickers=getTickers();
+  if(tickers.length<2){
+    const st=document.getElementById('status');st.className='status err';st.textContent='Нужно минимум 2 тикера';return;
+  }
+  const years=parseFloat(document.getElementById('period').value);
+  const rf=parseFloat(document.getElementById('rf').value.replace(',','.'))/100;
+  const nsim=parseInt(document.getElementById('nsim').value,10);
+
+  const st=document.getElementById('status');const btn=document.getElementById('calcBtn');btn.disabled=true;
+
+  try{
+    const today=new Date();const past=new Date(today);past.setFullYear(past.getFullYear()-years);
+    const fromStr=past.toISOString().slice(0,10);const tillStr=today.toISOString().slice(0,10);
+
+    const allCandles={};
+    for(let i=0;i<tickers.length;i++){
+      st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+tickers[i]+' ('+(i+1)+'/'+tickers.length+')...';
+      allCandles[tickers[i]]=await fetchCandles(tickers[i],fromStr,tillStr);
+      if(allCandles[tickers[i]].length<10)throw new Error(tickers[i]+': недостаточно данных');
+    }
+
+    st.innerHTML='<span class="loader"></span>Выравниваю даты...';
+    const dateSets=Object.values(allCandles).map(c=>new Set(c.map(x=>x.date)));
+    let common=[...dateSets[0]];dateSets.slice(1).forEach(ds=>{common=common.filter(d=>ds.has(d))});
+    common.sort();
+    if(common.length<60)throw new Error('Слишком мало общих торговых дней: '+common.length);
+
+    const closeMap={};const retMap={};
+    tickers.forEach(t=>{
+      const m={};allCandles[t].forEach(c=>m[c.date]=c.close);
+      const aligned=common.map(d=>({date:d,close:m[d]}));
+      closeMap[t]=aligned;
+      retMap[t]=logReturns(aligned.map(x=>x.close));
+    });
+    const yearsActual=common.length/252;
+
+    // Equal weights
+    const N=tickers.length;
+    const eqW=new Array(N).fill(1/N);
+
+    // Run Monte Carlo
+    st.innerHTML='<span class="loader"></span>Симуляция '+nsim.toLocaleString('ru')+' портфелей...';
+    await new Promise(r=>setTimeout(r,30)); // let UI breathe
+
+    const cloud=[];
+    let bestSharpe={s:-Infinity,w:null,r:0,v:0,d:0};
+    let bestVol={v:Infinity,w:null,r:0,s:0,d:0};
+    let bestDD={d:Infinity,w:null,r:0,v:0,s:0};
+
+    for(let k=0;k<nsim;k++){
+      const w=randomWeights(N);
+      const daily=dailyValues(w,closeMap,tickers,common);
+      const ar=annReturn(daily,yearsActual);
+      const av=annVolFromReturns(portReturns(w,retMap,tickers));
+      const md=maxDrawdown(daily);
+      const sh=av>0?(ar-rf)/av:0;
+      cloud.push({r:ar,v:av,d:md,s:sh});
+
+      if(sh>bestSharpe.s){bestSharpe={s:sh,w:w.slice(),r:ar,v:av,d:md};}
+      if(av<bestVol.v){bestVol={v:av,w:w.slice(),r:ar,s:sh,d:md};}
+      if(md<bestDD.d){bestDD={d:md,w:w.slice(),r:ar,v:av,s:sh};}
+    }
+
+    // Equal weight metrics
+    const eqDaily=dailyValues(eqW,closeMap,tickers,common);
+    const eqR=annReturn(eqDaily,yearsActual);
+    const eqV=annVolFromReturns(portReturns(eqW,retMap,tickers));
+    const eqDD=maxDrawdown(eqDaily);
+    const eqS=eqV>0?(eqR-rf)/eqV:0;
+
+    // Best Sharpe daily series
+    const sharpeDaily=dailyValues(bestSharpe.w,closeMap,tickers,common);
+    const minvolDaily=dailyValues(bestVol.w,closeMap,tickers,common);
+    const minddDaily=dailyValues(bestDD.w,closeMap,tickers,common);
+
+    // Render frontier chart
+    document.getElementById('frontierCard').classList.remove('hidden');
+    if(frontierChart)frontierChart.destroy();
+    const ctx1=document.getElementById('frontierChart').getContext('2d');
+    frontierChart=new Chart(ctx1,{
+      type:'scatter',
+      data:{
+        datasets:[
+          {label:'Симуляции',data:cloud.map(p=>({x:p.v*100,y:p.r*100,s:p.s})),
+            backgroundColor:cloud.map(p=>{
+              const t=Math.max(-1,Math.min(2,p.s));
+              const norm=(t+1)/3;
+              const r=Math.round(180-norm*120),g=Math.round(64+norm*80),b=Math.round(64+norm*30);
+              return 'rgba('+r+','+g+','+b+',0.35)';
+            }),
+            pointRadius:2,borderWidth:0
+          },
+          {label:'Max Sharpe',data:[{x:bestSharpe.v*100,y:bestSharpe.r*100}],backgroundColor:'#2D5A3D',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'rectRot'},
+          {label:'Min Volatility',data:[{x:bestVol.v*100,y:bestVol.r*100}],backgroundColor:'#1B6B9A',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'triangle'},
+          {label:'Min Drawdown',data:[{x:bestDD.v*100,y:bestDD.r*100}],backgroundColor:'#7B4FA0',pointRadius:9,borderColor:'#fff',borderWidth:2,pointStyle:'rect'},
+          {label:'Equal Weight',data:[{x:eqV*100,y:eqR*100}],backgroundColor:'#A67A2E',pointRadius:8,borderColor:'#fff',borderWidth:2,pointStyle:'circle'}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            label:(c)=>'σ '+c.parsed.x.toFixed(1)+'%, r '+c.parsed.y.toFixed(1)+'%'+(c.raw.s!==undefined?', SR '+c.raw.s.toFixed(2):'')
+          }}
+        },
+        scales:{
+          x:{title:{display:true,text:'Волатильность, % годовых'},ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}},
+          y:{title:{display:true,text:'Доходность, % годовых'},ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}}
+        }
+      }
+    });
+
+    // Legend
+    const lg=document.getElementById('frontierLegend');
+    lg.innerHTML='<span class="lg"><span class="sw" style="background:#2D5A3D"></span>Max Sharpe</span>'+
+      '<span class="lg"><span class="sw" style="background:#1B6B9A"></span>Min Volatility</span>'+
+      '<span class="lg"><span class="sw" style="background:#7B4FA0"></span>Min Drawdown</span>'+
+      '<span class="lg"><span class="sw" style="background:#A67A2E"></span>Equal Weight</span>';
+
+    // Optimal cards
+    document.getElementById('optCard').classList.remove('hidden');
+    const og=document.getElementById('optGrid');og.innerHTML='';
+    const cards=[
+      {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe'},
+      {cls:'minvol',title:'Min Volatility',data:bestVol,extraLabel:'Sharpe'},
+      {cls:'mindd',title:'Min Drawdown',data:bestDD,extraLabel:'Sharpe'},
+      {cls:'equal',title:'Equal Weight',data:{r:eqR,v:eqV,d:eqDD,s:eqS,w:eqW},extraLabel:'Sharpe'}
+    ];
+    cards.forEach(c=>{
+      const el=document.createElement('div');el.className='opt-card '+c.cls;
+      let weightsHtml='';
+      tickers.forEach((t,i)=>{
+        const wp=c.data.w[i]*100;
+        weightsHtml+='<div class="w-row'+(wp<0.5?' zero':'')+'"><span>'+t+'</span><span>'+wp.toFixed(1)+'%</span></div>';
+      });
+      el.innerHTML='<div class="opt-card-title">'+c.title+'</div>'+
+        '<div class="opt-card-stats">Доходность <strong>'+(c.data.r*100).toFixed(1)+'%</strong> · σ <strong>'+(c.data.v*100).toFixed(1)+'%</strong><br>Просадка <strong>−'+(c.data.d*100).toFixed(1)+'%</strong> · '+c.extraLabel+' <strong>'+c.data.s.toFixed(2)+'</strong></div>'+
+        '<div class="opt-weights">'+weightsHtml+'</div>';
+      og.appendChild(el);
+    });
+
+    // Weights table
+    document.getElementById('weightsCard').classList.remove('hidden');
+    const wt=document.getElementById('weightsTable');
+    let html='<thead><tr><th style="text-align:left">Тикер</th><th>Max Sharpe</th><th>Min Vol</th><th>Min DD</th><th>Equal</th></tr></thead><tbody>';
+    tickers.forEach((t,i)=>{
+      const a=bestSharpe.w[i]*100,b=bestVol.w[i]*100,c=bestDD.w[i]*100,d=eqW[i]*100;
+      html+='<tr><td class="tk">'+t+'</td>'+
+        '<td'+(a<0.5?' class="zero"':'')+'>'+a.toFixed(1)+'%</td>'+
+        '<td'+(b<0.5?' class="zero"':'')+'>'+b.toFixed(1)+'%</td>'+
+        '<td'+(c<0.5?' class="zero"':'')+'>'+c.toFixed(1)+'%</td>'+
+        '<td'+(d<0.5?' class="zero"':'')+'>'+d.toFixed(1)+'%</td></tr>';
+    });
+    html+='<tr style="border-top:2px solid var(--border);font-weight:600"><td class="tk">Доходность</td>'+
+      '<td>'+(bestSharpe.r*100).toFixed(1)+'%</td>'+
+      '<td>'+(bestVol.r*100).toFixed(1)+'%</td>'+
+      '<td>'+(bestDD.r*100).toFixed(1)+'%</td>'+
+      '<td>'+(eqR*100).toFixed(1)+'%</td></tr>';
+    html+='<tr style="font-weight:600"><td class="tk">Волатильность</td>'+
+      '<td>'+(bestSharpe.v*100).toFixed(1)+'%</td>'+
+      '<td>'+(bestVol.v*100).toFixed(1)+'%</td>'+
+      '<td>'+(bestDD.v*100).toFixed(1)+'%</td>'+
+      '<td>'+(eqV*100).toFixed(1)+'%</td></tr>';
+    html+='<tr style="font-weight:600"><td class="tk">Макс. просадка</td>'+
+      '<td>−'+(bestSharpe.d*100).toFixed(1)+'%</td>'+
+      '<td>−'+(bestVol.d*100).toFixed(1)+'%</td>'+
+      '<td>−'+(bestDD.d*100).toFixed(1)+'%</td>'+
+      '<td>−'+(eqDD*100).toFixed(1)+'%</td></tr>';
+    html+='<tr style="font-weight:600"><td class="tk">Sharpe</td>'+
+      '<td>'+bestSharpe.s.toFixed(2)+'</td>'+
+      '<td>'+bestVol.s.toFixed(2)+'</td>'+
+      '<td>'+bestDD.s.toFixed(2)+'</td>'+
+      '<td>'+eqS.toFixed(2)+'</td></tr>';
+    html+='</tbody>';
+    wt.innerHTML=html;
+
+    // Equity chart (cumulative return)
+    document.getElementById('equityCard').classList.remove('hidden');
+    if(equityChart)equityChart.destroy();
+    const ctx2=document.getElementById('equityChart').getContext('2d');
+    const labels=common;
+    const stride=Math.max(1,Math.floor(common.length/120));
+    const reduce=arr=>arr.filter((_,i)=>i%stride===0||i===arr.length-1);
+    equityChart=new Chart(ctx2,{
+      type:'line',
+      data:{
+        labels:reduce(labels),
+        datasets:[
+          {label:'Max Sharpe',data:reduce(sharpeDaily),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Min Volatility',data:reduce(minvolDaily),borderColor:'#1B6B9A',backgroundColor:'rgba(27,107,154,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Min Drawdown',data:reduce(minddDaily),borderColor:'#7B4FA0',backgroundColor:'rgba(123,79,160,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
+          {label:'Equal Weight',data:reduce(eqDaily),borderColor:'#A67A2E',backgroundColor:'rgba(166,122,46,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+        scales:{
+          x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
+          y:{title:{display:true,text:'Стоимость портфеля'},ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}}
+        }
+      }
+    });
+
+    // Drawdown chart
+    document.getElementById('ddCard').classList.remove('hidden');
+    function ddSeries(daily){
+      let peak=daily[0];const out=new Array(daily.length);
+      for(let i=0;i<daily.length;i++){if(daily[i]>peak)peak=daily[i];out[i]=-(peak-daily[i])/peak*100;}
+      return out;
+    }
+    if(ddChart)ddChart.destroy();
+    const ctx3=document.getElementById('ddChart').getContext('2d');
+    ddChart=new Chart(ctx3,{
+      type:'line',
+      data:{
+        labels:reduce(labels),
+        datasets:[
+          {label:'Max Sharpe',data:reduce(ddSeries(sharpeDaily)),borderColor:'#2D5A3D',backgroundColor:'rgba(45,90,61,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Min Volatility',data:reduce(ddSeries(minvolDaily)),borderColor:'#1B6B9A',backgroundColor:'rgba(27,107,154,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Min Drawdown',data:reduce(ddSeries(minddDaily)),borderColor:'#7B4FA0',backgroundColor:'rgba(123,79,160,0.05)',borderWidth:2,pointRadius:0,tension:0.1,fill:false},
+          {label:'Equal Weight',data:reduce(ddSeries(eqDaily)),borderColor:'#A67A2E',backgroundColor:'rgba(166,122,46,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1,fill:false}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+        scales:{
+          x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
+          y:{title:{display:true,text:'Просадка от пика, %'},ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.04)'}}
+        }
+      }
+    });
+
+    st.className='status ok';st.textContent='Готово · '+common.length+' торговых дней · '+nsim.toLocaleString('ru')+' симуляций';
+  }catch(e){
+    st.className='status err';st.textContent='Ошибка: '+e.message;
+  }finally{btn.disabled=false;}
+}
+</script>
+</body>
+</html>
