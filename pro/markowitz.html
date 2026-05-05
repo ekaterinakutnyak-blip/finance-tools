@@ -125,6 +125,9 @@ table.weights td.zero{color:var(--text3);opacity:0.5}
       </select>
     </label>
   </div>
+  <div style="font-size:0.72rem;color:var(--text3);margin-top:6px;line-height:1.5">
+    <strong style="color:var(--text2)">r<sub>f</sub>:</strong> используется в формуле Sharpe = (доходность − r<sub>f</sub>) / σ. Если r<sub>f</sub> близка к ожидаемой доходности рынка или выше — Max Sharpe становится неустойчив, может «улететь» в крайнюю точку с одной выросшей бумагой. Для устойчивых результатов попробуйте r<sub>f</sub> = 0–7%.
+  </div>
 
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
@@ -477,13 +480,13 @@ async function run(){
     if(frontierChart)frontierChart.destroy();
     const ctx1=document.getElementById('frontierChart').getContext('2d');
     const optimaDatasets=[
-      {label:'Max Sharpe',data:[{x:bestSharpe.v*100,y:bestSharpe.r*100}],backgroundColor:'#0F8043',pointRadius:16,pointHoverRadius:18,borderColor:'#000',borderWidth:2,pointStyle:'rectRot'},
-      {label:'Min Volatility',data:[{x:bestVol.v*100,y:bestVol.r*100}],backgroundColor:'#1976D2',pointRadius:16,pointHoverRadius:18,borderColor:'#000',borderWidth:2,pointStyle:'triangle'},
-      {label:'Min Drawdown',data:[{x:bestDD.v*100,y:bestDD.r*100}],backgroundColor:'#8E24AA',pointRadius:15,pointHoverRadius:17,borderColor:'#000',borderWidth:2,pointStyle:'rect'},
-      {label:'Equal Weight',data:[{x:eqV*100,y:eqR*100}],backgroundColor:'#F9A825',pointRadius:15,pointHoverRadius:17,borderColor:'#000',borderWidth:2,pointStyle:'circle'}
+      {label:'Max Sharpe',data:[{x:bestSharpe.v*100,y:bestSharpe.r*100}],backgroundColor:'#0F8043',pointRadius:22,pointHoverRadius:25,borderColor:'#FFF',borderWidth:3.5,pointStyle:'rectRot'},
+      {label:'Min Volatility',data:[{x:bestVol.v*100,y:bestVol.r*100}],backgroundColor:'#1976D2',pointRadius:22,pointHoverRadius:25,borderColor:'#FFF',borderWidth:3.5,pointStyle:'triangle'},
+      {label:'Min Drawdown',data:[{x:bestDD.v*100,y:bestDD.r*100}],backgroundColor:'#8E24AA',pointRadius:20,pointHoverRadius:23,borderColor:'#FFF',borderWidth:3.5,pointStyle:'rect'},
+      {label:'Equal Weight',data:[{x:eqV*100,y:eqR*100}],backgroundColor:'#F9A825',pointRadius:20,pointHoverRadius:23,borderColor:'#FFF',borderWidth:3.5,pointStyle:'circle'}
     ];
     if(userPort){
-      optimaDatasets.push({label:'Ваш портфель',data:[{x:userPort.v*100,y:userPort.r*100}],backgroundColor:'#D32F2F',pointRadius:18,pointHoverRadius:20,borderColor:'#000',borderWidth:2.5,pointStyle:'star'});
+      optimaDatasets.push({label:'Ваш портфель',data:[{x:userPort.v*100,y:userPort.r*100}],backgroundColor:'#D32F2F',pointRadius:26,pointHoverRadius:30,borderColor:'#FFF',borderWidth:4,pointStyle:'star'});
     }
 
     frontierChart=new Chart(ctx1,{
@@ -495,7 +498,7 @@ async function run(){
               const t=Math.max(-1,Math.min(2,p.s));
               const norm=(t+1)/3;
               const r=Math.round(180-norm*120),g=Math.round(64+norm*80),b=Math.round(64+norm*30);
-              return 'rgba('+r+','+g+','+b+',0.30)';
+              return 'rgba('+r+','+g+','+b+',0.20)';
             }),
             pointRadius:2,borderWidth:0
           },
