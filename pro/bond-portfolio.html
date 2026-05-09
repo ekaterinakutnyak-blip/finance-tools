@@ -113,6 +113,7 @@ canvas{width:100%!important;height:100%!important}
     </div>
   </div>
   <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
+    <div id="fxRatesInfo" style="margin-bottom:0.4rem"></div>
     Тип купона определяется по будущим купонам в графике облигации. Если хотя бы один будущий купон не зафиксирован — флоатер. Дальнейший анализ кредитного риска по спредам строится только на рублёвой фикс-части портфеля.
   </div>
 </div>
@@ -159,6 +160,32 @@ function moexFetch(url){
     window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
     document.body.appendChild(s);
   }));
+}
+
+async function loadFxRates(){
+  // Загружаем курсы основных валют с CETS. RUB всегда 1.
+  // Используем PREVPRICE как фоллбэк если LAST пустой (выходные/нерабочие дни).
+  const map={RUB:1,SUR:1};
+  const tickers={USD:'USD000UTSTOM',CNY:'CNYRUB_TOM',EUR:'EUR_RUB__TOM'};
+  for(const [cur,tk] of Object.entries(tickers)){
+    try{
+      const url='https://iss.moex.com/iss/engines/currency/markets/selt/boards/CETS/securities/'+tk+'.json?iss.meta=off';
+      const d=await moexFetch(url);
+      const mCols=d.marketdata.columns;const mRows=d.marketdata.data;
+      const sCols=d.securities.columns;const sRows=d.securities.data;
+      let rate=0;
+      if(mRows.length){
+        const md={};mCols.forEach((c,i)=>md[c]=mRows[0][i]);
+        rate=parseFloat(md.LAST||md.LCURRENTPRICE||md.MARKETPRICE||0);
+      }
+      if(!rate && sRows.length){
+        const s={};sCols.forEach((c,i)=>s[c]=sRows[0][i]);
+        rate=parseFloat(s.PREVPRICE||s.PREVADMITTEDQUOTE||0);
+      }
+      if(rate>0)map[cur]=rate;
+    }catch(e){}
+  }
+  return map;
 }
 
 async function loadBond(isin){
@@ -346,15 +373,23 @@ async function run(){
   btn.disabled=true;
 
   try{
+    // Курсы валют: USD, EUR, CNY → ₽
+    st.className='status';st.innerHTML='<span class="loader"></span>Загрузка курсов валют...';
+    const fxRates=await loadFxRates();
+
     const bonds=[];
     for(let i=0;i<port.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
       const b=await loadBond(port[i].isin);
       b.qty=port[i].qty;
-      // Market value = price% * faceValue / 100 * qty
-      b.marketValue=b.price/100*b.faceValue*b.qty;
-      // Annual coupon in rubles
-      b.annualCouponRub=b.annualCoupon*b.qty;
+      // Курс к рублю для валюты номинала. Для RUB/SUR = 1.
+      b.fxRate=fxRates[b.faceUnit]||1;
+      // Стоимость в валюте номинала
+      b.marketValueLocal=b.price/100*b.faceValue*b.qty;
+      // Стоимость в рублях (для рублёвых это та же сумма, для валютных — пересчёт по курсу)
+      b.marketValue=b.marketValueLocal*b.fxRate;
+      // Годовой купон в рублях (для валютных — тоже пересчёт)
+      b.annualCouponRub=b.annualCoupon*b.qty*b.fxRate;
       bonds.push(b);
       port[i].row.querySelector('.name').textContent=b.shortname;
     }
@@ -397,6 +432,15 @@ async function run(){
 
     // Structure: by currency and coupon type
     document.getElementById('structureCard').classList.remove('hidden');
+    // Показываем актуальные курсы которые применили
+    const usedCurrencies=[...new Set(bonds.filter(b=>!b.isRub).map(b=>b.faceUnit))];
+    const fxInfoEl=document.getElementById('fxRatesInfo');
+    if(usedCurrencies.length){
+      const parts=usedCurrencies.map(c=>c+' = '+(fxRates[c]||0).toFixed(2)+' ₽');
+      fxInfoEl.innerHTML='<strong style="color:var(--text2)">Курсы для пересчёта в ₽:</strong> '+parts.join(' · ')+' (с MOEX, доска CETS)';
+    }else{
+      fxInfoEl.innerHTML='';
+    }
     const buckets={cur:{},coup:{fix:0,float:0}};
     bonds.forEach(b=>{
       buckets.cur[b.currencyLabel]=(buckets.cur[b.currencyLabel]||0)+b.marketValue;
@@ -434,7 +478,10 @@ async function run(){
     bonds.forEach(b=>{
       const curTag=b.isRub?'<span class="tag-rub">'+b.currencyLabel+'</span>':'<span class="tag-fx">'+b.currencyLabel+'</span>';
       const cTag=b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>';
-      html+='<tr><td>'+b.shortname+'</td><td>'+curTag+'</td><td>'+cTag+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.marketValue).toLocaleString('ru-RU')+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
+      const valueCell=b.isRub
+        ? Math.round(b.marketValue).toLocaleString('ru-RU')
+        : Math.round(b.marketValue).toLocaleString('ru-RU')+'<br><span style="font-size:0.65rem;color:var(--text3)">'+Math.round(b.marketValueLocal).toLocaleString('ru-RU')+' '+b.currencyLabel+'</span>';
+      html+='<tr><td>'+b.shortname+'</td><td>'+curTag+'</td><td>'+cTag+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+valueCell+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
     });
     // Total row
     html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td></td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td></td><td></td></tr>';
