@@ -60,6 +60,17 @@ canvas{width:100%!important;height:100%!important}
 .stress-item{text-align:center;padding:0.6rem 0.4rem;border-radius:var(--radius);font-size:0.75rem}
 .stress-label{font-size:0.65rem;color:var(--text2)}
 .stress-val{font-family:var(--mono);font-weight:600;font-size:0.9rem}
+.struct-rows{display:flex;flex-direction:column;gap:8px}
+.struct-row{display:flex;align-items:center;gap:10px;font-size:0.78rem}
+.struct-row .lbl{min-width:90px;color:var(--text)}
+.struct-row .bar-wrap{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.struct-row .bar{height:100%;border-radius:4px}
+.struct-row .pct{font-family:var(--mono);font-size:0.78rem;font-weight:500;min-width:48px;text-align:right;color:var(--text)}
+.struct-row .val{font-family:var(--mono);font-size:0.7rem;color:var(--text3);min-width:90px;text-align:right}
+.tag-fix{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--accent-light);color:var(--accent)}
+.tag-float{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:#FDF7ED;color:#A67A2E}
+.tag-rub{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--surface2);color:var(--text2)}
+.tag-fx{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--accent2-light);color:var(--accent2)}
 </style>
 </head>
 <body>
@@ -87,6 +98,23 @@ canvas{width:100%!important;height:100%!important}
 <div class="card hidden" id="summaryCard">
   <div class="card-title">Портфель</div>
   <div class="results-grid" id="summaryGrid"></div>
+</div>
+
+<div class="card hidden" id="structureCard">
+  <div class="card-title">Структура портфеля</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+    <div>
+      <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">По валюте номинала</div>
+      <div id="structCurrency" class="struct-rows"></div>
+    </div>
+    <div>
+      <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">По типу купона</div>
+      <div id="structCoupon" class="struct-rows"></div>
+    </div>
+  </div>
+  <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
+    Тип купона определяется по будущим купонам в графике облигации. Если хотя бы один будущий купон не зафиксирован — флоатер. Дальнейший анализ кредитного риска по спредам строится только на рублёвой фикс-части портфеля.
+  </div>
 </div>
 
 <div class="card hidden" id="holdingsCard">
@@ -181,8 +209,40 @@ async function loadBond(isin){
   const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
   const nkd=parseFloat(sec.ACCRUEDINT||'0');
   const matDate=sec.MATDATE||'';
+  const offerDate=sec.OFFERDATE||sec.BUYBACKDATE||'';
   const nextCoupon=sec.NEXTCOUPON||'';
   const lotSize=parseInt(sec.LOTSIZE||'1');
+
+  // Валюта номинала: SUR/RUB → рубль, остальное → валютная
+  const faceUnit=(sec.FACEUNIT||'SUR').toUpperCase();
+  const isRub=(faceUnit==='SUR'||faceUnit==='RUB');
+  const currencyLabel=isRub?'RUB':faceUnit;
+
+  // Определяем тип купона через bondization: смотрим ВСЕ будущие купоны.
+  // Если хотя бы у одного будущего купона value/valueprc отсутствует или 0 — флоатер.
+  // Если все будущие купоны заполнены — фикс. ОФЗ-ИН (линкеры) тоже относим к флоатерам (купоны не известны заранее).
+  let couponType='fix'; // дефолт
+  try{
+    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
+    const bd=await moexFetch(bondUrl);
+    const cCols=bd.coupons.columns;const cRows=bd.coupons.data;
+    const today=new Date();
+    let futureKnown=0,futureUnknown=0;
+    cRows.forEach(row=>{
+      const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+      const cd=obj.coupondate?new Date(obj.coupondate):null;
+      if(!cd||cd<today)return; // прошлые купоны игнорим
+      const v=parseFloat(obj.value);
+      const vp=parseFloat(obj.valueprc);
+      if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))futureKnown++;
+      else futureUnknown++;
+    });
+    if(futureUnknown>0)couponType='float';
+    else if(futureKnown===0 && couponRate===0)couponType='float'; // нет данных и текущая ставка пустая → флоатер
+  }catch(e){
+    // Фоллбэк: если bondization недоступен — по COUPONPERCENT.
+    if(couponRate===0 && couponVal===0)couponType='float';
+  }
 
   // Duration in years
   let durationYears=durationRaw/365;
@@ -232,7 +292,8 @@ async function loadBond(isin){
   return{
     secid,shortname,ytm,duration:durationYears,modDuration,
     couponVal,couponPeriod,couponRate,annualCoupon,currentYield,
-    faceValue,price,nkd,matDate,nextCoupon,couponsPerYear,board
+    faceValue,price,nkd,matDate,offerDate,nextCoupon,couponsPerYear,board,
+    faceUnit,isRub,currencyLabel,couponType
   };
 }
 
@@ -334,15 +395,49 @@ async function run(){
       sg.appendChild(el);
     });
 
+    // Structure: by currency and coupon type
+    document.getElementById('structureCard').classList.remove('hidden');
+    const buckets={cur:{},coup:{fix:0,float:0}};
+    bonds.forEach(b=>{
+      buckets.cur[b.currencyLabel]=(buckets.cur[b.currencyLabel]||0)+b.marketValue;
+      buckets.coup[b.couponType]=(buckets.coup[b.couponType]||0)+b.marketValue;
+    });
+    const renderBars=(elId,data,colorMap)=>{
+      const el=document.getElementById(elId);el.innerHTML='';
+      const entries=Object.entries(data).sort((a,b)=>b[1]-a[1]);
+      entries.forEach(([k,v])=>{
+        if(v<=0)return;
+        const pct=v/totalValue*100;
+        const color=colorMap[k]||'var(--text2)';
+        el.insertAdjacentHTML('beforeend',
+          '<div class="struct-row">'+
+            '<span class="lbl">'+(colorMap.label?colorMap.label(k):k)+'</span>'+
+            '<span class="bar-wrap"><span class="bar" style="width:'+pct.toFixed(1)+'%;background:'+color+'"></span></span>'+
+            '<span class="pct">'+pct.toFixed(1)+'%</span>'+
+            '<span class="val">'+Math.round(v).toLocaleString('ru-RU')+' ₽</span>'+
+          '</div>');
+      });
+    };
+    renderBars('structCurrency',buckets.cur,{
+      RUB:'var(--accent)',USD:'var(--accent2)',CNY:'#A67A2E',EUR:'#7B4FA0',
+      label:k=>k==='RUB'?'Рублёвые':k+' (валютные)'
+    });
+    renderBars('structCoupon',buckets.coup,{
+      fix:'var(--accent)',float:'#A67A2E',
+      label:k=>k==='fix'?'Фиксированный':'Флоатер / линкер'
+    });
+
     // Holdings table
     document.getElementById('holdingsCard').classList.remove('hidden');
     const ht=document.getElementById('holdingsTable');
-    let html='<thead><tr><th>Бумага</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
+    let html='<thead><tr><th>Бумага</th><th>Вал.</th><th>Купон</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
     bonds.forEach(b=>{
-      html+='<tr><td>'+b.shortname+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.marketValue).toLocaleString('ru-RU')+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
+      const curTag=b.isRub?'<span class="tag-rub">'+b.currencyLabel+'</span>':'<span class="tag-fx">'+b.currencyLabel+'</span>';
+      const cTag=b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>';
+      html+='<tr><td>'+b.shortname+'</td><td>'+curTag+'</td><td>'+cTag+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.marketValue).toLocaleString('ru-RU')+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
     });
     // Total row
-    html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td></td><td></td></tr>';
+    html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td></td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td></td><td></td></tr>';
     html+='</tbody>';ht.innerHTML=html;
 
     // Stress test
