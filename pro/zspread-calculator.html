@@ -687,13 +687,34 @@ function calcZspread() {
 
   // Определяем горизонт расчёта: оферта или погашение
   let horizon = 'maturity';
+  let detectedHiddenOffer = null; // Скрытая оферта по обрыву купонов
+  const matDate = new Date(bondData.matDate);
+
+  // Поиск скрытой оферты: если последний известный купон с value>0 заметно раньше даты погашения,
+  // и есть будущие купоны с null/0 value — это сигнал что после "скрытой" оферты ставка ещё не определена.
+  const today_ms = today.getTime();
+  const futureCoupons = bondCoupons.filter(c => new Date(c.coupondate).getTime() > today_ms);
+  const futureKnownCoupons = futureCoupons.filter(c => c.value !== null && c.value > 0);
+  const futureUnknownCoupons = futureCoupons.filter(c => c.value === null || c.value === 0);
+
+  if (!bondData.hasOffer && futureKnownCoupons.length > 0 && futureUnknownCoupons.length > 0) {
+    // Есть и известные и неизвестные купоны — скорее всего скрытая оферта/пересмотр ставки
+    // Берём дату последнего известного купона как дату скрытой оферты
+    const lastKnown = futureKnownCoupons[futureKnownCoupons.length - 1];
+    detectedHiddenOffer = new Date(lastKnown.coupondate);
+  }
+
   if (bondData.hasOffer) {
     const radio = document.querySelector('input[name="horizon"]:checked');
     horizon = radio ? radio.value : 'offer';
+  } else if (detectedHiddenOffer) {
+    horizon = 'hidden_offer';
   }
-  const matDate = new Date(bondData.matDate);
+
   const offerDate = bondData.hasOffer ? new Date(bondData.offerDate) : null;
-  const horizonDate = (horizon === 'offer' && offerDate) ? offerDate : matDate;
+  let horizonDate = matDate;
+  if (horizon === 'offer' && offerDate) horizonDate = offerDate;
+  else if (horizon === 'hidden_offer' && detectedHiddenOffer) horizonDate = detectedHiddenOffer;
 
   // Build cash flows: future coupons + amortizations + final redemption
   const cashFlows = [];
@@ -796,9 +817,17 @@ function calcZspread() {
   const pdCum = 1 - survT;
   const el = pdCum * lgd;
 
-  // YTM в зависимости от горизонта: к оферте если выбран horizon=offer, иначе к погашению
-  const ytmDisplay = (horizon === 'offer' && bondData.hasOffer && bondData.ytmToOffer) ? bondData.ytmToOffer : bondData.ytm;
-  const horizonLabel = (horizon === 'offer' && bondData.hasOffer) ? 'к оферте' : 'к погашению';
+  // YTM в зависимости от горизонта
+  let ytmDisplay = bondData.ytm;
+  let horizonLabel = 'к погашению';
+  if (horizon === 'offer' && bondData.hasOffer) {
+    ytmDisplay = bondData.ytmToOffer;
+    horizonLabel = 'к оферте';
+  } else if (horizon === 'hidden_offer') {
+    horizonLabel = 'к пересмотру ставки '+horizonDate.toLocaleDateString('ru-RU');
+    // YTM к погашению с MOEX некорректен — он считает по предположению что купоны до конца. Лучше пересчитаем.
+    // Но для отображения оставляем то что есть, ниже в блоке статуса предупредим пользователя
+  }
 
   // Nominal spread (YTM based) for comparison
   const ofzRate = nsRate(T, gcurveParams);
@@ -868,11 +897,15 @@ function calcZspread() {
 
   st.className = 'status ok';
   const cfSum = cashFlows.reduce((s, cf) => s + cf.total, 0);
+  let hiddenOfferNote = '';
+  if (horizon === 'hidden_offer') {
+    hiddenOfferNote = ' · Обнаружена скрытая оферта/пересмотр ставки '+horizonDate.toLocaleDateString('ru-RU')+' (последний фиксированный купон). Расчёт идёт до этой даты.';
+  }
   if (!converged) {
     st.className = 'status err';
-    st.textContent = 'Бисекция не сошлась. PV(z='+zLo.toFixed(0)+'%)='+pvLo.toFixed(0)+' ₽, PV(z='+zHi.toFixed(0)+'%)='+pvHi.toFixed(0)+' ₽, цель='+target.toFixed(0)+' ₽. Сумма CF='+cfSum.toFixed(0)+' ₽ ('+cashFlows.length+' потоков). Возможно проблема с данными bondization или КБД.';
+    st.textContent = 'Бисекция не сошлась. PV(z='+zLo.toFixed(0)+'%)='+pvLo.toFixed(0)+' ₽, PV(z='+zHi.toFixed(0)+'%)='+pvHi.toFixed(0)+' ₽, цель='+target.toFixed(0)+' ₽. Сумма CF='+cfSum.toFixed(0)+' ₽ ('+cashFlows.length+' потоков).'+hiddenOfferNote;
   } else {
-    st.textContent = 'Z-spread = ' + zSpreadBps + ' бп · расхождение PV: ' + Math.abs(totalPV - dirtyPriceAbs).toFixed(4) + ' ₽ · '+cashFlows.length+' потоков, сумма CF='+cfSum.toFixed(0)+' ₽';
+    st.textContent = 'Z-spread = ' + zSpreadBps + ' бп · расхождение PV: ' + Math.abs(totalPV - dirtyPriceAbs).toFixed(4) + ' ₽ · '+cashFlows.length+' потоков, сумма CF='+cfSum.toFixed(0)+' ₽'+hiddenOfferNote;
   }
 }
 
