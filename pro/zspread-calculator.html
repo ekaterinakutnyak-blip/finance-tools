@@ -146,6 +146,12 @@ canvas{width:100%!important;height:100%!important}
       <span class="unit">ставка возврата при дефолте</span>
     </div>
   </div>
+  <div id="horizonToggle" class="hidden" style="margin-top:0.75rem;padding:0.6rem 0.8rem;background:var(--accent-light);border-radius:var(--radius);font-size:0.78rem">
+    <strong style="color:var(--accent)">Горизонт расчёта:</strong>
+    <label style="margin-left:0.5rem;cursor:pointer"><input type="radio" name="horizon" value="offer" checked> к оферте <span id="horizonOfferDate" style="color:var(--text2)"></span></label>
+    <label style="margin-left:1rem;cursor:pointer"><input type="radio" name="horizon" value="maturity"> к погашению <span id="horizonMatDate" style="color:var(--text2)"></span></label>
+    <div style="font-size:0.7rem;color:var(--text2);margin-top:0.3rem">Если у бумаги есть пут-оферта — рынок котирует доходность к оферте. Поток денег обрезается датой оферты, в этой дате добавляется выплата номинала.</div>
+  </div>
   <div style="margin-top:1rem;text-align:right">
     <button class="btn" id="calcBtn" onclick="calcZspread()">Рассчитать Z-spread</button>
   </div>
@@ -483,13 +489,14 @@ async function loadBond() {
 
     // Use YTM to offer if offer date exists and is before maturity
     const hasOffer = offerDate && offerDate.length > 0 && ytmToOffer > 0 && new Date(offerDate) > new Date();
-    const ytm = ytmToMat;
+    // По умолчанию YTM = к оферте если есть; но в результатах будем отображать актуальное (после выбора)
+    const ytm = hasOffer ? ytmToOffer : ytmToMat;
 
     bondData = {
       secid, isin, primaryBoard,
       name: desc.NAME || sec.SECNAME || secid,
       faceValue, currentFace, matDate, offerDate, hasOffer, couponVal, couponPeriod,
-      accruedInt, prevPrice, ytm,
+      accruedInt, prevPrice, ytm, ytmToOffer, ytmToMat,
       couponPercent: desc.COUPONPERCENT || '',
       issueDate: desc.ISSUEDATE || '',
       faceUnit: desc.FACEUNIT || 'SUR'
@@ -515,6 +522,12 @@ async function loadBond() {
     if (hasOffer) {
       chips.push(['Оферта', offerDate]);
       chips.push(['YTM к оферте', ytmToOffer.toFixed(2) + '%']);
+      // Показываем переключатель горизонта
+      document.getElementById('horizonToggle').classList.remove('hidden');
+      document.getElementById('horizonOfferDate').textContent = '('+offerDate+')';
+      document.getElementById('horizonMatDate').textContent = '('+matDate+')';
+    } else {
+      document.getElementById('horizonToggle').classList.add('hidden');
     }
     chips.forEach(([lbl, val]) => {
       const el = document.createElement('div');
@@ -672,22 +685,31 @@ function calcZspread() {
   const faceVal = bondData.currentFace;
   const dirtyPriceAbs = dirtyPricePct / 100 * faceVal;
 
+  // Определяем горизонт расчёта: оферта или погашение
+  let horizon = 'maturity';
+  if (bondData.hasOffer) {
+    const radio = document.querySelector('input[name="horizon"]:checked');
+    horizon = radio ? radio.value : 'offer';
+  }
+  const matDate = new Date(bondData.matDate);
+  const offerDate = bondData.hasOffer ? new Date(bondData.offerDate) : null;
+  const horizonDate = (horizon === 'offer' && offerDate) ? offerDate : matDate;
+
   // Build cash flows: future coupons + amortizations + final redemption
   const cashFlows = [];
-  const matDate = new Date(bondData.matDate);
 
-  // Add future coupons
+  // Add future coupons (только до даты горизонта включительно)
   bondCoupons.forEach(c => {
     const d = new Date(c.coupondate);
-    if (d > today && c.value !== null && c.value > 0) {
+    if (d > today && d <= horizonDate && c.value !== null && c.value > 0) {
       cashFlows.push({ date: d, coupon: c.value, amort: 0 });
     }
   });
 
-  // Add amortizations
+  // Add amortizations (только до даты горизонта)
   bondAmorts.forEach(a => {
     const d = new Date(a.amortdate);
-    if (d > today && a.value !== null && a.value > 0) {
+    if (d > today && d <= horizonDate && a.value !== null && a.value > 0) {
       const existing = cashFlows.find(cf => cf.date.getTime() === d.getTime());
       if (existing) {
         existing.amort = a.value;
@@ -697,14 +719,14 @@ function calcZspread() {
     }
   });
 
-  // If no amortization found for maturity, add face redemption
-  const hasMatAmort = cashFlows.some(cf => cf.amort > 0);
-  if (!hasMatAmort) {
-    const existing = cashFlows.find(cf => cf.date.getTime() === matDate.getTime());
+  // В дате горизонта добавляем погашение номинала (если ещё не было амортизации в этой дате)
+  const hasHorizonRedemption = cashFlows.some(cf => cf.date.getTime() === horizonDate.getTime() && cf.amort > 0);
+  if (!hasHorizonRedemption) {
+    const existing = cashFlows.find(cf => cf.date.getTime() === horizonDate.getTime());
     if (existing) {
       existing.amort = faceVal;
     } else {
-      cashFlows.push({ date: matDate, coupon: 0, amort: faceVal });
+      cashFlows.push({ date: horizonDate, coupon: 0, amort: faceVal });
     }
   }
 
@@ -734,8 +756,22 @@ function calcZspread() {
   }
 
   // Bisection to find Z-spread
-  let zLo = -5, zHi = 100;
+  // Расширенный диапазон: для ВДО Z-spread может быть огромным
+  let zLo = -10, zHi = 500;
   const target = dirtyPriceAbs;
+
+  // Sanity check: PV при z=zLo и z=zHi должны быть по разные стороны target
+  const pvLo = pvAtZspread(zLo);
+  const pvHi = pvAtZspread(zHi);
+
+  let converged = true;
+  if (pvLo < target) {
+    // PV даже при минимальном z уже меньше цены — что-то с потоками или ценой
+    converged = false;
+  } else if (pvHi > target) {
+    // PV даже при z=500% больше цены — экстремально, не должно быть
+    converged = false;
+  }
 
   for (let iter = 0; iter < 200; iter++) {
     const zMid = (zLo + zHi) / 2;
@@ -760,9 +796,13 @@ function calcZspread() {
   const pdCum = 1 - survT;
   const el = pdCum * lgd;
 
+  // YTM в зависимости от горизонта: к оферте если выбран horizon=offer, иначе к погашению
+  const ytmDisplay = (horizon === 'offer' && bondData.hasOffer && bondData.ytmToOffer) ? bondData.ytmToOffer : bondData.ytm;
+  const horizonLabel = (horizon === 'offer' && bondData.hasOffer) ? 'к оферте' : 'к погашению';
+
   // Nominal spread (YTM based) for comparison
   const ofzRate = nsRate(T, gcurveParams);
-  const nomSpread = bondData.ytm - ofzRate;
+  const nomSpread = ytmDisplay - ofzRate;
   const nomSpreadBps = Math.round(nomSpread * 100);
 
   // Build results
@@ -770,15 +810,15 @@ function calcZspread() {
   const rg = document.getElementById('resultsGrid');
   rg.innerHTML = '';
   const metrics = [
-    ['Z-spread', zSpreadBps + ' бп', 'к КБД ОФЗ', 'hl'],
+    ['Z-spread', zSpreadBps + ' бп', horizonLabel + ', к КБД ОФЗ', 'hl'],
     ['Номинальный спред', nomSpreadBps + ' бп', 'YTM − ОФЗ(' + T.toFixed(1) + 'Y)', ''],
     ['Hazard rate (λ)', (lambda * 100).toFixed(2) + '%', 'при RR ' + Math.round(rr * 100) + '%', ''],
     ['PD годовая', (pdAnnual * 100).toFixed(2) + '%', 'risk-neutral', 'hl2'],
-    ['PD кумулятивная', (pdCum * 100).toFixed(2) + '%', 'за ' + T.toFixed(1) + ' лет', 'hl2'],
+    ['PD кумулятивная', (pdCum * 100).toFixed(2) + '%', 'за ' + T.toFixed(1) + ' лет ('+horizonLabel+')', 'hl2'],
     ['P(выживание)', (survT * 100).toFixed(2) + '%', 'за ' + T.toFixed(1) + ' лет', ''],
     ['Expected Loss', (el * 100).toFixed(2) + '%', 'от номинала', ''],
     ['ОФЗ бенчмарк', ofzRate.toFixed(2) + '%', T.toFixed(1) + ' лет по КБД', ''],
-    ['YTM (биржа)', bondData.ytm.toFixed(2) + '%', 'MOEX', '']
+    ['YTM (биржа)', ytmDisplay.toFixed(2) + '%', 'MOEX, ' + horizonLabel, '']
   ];
   metrics.forEach(([lbl, val, sub, cls]) => {
     const el = document.createElement('div');
@@ -827,7 +867,13 @@ function calcZspread() {
   tbl.innerHTML = html;
 
   st.className = 'status ok';
-  st.textContent = 'Z-spread = ' + zSpreadBps + ' бп · расхождение PV: ' + Math.abs(totalPV - dirtyPriceAbs).toFixed(4) + ' ₽';
+  const cfSum = cashFlows.reduce((s, cf) => s + cf.total, 0);
+  if (!converged) {
+    st.className = 'status err';
+    st.textContent = 'Бисекция не сошлась. PV(z='+zLo.toFixed(0)+'%)='+pvLo.toFixed(0)+' ₽, PV(z='+zHi.toFixed(0)+'%)='+pvHi.toFixed(0)+' ₽, цель='+target.toFixed(0)+' ₽. Сумма CF='+cfSum.toFixed(0)+' ₽ ('+cashFlows.length+' потоков). Возможно проблема с данными bondization или КБД.';
+  } else {
+    st.textContent = 'Z-spread = ' + zSpreadBps + ' бп · расхождение PV: ' + Math.abs(totalPV - dirtyPriceAbs).toFixed(4) + ' ₽ · '+cashFlows.length+' потоков, сумма CF='+cfSum.toFixed(0)+' ₽';
+  }
 }
 
 // ======================== EVENTS ========================
