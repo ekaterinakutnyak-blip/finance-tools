@@ -123,6 +123,19 @@ canvas{width:100%!important;height:100%!important}
   <div class="table-wrap"><table id="holdingsTable"></table></div>
 </div>
 
+<div class="card hidden" id="creditCard">
+  <div class="card-title">Кредитный риск · рублёвая фикс-часть</div>
+  <div id="creditInfo" style="font-size:0.78rem;color:var(--text2);margin-bottom:1rem"></div>
+  <div class="results-grid" id="creditSummary" style="margin-bottom:1.25rem"></div>
+  <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">Распределение фикс-части по зонам кредитного качества (по Z-spread)</div>
+  <div id="creditZones" class="struct-rows" style="margin-bottom:1.25rem"></div>
+  <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">По каждой бумаге</div>
+  <div class="matrix-wrap"><table class="weights" id="creditTable"></table></div>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.7rem;color:var(--text3)">
+    Z-spread — параллельный сдвиг кривой КБД ОФЗ, при котором приведённая стоимость денежных потоков равна грязной цене. Для бумаг с офертой и для бумаг со скрытой офертой (фиксированы только ближайшие купоны) расчёт идёт к дате оферты/последнего фикс. купона. PD — risk-neutral вероятность дефолта из Z-spread при Recovery Rate 20%. Метрики не учитывают валютные облигации и флоатеры/линкеры.
+  </div>
+</div>
+
 <div class="card hidden" id="stressCard">
   <div class="card-title">Стресс-тест: изменение стоимости портфеля при сдвиге КС</div>
   <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
@@ -186,6 +199,167 @@ async function loadFxRates(){
     }catch(e){}
   }
   return map;
+}
+
+// ===== КБД ОФЗ =====
+let gcurvePoints=[];
+
+function nsRate(t){
+  if(!gcurvePoints.length||t<=0)return 0;
+  if(t<=gcurvePoints[0].t)return gcurvePoints[0].rate;
+  if(t>=gcurvePoints[gcurvePoints.length-1].t)return gcurvePoints[gcurvePoints.length-1].rate;
+  for(let i=1;i<gcurvePoints.length;i++){
+    if(t<=gcurvePoints[i].t){
+      const p0=gcurvePoints[i-1],p1=gcurvePoints[i];
+      const frac=(t-p0.t)/(p1.t-p0.t);
+      return p0.rate+frac*(p1.rate-p0.rate);
+    }
+  }
+  return gcurvePoints[gcurvePoints.length-1].rate;
+}
+
+async function loadGcurve(){
+  gcurvePoints=[];
+  try{
+    const d=await moexFetch('https://iss.moex.com/iss/engines/stock/zcyc/securities.json?iss.meta=off');
+    const dataCols=d.data.columns;
+    const periodIdx=dataCols.indexOf('period');
+    const valueIdx=dataCols.indexOf('value');
+    d.data.data.forEach(row=>{
+      const p=parseFloat(row[periodIdx]);
+      const v=parseFloat(row[valueIdx]);
+      if(!isNaN(p)&&!isNaN(v)&&p>0)gcurvePoints.push({t:p,rate:v});
+    });
+    gcurvePoints.sort((a,b)=>a.t-b.t);
+    if(gcurvePoints.length>0)return;
+  }catch(e){}
+
+  // Fallback: ОФЗ-ПД
+  try{
+    const d=await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,MATDATE,YIELDATPREVWAPRICE');
+    const cols=d.securities.columns;
+    const secidIdx=cols.indexOf('SECID');
+    const matIdx=cols.indexOf('MATDATE');
+    const yieldIdx=cols.indexOf('YIELDATPREVWAPRICE');
+    const today=new Date();today.setHours(0,0,0,0);
+    d.securities.data.forEach(row=>{
+      const secid=row[secidIdx]||'';
+      const matDate=row[matIdx];
+      const ytm=parseFloat(row[yieldIdx]);
+      if(secid.startsWith('SU26')&&matDate&&ytm>=8&&ytm<=25){
+        const years=(new Date(matDate)-today)/(365.25*86400000);
+        if(years>0.1)gcurvePoints.push({t:years,rate:ytm});
+      }
+    });
+    gcurvePoints.sort((a,b)=>a.t-b.t);
+  }catch(e){}
+}
+
+// ===== Кредитные метрики для одной бумаги =====
+// Возвращает {gSpread, zSpread, T_eff, horizonDate, hidden, pdAnnual, pdCum, lambda, expectedLoss}
+async function computeCreditMetrics(b, dirtyPriceAbs){
+  // 1. Подгружаем bondization (купоны + амортизации)
+  let bondCoupons=[],bondAmorts=[];
+  try{
+    const url='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+b.secid+'.json?iss.meta=off&limit=unlimited';
+    const d=await moexFetch(url);
+    if(d.coupons){
+      const cCols=d.coupons.columns;
+      d.coupons.data.forEach(row=>{
+        const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+        bondCoupons.push({coupondate:obj.coupondate,value:parseFloat(obj.value)||null,valueprc:parseFloat(obj.valueprc)||null});
+      });
+    }
+    if(d.amortizations){
+      const aCols=d.amortizations.columns;
+      d.amortizations.data.forEach(row=>{
+        const obj={};aCols.forEach((c,i)=>obj[c]=row[i]);
+        bondAmorts.push({amortdate:obj.amortdate,value:parseFloat(obj.value)||null});
+      });
+    }
+  }catch(e){return null;}
+
+  const today=new Date();today.setHours(0,0,0,0);
+  const today_ms=today.getTime();
+  const matDate=new Date(b.matDate);
+
+  // 2. Детект скрытой оферты по обрыву купонов
+  const futureCoupons=bondCoupons.filter(c=>new Date(c.coupondate).getTime()>today_ms);
+  const futureKnown=futureCoupons.filter(c=>c.value!==null&&c.value>0);
+  const futureUnknown=futureCoupons.filter(c=>c.value===null||c.value===0);
+  let horizonDate=matDate;
+  let hidden=false;
+  if(b.offerDate&&new Date(b.offerDate)>today){
+    horizonDate=new Date(b.offerDate);
+  }else if(futureKnown.length>0&&futureUnknown.length>0){
+    horizonDate=new Date(futureKnown[futureKnown.length-1].coupondate);
+    hidden=true;
+  }
+
+  // 3. Строим cashFlows до горизонта (на 1 бумагу, номинал b.faceValue)
+  const cashFlows=[];
+  bondCoupons.forEach(c=>{
+    const d=new Date(c.coupondate);
+    if(d>today&&d<=horizonDate&&c.value!==null&&c.value>0){
+      cashFlows.push({date:d,coupon:c.value,amort:0});
+    }
+  });
+  bondAmorts.forEach(a=>{
+    const d=new Date(a.amortdate);
+    if(d>today&&d<=horizonDate&&a.value!==null&&a.value>0){
+      const ex=cashFlows.find(cf=>cf.date.getTime()===d.getTime());
+      if(ex)ex.amort=a.value;else cashFlows.push({date:d,coupon:0,amort:a.value});
+    }
+  });
+  // Погашение в дате горизонта
+  const hasRedem=cashFlows.some(cf=>cf.date.getTime()===horizonDate.getTime()&&cf.amort>0);
+  if(!hasRedem){
+    const ex=cashFlows.find(cf=>cf.date.getTime()===horizonDate.getTime());
+    if(ex)ex.amort=b.faceValue;else cashFlows.push({date:horizonDate,coupon:0,amort:b.faceValue});
+  }
+  cashFlows.sort((a,b)=>a.date-b.date);
+  cashFlows.forEach(cf=>{cf.total=cf.coupon+cf.amort;cf.t=(cf.date-today)/(365.25*86400000);});
+
+  const T_eff=(horizonDate-today)/(365.25*86400000);
+
+  // 4. PV функция от Z-spread (z в процентных пунктах)
+  const target=dirtyPriceAbs;
+  function pvAtZ(z){
+    let pv=0;
+    cashFlows.forEach(cf=>{
+      const r=nsRate(cf.t)/100+z/100;
+      pv+=cf.total/Math.pow(1+r,cf.t);
+    });
+    return pv;
+  }
+
+  // 5. Бисекция Z-spread в диапазоне [-10, 500]
+  let zLo=-10,zHi=500;
+  const pvLo=pvAtZ(zLo),pvHi=pvAtZ(zHi);
+  if(pvLo<target||pvHi>target){
+    return {gSpread:null,zSpread:null,T_eff,horizonDate,hidden,pdAnnual:null,pdCum:null,lambda:null,expectedLoss:null,error:'bisection_no_converge',cfSum:cashFlows.reduce((s,cf)=>s+cf.total,0),numCF:cashFlows.length};
+  }
+  for(let iter=0;iter<200;iter++){
+    const zMid=(zLo+zHi)/2;
+    const pvMid=pvAtZ(zMid);
+    if(pvMid>target)zLo=zMid;else zHi=zMid;
+    if(Math.abs(zHi-zLo)<0.0001)break;
+  }
+  const zSpread=(zLo+zHi)/2; // в п.п.
+
+  // 6. G-spread = YTM − КБД(T_eff)
+  // Берём YTM с биржи (b.ytm уже есть). КБД на T_eff.
+  const ofzRate=nsRate(T_eff);
+  const gSpread=b.ytm-ofzRate;
+
+  // 7. PD из Z-spread (risk-neutral, RR=20%)
+  const RR=0.20;
+  const lambda=(zSpread/100)/(1-RR); // hazard rate (1/год)
+  const pdAnnual=1-Math.exp(-lambda);
+  const pdCum=1-Math.exp(-lambda*T_eff);
+  const expectedLoss=pdCum*(1-RR);
+
+  return {gSpread,zSpread,zSpreadBps:Math.round(zSpread*100),T_eff,horizonDate,hidden,pdAnnual,pdCum,lambda,expectedLoss,ofzRate,cfSum:cashFlows.reduce((s,cf)=>s+cf.total,0),numCF:cashFlows.length};
 }
 
 async function loadBond(isin){
@@ -377,6 +551,10 @@ async function run(){
     st.className='status';st.innerHTML='<span class="loader"></span>Загрузка курсов валют...';
     const fxRates=await loadFxRates();
 
+    // КБД ОФЗ — для расчёта G-spread и Z-spread рублёвых фиксов
+    st.className='status';st.innerHTML='<span class="loader"></span>Загрузка КБД ОФЗ...';
+    await loadGcurve();
+
     const bonds=[];
     for(let i=0;i<port.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
@@ -470,6 +648,110 @@ async function run(){
       fix:'var(--accent)',float:'#A67A2E',
       label:k=>k==='fix'?'Фиксированный':'Флоатер / линкер'
     });
+
+    // ===== Credit metrics: только рублёвые фиксы =====
+    const nowDate=new Date();nowDate.setHours(0,0,0,0);
+    const rubFix=bonds.filter(b=>b.isRub&&b.couponType==='fix');
+    if(rubFix.length>0 && gcurvePoints.length>0){
+      for(let i=0;i<rubFix.length;i++){
+        const b=rubFix[i];
+        st.className='status';st.innerHTML='<span class="loader"></span>Кредитный риск: '+b.shortname+' ('+(i+1)+'/'+rubFix.length+')...';
+        const dirty=b.price/100*b.faceValue+b.nkd; // грязная цена в рублях за 1 бумагу
+        const metrics=await computeCreditMetrics(b,dirty);
+        b.credit=metrics;
+      }
+
+      // Сумма рублёвых фиксов
+      const rubFixValue=rubFix.reduce((s,b)=>s+b.marketValue,0);
+      // Взвешенные метрики (по рыночной стоимости в рубл. фикс-части)
+      const valid=rubFix.filter(b=>b.credit&&b.credit.zSpread!==null);
+      const validValue=valid.reduce((s,b)=>s+b.marketValue,0);
+      const wZ=validValue>0?valid.reduce((s,b)=>s+b.marketValue*b.credit.zSpread,0)/validValue:0;
+      const wG=validValue>0?valid.reduce((s,b)=>s+b.marketValue*b.credit.gSpread,0)/validValue:0;
+      const wPDann=validValue>0?valid.reduce((s,b)=>s+b.marketValue*b.credit.pdAnnual,0)/validValue:0;
+      const wPDcum=validValue>0?valid.reduce((s,b)=>s+b.marketValue*b.credit.pdCum,0)/validValue:0;
+
+      // Распределение по зонам Z-spread (на основе рыночной стоимости в рубл. фикс-части)
+      const zones={premium:0,quality:0,medium:0,vdo:0};
+      valid.forEach(b=>{
+        const bps=b.credit.zSpreadBps;
+        if(bps<100)zones.premium+=b.marketValue;
+        else if(bps<300)zones.quality+=b.marketValue;
+        else if(bps<700)zones.medium+=b.marketValue;
+        else zones.vdo+=b.marketValue;
+      });
+
+      // Рендер карточки кредитного риска
+      document.getElementById('creditCard').classList.remove('hidden');
+      document.getElementById('creditInfo').textContent='Анализ проведён по '+valid.length+' из '+rubFix.length+' рублёвых фикс-бумаг (стоимость '+Math.round(rubFixValue).toLocaleString('ru-RU')+' ₽ = '+(rubFixValue/totalValue*100).toFixed(1)+'% портфеля).';
+
+      // Summary metrics
+      const csg=document.getElementById('creditSummary');csg.innerHTML='';
+      const credCards=[
+        {label:'Средневзвеш. G-spread',val:(wG*100).toFixed(0)+' бп',sub:'YTM − КБД ОФЗ'},
+        {label:'Средневзвеш. Z-spread',val:(wZ*100).toFixed(0)+' бп',sub:'параллельный сдвиг КБД'},
+        {label:'Средневзвеш. PD (год)',val:(wPDann*100).toFixed(2)+'%',sub:'risk-neutral, RR 20%'}
+      ];
+      credCards.forEach(c=>{
+        csg.insertAdjacentHTML('beforeend',
+          '<div class="result-card"><div class="result-label">'+c.label+'</div>'+
+          '<div class="result-value">'+c.val+'</div>'+
+          '<div class="result-sub">'+c.sub+'</div></div>');
+      });
+
+      // Zones bar chart
+      const zoneEl=document.getElementById('creditZones');zoneEl.innerHTML='';
+      const zoneLabels={
+        premium:{label:'Премиум (<100 бп)',color:'#2D5A3D',desc:'квазисувер, голубые фишки'},
+        quality:{label:'Качественные (100–300 бп)',color:'#1B6B9A',desc:'первый-второй эшелон'},
+        medium:{label:'Средний риск (300–700 бп)',color:'#A67A2E',desc:'третий эшелон'},
+        vdo:{label:'ВДО (>700 бп)',color:'#B44040',desc:'высокодоходные, высокий риск'}
+      };
+      Object.entries(zoneLabels).forEach(([k,info])=>{
+        const v=zones[k];
+        if(v<=0)return;
+        const pct=v/validValue*100;
+        zoneEl.insertAdjacentHTML('beforeend',
+          '<div class="struct-row">'+
+            '<span class="lbl" style="min-width:200px">'+info.label+'</span>'+
+            '<span class="bar-wrap"><span class="bar" style="width:'+pct.toFixed(1)+'%;background:'+info.color+'"></span></span>'+
+            '<span class="pct">'+pct.toFixed(1)+'%</span>'+
+            '<span class="val">'+Math.round(v).toLocaleString('ru-RU')+' ₽</span>'+
+          '</div>');
+      });
+
+      // Per-bond table
+      const ct=document.getElementById('creditTable');
+      let chtml='<thead><tr><th>Бумага</th><th>YTM</th><th>G-spread</th><th>Z-spread</th><th>Горизонт</th><th>PD (год)</th><th>PD кум.</th><th>EL</th><th>Зона</th></tr></thead><tbody>';
+      rubFix.forEach(b=>{
+        if(!b.credit||b.credit.zSpread===null){
+          chtml+='<tr><td>'+b.shortname+'</td><td colspan="8" style="color:var(--text3);font-style:italic">Не удалось рассчитать (бисекция не сошлась)</td></tr>';
+          return;
+        }
+        const c=b.credit;
+        const bps=c.zSpreadBps;
+        let zoneTag='';
+        if(bps<100)zoneTag='<span style="background:#EDF7F1;color:#2D7A4F;padding:1px 6px;border-radius:3px;font-size:0.65rem">премиум</span>';
+        else if(bps<300)zoneTag='<span style="background:#E6F1FB;color:#1B6B9A;padding:1px 6px;border-radius:3px;font-size:0.65rem">качество</span>';
+        else if(bps<700)zoneTag='<span style="background:#FDF7ED;color:#A67A2E;padding:1px 6px;border-radius:3px;font-size:0.65rem">средний</span>';
+        else zoneTag='<span style="background:#FDECEC;color:#B44040;padding:1px 6px;border-radius:3px;font-size:0.65rem">ВДО</span>';
+        const horizonText=c.hidden
+          ?c.horizonDate.toLocaleDateString('ru-RU')+' <span style="color:var(--text3);font-size:0.65rem">(скрытая оферта)</span>'
+          :(b.offerDate&&new Date(b.offerDate)>nowDate)
+            ?c.horizonDate.toLocaleDateString('ru-RU')+' <span style="color:var(--text3);font-size:0.65rem">(оферта)</span>'
+            :c.horizonDate.toLocaleDateString('ru-RU');
+        chtml+='<tr><td>'+b.shortname+'</td>'+
+          '<td>'+b.ytm.toFixed(2)+'%</td>'+
+          '<td style="font-family:var(--mono)">'+Math.round(c.gSpread*100)+' бп</td>'+
+          '<td style="font-family:var(--mono)">'+c.zSpreadBps+' бп</td>'+
+          '<td style="font-size:0.72rem">'+horizonText+'</td>'+
+          '<td>'+(c.pdAnnual*100).toFixed(2)+'%</td>'+
+          '<td>'+(c.pdCum*100).toFixed(2)+'%</td>'+
+          '<td>'+(c.expectedLoss*100).toFixed(2)+'%</td>'+
+          '<td>'+zoneTag+'</td></tr>';
+      });
+      ct.innerHTML=chtml+'</tbody>';
+    }
 
     // Holdings table
     document.getElementById('holdingsCard').classList.remove('hidden');

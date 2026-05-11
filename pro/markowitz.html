@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Оптимизация портфеля · Markowitz · MOEX</title>
@@ -599,6 +612,119 @@ function renderVarTable(methods,totalValue){
   t.innerHTML=html+'</tbody>';
 }
 
+// ===== Аналитика портфельной оптимизации (Markowitz closed-form) =====
+// Инверсия положительно определённой матрицы Σ через Gauss-Jordan
+function invertMatrix(A){
+  const n=A.length;
+  const M=A.map((row,i)=>{
+    const r=row.slice();
+    for(let j=0;j<n;j++)r.push(i===j?1:0);
+    return r;
+  });
+  for(let i=0;i<n;i++){
+    let maxRow=i;let maxVal=Math.abs(M[i][i]);
+    for(let k=i+1;k<n;k++){if(Math.abs(M[k][i])>maxVal){maxVal=Math.abs(M[k][i]);maxRow=k;}}
+    if(maxVal<1e-12)return null;
+    if(maxRow!==i){[M[i],M[maxRow]]=[M[maxRow],M[i]];}
+    const piv=M[i][i];
+    for(let j=0;j<2*n;j++)M[i][j]/=piv;
+    for(let k=0;k<n;k++){
+      if(k===i)continue;
+      const f=M[k][i];
+      for(let j=0;j<2*n;j++)M[k][j]-=f*M[i][j];
+    }
+  }
+  return M.map(row=>row.slice(n));
+}
+
+function matVec(A,v){
+  return A.map(row=>row.reduce((s,a,i)=>s+a*v[i],0));
+}
+
+function analyticMinVol(cov,tickers){
+  let active=tickers.map((_,i)=>i);
+  for(let pass=0;pass<tickers.length;pass++){
+    const sub=active.map(i=>active.map(j=>cov[i][j]));
+    const inv=invertMatrix(sub);
+    if(!inv){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach(i=>wOut[i]=1/active.length);
+      return wOut;
+    }
+    const ones=new Array(active.length).fill(1);
+    const x=matVec(inv,ones);
+    const s=x.reduce((a,b)=>a+b,0);
+    const w=x.map(v=>v/s);
+    const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
+    if(negIdx.length===0){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach((origI,k)=>wOut[origI]=Math.max(w[k],0));
+      const sum=wOut.reduce((a,b)=>a+b,0);
+      return wOut.map(v=>v/sum);
+    }
+    let worst=negIdx[0];for(const i of negIdx)if(w[i]<w[worst])worst=i;
+    active=active.filter((_,k)=>k!==worst);
+    if(active.length<=1){
+      const wOut=new Array(tickers.length).fill(0);
+      if(active.length===1)wOut[active[0]]=1;
+      return wOut;
+    }
+  }
+  return tickers.map(()=>1/tickers.length);
+}
+
+function analyticMaxSharpe(cov,mu,rf,tickers){
+  let active=tickers.map((_,i)=>i);
+  for(let pass=0;pass<tickers.length;pass++){
+    const sub=active.map(i=>active.map(j=>cov[i][j]));
+    const inv=invertMatrix(sub);
+    if(!inv){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach(i=>wOut[i]=1/active.length);
+      return wOut;
+    }
+    const excess=active.map(i=>mu[i]-rf);
+    const x=matVec(inv,excess);
+    const s=x.reduce((a,b)=>a+b,0);
+    if(Math.abs(s)<1e-12){
+      return analyticMinVol(cov,tickers);
+    }
+    const w=x.map(v=>v/s);
+    const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
+    if(negIdx.length===0){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach((origI,k)=>wOut[origI]=Math.max(w[k],0));
+      const sum=wOut.reduce((a,b)=>a+b,0);
+      return wOut.map(v=>v/sum);
+    }
+    let worst=negIdx[0];for(const i of negIdx)if(w[i]<w[worst])worst=i;
+    active=active.filter((_,k)=>k!==worst);
+    if(active.length<=1){
+      const wOut=new Array(tickers.length).fill(0);
+      if(active.length===1)wOut[active[0]]=1;
+      return wOut;
+    }
+  }
+  return tickers.map(()=>1/tickers.length);
+}
+
+function buildCovAndMean(tickers,retMap){
+  const n=tickers.length;
+  const means=tickers.map(t=>{const r=retMap[t];return r.reduce((a,b)=>a+b,0)/r.length;});
+  const cov=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++){
+    for(let j=i;j<n;j++){
+      const ri=retMap[tickers[i]],rj=retMap[tickers[j]];
+      let s=0;
+      const L=Math.min(ri.length,rj.length);
+      for(let k=0;k<L;k++)s+=(ri[k]-means[i])*(rj[k]-means[j]);
+      const c=s/(L-1);
+      cov[i][j]=c;cov[j][i]=c;
+    }
+  }
+  return {cov,means};
+}
+
 async function run(){
   const tickers=getTickers();
   if(tickers.length<2){
@@ -648,8 +774,6 @@ async function run(){
     await new Promise(r=>setTimeout(r,30)); // let UI breathe
 
     const cloud=[];
-    let bestSharpe={s:-Infinity,w:null,r:0,v:0,d:0};
-    let bestVol={v:Infinity,w:null,r:0,s:0,d:0};
     let bestDD={d:Infinity,w:null,r:0,v:0,s:0};
 
     for(let k=0;k<nsim;k++){
@@ -661,10 +785,32 @@ async function run(){
       const sh=av>0?(ar-rf)/av:0;
       cloud.push({r:ar,v:av,d:md,s:sh});
 
-      if(sh>bestSharpe.s){bestSharpe={s:sh,w:w.slice(),r:ar,v:av,d:md};}
-      if(av<bestVol.v){bestVol={v:av,w:w.slice(),r:ar,s:sh,d:md};}
+      // Min DD остаётся через Monte Carlo — для просадки нет закрытой формы
       if(md<bestDD.d){bestDD={d:md,w:w.slice(),r:ar,v:av,s:sh};}
     }
+
+    // ===== Аналитика: Max Sharpe и Min Volatility =====
+    const {cov:covDaily,means:meanDaily}=buildCovAndMean(tickers,retMap);
+    const muAnnual=meanDaily.map(m=>m*252);
+    const covAnnual=covDaily.map(row=>row.map(c=>c*252));
+
+    const wSharpe=analyticMaxSharpe(covAnnual,muAnnual,rf,tickers);
+    const wMinVol=analyticMinVol(covAnnual,tickers);
+
+    const sharpeDailyExact=dailyValues(wSharpe,closeMap,tickers,common);
+    const sharpeR=annReturn(sharpeDailyExact,yearsActual);
+    const sharpeV=annVolFromReturns(portReturns(wSharpe,retMap,tickers));
+    const sharpeDD=maxDrawdown(sharpeDailyExact);
+    const sharpeS=sharpeV>0?(sharpeR-rf)/sharpeV:0;
+
+    const minvolDailyExact=dailyValues(wMinVol,closeMap,tickers,common);
+    const minvolR=annReturn(minvolDailyExact,yearsActual);
+    const minvolV=annVolFromReturns(portReturns(wMinVol,retMap,tickers));
+    const minvolDD=maxDrawdown(minvolDailyExact);
+    const minvolS=minvolV>0?(minvolR-rf)/minvolV:0;
+
+    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD};
+    let bestVol={v:minvolV,w:wMinVol,r:minvolR,s:minvolS,d:minvolDD};
 
     // Equal weight metrics
     const eqDaily=dailyValues(eqW,closeMap,tickers,common);

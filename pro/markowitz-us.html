@@ -612,6 +612,130 @@ function renderVarTable(methods,totalValue){
   t.innerHTML=html+'</tbody>';
 }
 
+// ===== Аналитика портфельной оптимизации (Markowitz closed-form) =====
+// Инверсия положительно определённой матрицы Σ через Gauss-Jordan
+function invertMatrix(A){
+  const n=A.length;
+  const M=A.map((row,i)=>{
+    const r=row.slice();
+    for(let j=0;j<n;j++)r.push(i===j?1:0);
+    return r;
+  });
+  for(let i=0;i<n;i++){
+    // Pivot: ищем максимум по столбцу для устойчивости
+    let maxRow=i;let maxVal=Math.abs(M[i][i]);
+    for(let k=i+1;k<n;k++){if(Math.abs(M[k][i])>maxVal){maxVal=Math.abs(M[k][i]);maxRow=k;}}
+    if(maxVal<1e-12)return null; // вырожденная матрица
+    if(maxRow!==i){[M[i],M[maxRow]]=[M[maxRow],M[i]];}
+    const piv=M[i][i];
+    for(let j=0;j<2*n;j++)M[i][j]/=piv;
+    for(let k=0;k<n;k++){
+      if(k===i)continue;
+      const f=M[k][i];
+      for(let j=0;j<2*n;j++)M[k][j]-=f*M[i][j];
+    }
+  }
+  return M.map(row=>row.slice(n));
+}
+
+function matVec(A,v){
+  return A.map(row=>row.reduce((s,a,i)=>s+a*v[i],0));
+}
+
+// Аналитический Min Volatility с ограничением w≥0 (long-only) через активный сет.
+// activeIdx — массив индексов активов, которые активны (w>0). Итеративно выкидываем тех у кого w<0.
+function analyticMinVol(cov,tickers){
+  let active=tickers.map((_,i)=>i);
+  for(let pass=0;pass<tickers.length;pass++){
+    const sub=active.map(i=>active.map(j=>cov[i][j]));
+    const inv=invertMatrix(sub);
+    if(!inv){
+      // вырождение — fallback на равные веса в активном сете
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach(i=>wOut[i]=1/active.length);
+      return wOut;
+    }
+    const ones=new Array(active.length).fill(1);
+    const x=matVec(inv,ones); // Σ⁻¹·1
+    const s=x.reduce((a,b)=>a+b,0);
+    const w=x.map(v=>v/s);
+    // Проверка отрицательных
+    const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
+    if(negIdx.length===0){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach((origI,k)=>wOut[origI]=Math.max(w[k],0));
+      // Нормировка после обрезки крошечных отрицательных
+      const sum=wOut.reduce((a,b)=>a+b,0);
+      return wOut.map(v=>v/sum);
+    }
+    // Удаляем актив с самым отрицательным весом
+    let worst=negIdx[0];for(const i of negIdx)if(w[i]<w[worst])worst=i;
+    active=active.filter((_,k)=>k!==worst);
+    if(active.length<=1){
+      const wOut=new Array(tickers.length).fill(0);
+      if(active.length===1)wOut[active[0]]=1;
+      return wOut;
+    }
+  }
+  return tickers.map(()=>1/tickers.length);
+}
+
+// Аналитический Max Sharpe (tangency portfolio) с ограничением w≥0.
+// w ∝ Σ⁻¹·(μ−rf·1), нормированное к сумме 1, с активным сетом.
+function analyticMaxSharpe(cov,mu,rf,tickers){
+  let active=tickers.map((_,i)=>i);
+  for(let pass=0;pass<tickers.length;pass++){
+    const sub=active.map(i=>active.map(j=>cov[i][j]));
+    const inv=invertMatrix(sub);
+    if(!inv){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach(i=>wOut[i]=1/active.length);
+      return wOut;
+    }
+    const excess=active.map(i=>mu[i]-rf);
+    const x=matVec(inv,excess); // Σ⁻¹·(μ−rf)
+    const s=x.reduce((a,b)=>a+b,0);
+    if(Math.abs(s)<1e-12){
+      // Все доходности ниже rf — fallback на min vol
+      return analyticMinVol(cov,tickers);
+    }
+    const w=x.map(v=>v/s);
+    const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
+    if(negIdx.length===0){
+      const wOut=new Array(tickers.length).fill(0);
+      active.forEach((origI,k)=>wOut[origI]=Math.max(w[k],0));
+      const sum=wOut.reduce((a,b)=>a+b,0);
+      return wOut.map(v=>v/sum);
+    }
+    let worst=negIdx[0];for(const i of negIdx)if(w[i]<w[worst])worst=i;
+    active=active.filter((_,k)=>k!==worst);
+    if(active.length<=1){
+      const wOut=new Array(tickers.length).fill(0);
+      if(active.length===1)wOut[active[0]]=1;
+      return wOut;
+    }
+  }
+  return tickers.map(()=>1/tickers.length);
+}
+
+// Дневная ковариационная матрица и средние из retMap
+function buildCovAndMean(tickers,retMap){
+  const n=tickers.length;
+  const means=tickers.map(t=>{const r=retMap[t];return r.reduce((a,b)=>a+b,0)/r.length;});
+  const cov=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++){
+    for(let j=i;j<n;j++){
+      const ri=retMap[tickers[i]],rj=retMap[tickers[j]];
+      let s=0;
+      const L=Math.min(ri.length,rj.length);
+      for(let k=0;k<L;k++)s+=(ri[k]-means[i])*(rj[k]-means[j]);
+      const c=s/(L-1);
+      cov[i][j]=c;cov[j][i]=c;
+    }
+  }
+  return {cov,means};
+}
+
 async function run(){
   const tickers=getTickers();
   if(tickers.length<2){
@@ -661,8 +785,6 @@ async function run(){
     await new Promise(r=>setTimeout(r,30)); // let UI breathe
 
     const cloud=[];
-    let bestSharpe={s:-Infinity,w:null,r:0,v:0,d:0};
-    let bestVol={v:Infinity,w:null,r:0,s:0,d:0};
     let bestDD={d:Infinity,w:null,r:0,v:0,s:0};
 
     for(let k=0;k<nsim;k++){
@@ -674,10 +796,38 @@ async function run(){
       const sh=av>0?(ar-rf)/av:0;
       cloud.push({r:ar,v:av,d:md,s:sh});
 
-      if(sh>bestSharpe.s){bestSharpe={s:sh,w:w.slice(),r:ar,v:av,d:md};}
-      if(av<bestVol.v){bestVol={v:av,w:w.slice(),r:ar,s:sh,d:md};}
+      // Min DD остаётся через Monte Carlo — для просадки нет закрытой формы
       if(md<bestDD.d){bestDD={d:md,w:w.slice(),r:ar,v:av,s:sh};}
     }
+
+    // ===== Аналитика: Max Sharpe и Min Volatility =====
+    // Считаем ковариационную матрицу и средние дневных лог-доходностей
+    const {cov:covDaily,means:meanDaily}=buildCovAndMean(tickers,retMap);
+    // Годовой ожидаемый return для каждого актива (annualized geometric ≈ mean*252 для log-returns)
+    const muAnnual=meanDaily.map(m=>m*252);
+    // Аннуализированная ковариация (для расчёта годовой волатильности и Sharpe)
+    const covAnnual=covDaily.map(row=>row.map(c=>c*252));
+
+    // Аналитические веса
+    const wSharpe=analyticMaxSharpe(covAnnual,muAnnual,rf,tickers);
+    const wMinVol=analyticMinVol(covAnnual,tickers);
+
+    // Пересчёт метрик для аналитических портфелей через ТЕ ЖЕ функции что и для MC,
+    // чтобы числа были консистентны
+    const sharpeDailyExact=dailyValues(wSharpe,closeMap,tickers,common);
+    const sharpeR=annReturn(sharpeDailyExact,yearsActual);
+    const sharpeV=annVolFromReturns(portReturns(wSharpe,retMap,tickers));
+    const sharpeDD=maxDrawdown(sharpeDailyExact);
+    const sharpeS=sharpeV>0?(sharpeR-rf)/sharpeV:0;
+
+    const minvolDailyExact=dailyValues(wMinVol,closeMap,tickers,common);
+    const minvolR=annReturn(minvolDailyExact,yearsActual);
+    const minvolV=annVolFromReturns(portReturns(wMinVol,retMap,tickers));
+    const minvolDD=maxDrawdown(minvolDailyExact);
+    const minvolS=minvolV>0?(minvolR-rf)/minvolV:0;
+
+    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD};
+    let bestVol={v:minvolV,w:wMinVol,r:minvolR,s:minvolS,d:minvolDD};
 
     // Equal weight metrics
     const eqDaily=dailyValues(eqW,closeMap,tickers,common);
