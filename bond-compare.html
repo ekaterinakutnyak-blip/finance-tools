@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сравнение облигаций · ₽/день</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--green:#0F8043;--red:#B44040;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 3rem}
+h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem}
+.subtitle{font-size:0.88rem;color:var(--text2);margin-bottom:1.5rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem}
+.card-title{font-size:0.72rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem}
+.card.hidden{display:none}
+.input-row{display:flex;align-items:center;gap:8px;margin-bottom:0.6rem}
+.input-row .num{width:18px;font-family:var(--mono);font-size:0.72rem;color:var(--text3);text-align:right}
+.input-row input{flex:1;padding:0.55rem 0.7rem;font-family:var(--mono);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);min-width:0}
+.input-row input:focus{outline:none;border-color:var(--accent)}
+.input-row .rm{padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text3);font-size:0.9rem}
+.input-row .rm:hover{color:var(--red);border-color:var(--red)}
+.input-row .nm{flex:0 0 130px;font-size:0.78rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{display:inline-block;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:0.88rem;font-weight:500;cursor:pointer;text-decoration:none}
+.btn:hover{opacity:0.88}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-add{padding:0.5rem 1rem;background:transparent;color:var(--accent);border:1px dashed var(--accent);border-radius:8px;font-family:var(--sans);font-size:0.82rem;cursor:pointer}
+.row-actions{display:flex;gap:10px;align-items:center;margin-top:0.75rem}
+.status{font-size:0.78rem;color:var(--text2);margin-top:0.75rem;min-height:1.2em}
+.status.err{color:var(--red)}
+.status.ok{color:var(--green)}
+.loader{display:inline-block;width:10px;height:10px;border:2px solid var(--surface2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.bond-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;position:relative}
+.bond-card.best{border-color:var(--green);background:var(--accent-light)}
+.bond-card .ribbon{position:absolute;top:-10px;right:12px;background:var(--green);color:#fff;font-size:0.65rem;font-weight:600;padding:3px 8px;border-radius:4px;letter-spacing:0.04em}
+.bond-card h3{font-size:0.95rem;font-weight:600;margin-bottom:0.15rem;color:var(--text)}
+.bond-card .isin{font-family:var(--mono);font-size:0.7rem;color:var(--text3);margin-bottom:0.85rem}
+.bond-card .row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:0.78rem;border-bottom:1px solid var(--border)}
+.bond-card .row:last-child{border-bottom:none}
+.bond-card .row .lbl{color:var(--text2)}
+.bond-card .row .val{font-family:var(--mono);font-weight:500;color:var(--text)}
+.bond-card .row.highlight{background:transparent;padding-top:10px;padding-bottom:10px;margin:6px 0;border-top:2px solid var(--text);border-bottom:2px solid var(--text)}
+.bond-card .row.highlight .lbl{font-weight:600;color:var(--text)}
+.bond-card .row.highlight .val{font-size:1rem;font-weight:700;color:var(--accent)}
+.bond-card .row.profit .val{color:var(--green)}
+.bond-card .row.negative .val{color:var(--red)}
+.footer{margin-top:2rem;font-size:0.72rem;color:var(--text3);text-align:center}
+.footer a{color:var(--text2)}
+.method{margin-top:1.5rem;padding:1rem 1.2rem;background:var(--surface2);border-radius:var(--radius);font-size:0.75rem;color:var(--text2);line-height:1.55}
+.method strong{color:var(--text)}
+.back-link{display:inline-block;font-size:0.82rem;color:var(--text2);text-decoration:none;margin-bottom:1.25rem}
+.back-link:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="index.html" class="back-link">← Все калькуляторы</a>
+<h1>Сравнение облигаций · сколько заработаю в день</h1>
+<p class="subtitle">Прибыль в рублях за всё время до погашения, поделённая на дни. Простое сравнение бумаг с разными сроками и купонами.</p>
+
+<div class="card">
+  <div class="card-title">Бумаги для сравнения</div>
+  <div id="rowsContainer"></div>
+  <div class="row-actions">
+    <button type="button" class="btn-add" id="addBtn" onclick="addRow()">+ Добавить бумагу</button>
+    <button type="button" class="btn" onclick="run()">Сравнить</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="resultsCard">
+  <div class="card-title">Результаты сравнения</div>
+  <div class="compare-grid" id="resultsGrid"></div>
+  <div class="method">
+    <strong>Методика:</strong><br>
+    1. С Мосбиржи подтягиваются: чистая цена, НКД, дата погашения и все будущие купоны.<br>
+    2. <strong>Грязная цена</strong> = чистая цена × номинал / 100 + НКД — это то, что отдаёшь за 1 бумагу.<br>
+    3. <strong>Прибыль</strong> = сумма всех будущих купонов + номинал − грязная цена.<br>
+    4. <strong>Заработок в день</strong> = прибыль / дней до погашения.<br>
+    5. Если у бумаги есть оферта или фиксированы только ближайшие купоны (скрытая оферта) — расчёт идёт до этой даты, а не до погашения.<br><br>
+    Реинвестирование купонов не учитывается. Налоги не учитываются (бумаги обычно покупаются на ИИС-Б или с ЛДВ).<br><br>
+    <strong style="color:var(--red)">Важно:</strong> метрика «₽ в день» не учитывает кредитный риск. Сравнивать имеет смысл бумаги <strong>одного кредитного качества</strong> — например, две ОФЗ между собой, или два эмитента из одного эшелона. Сравнение ОФЗ с ВДО по этой метрике даст обманчивый результат: ВДО заработает больше в день, но и риск дефолта в десятки раз выше. Для оценки кредитного качества используй <a href="pro/pd-calculator.html" style="color:var(--accent)">калькулятор PD</a> и <a href="pro/zspread-calculator.html" style="color:var(--accent)">Z-spread</a> (PRO).
+  </div>
+</div>
+
+<div class="footer">
+  Данные: MOEX ISS API · <a href="index.html">Все калькуляторы</a>
+</div>
+</div>
+
+<script>
+// JSONP-fetch для MOEX
+let _jp=0;
+function moexFetch(url){
+  return new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();
+    const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};
+    s.src=url+sep+'callback='+cb;
+    s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  });
+}
+
+const rowsEl=document.getElementById('rowsContainer');
+function addRow(isin){
+  const rows=rowsEl.querySelectorAll('.input-row');
+  if(rows.length>=4)return;
+  const idx=rows.length+1;
+  const div=document.createElement('div');
+  div.className='input-row';
+  div.innerHTML='<span class="num">'+idx+'</span>'+
+    '<input type="text" class="isin" placeholder="ISIN или тикер" value="'+(isin||'')+'">'+
+    '<span class="nm"></span>'+
+    '<button type="button" class="rm" onclick="removeRow(this)">×</button>';
+  rowsEl.appendChild(div);
+  updateAddBtn();
+}
+function removeRow(btn){
+  btn.closest('.input-row').remove();
+  rowsEl.querySelectorAll('.input-row .num').forEach((n,i)=>n.textContent=i+1);
+  updateAddBtn();
+}
+function updateAddBtn(){
+  document.getElementById('addBtn').style.display=rowsEl.querySelectorAll('.input-row').length>=4?'none':'';
+}
+
+// Стартовые две строки
+addRow('RU000A10F470');
+addRow('RU000A10BTA6');
+
+async function loadBond(isin){
+  // Поиск бумаги
+  const searchUrl='https://iss.moex.com/iss/securities.json?q='+encodeURIComponent(isin)+'&iss.meta=off&limit=10';
+  const sd=await moexFetch(searchUrl);
+  const cols=sd.securities.columns;
+  const rows=sd.securities.data;
+  const secidIdx=cols.indexOf('secid'),isTraded=cols.indexOf('is_traded'),groupIdx=cols.indexOf('group');
+  let secid=null,board=null;
+  for(const row of rows){
+    if(row[isTraded]==1 && (row[groupIdx]==='stock_bonds'||row[groupIdx]==='stock_bonds_subordinated')){
+      secid=row[secidIdx];break;
+    }
+  }
+  if(!secid)throw new Error('Бумага '+isin+' не найдена или не торгуется');
+
+  // Перебираем основные доски облигаций
+  let sec=null,md={};
+  for(const b of ['TQCB','TQOB','TQIR','TQOD','EQOB','TQIY']){
+    try{
+      const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/'+b+'/securities/'+secid+'.json?iss.meta=off';
+      const d=await moexFetch(url);
+      if(d.securities.data.length){
+        const sCols=d.securities.columns;const sRows=d.securities.data;
+        sec={};sCols.forEach((c,i)=>sec[c]=sRows[0][i]);
+        if(d.marketdata.data.length){
+          const mCols=d.marketdata.columns;const mRows=d.marketdata.data;
+          mCols.forEach((c,i)=>md[c]=mRows[0][i]);
+        }
+        board=b;break;
+      }
+    }catch(e){}
+  }
+  if(!sec)throw new Error('Не удалось получить параметры '+secid);
+
+  const shortname=sec.SHORTNAME||sec.SECNAME||secid;
+  const faceValue=parseFloat(sec.FACEVALUE||'1000');
+  const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
+  const nkd=parseFloat(sec.ACCRUEDINT||'0');
+  const matDate=sec.MATDATE||'';
+  const offerDate=sec.OFFERDATE||sec.BUYBACKDATE||'';
+
+  // Подгружаем купоны и амортизации
+  let coupons=[],amorts=[];
+  try{
+    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.meta=off&limit=unlimited';
+    const bd=await moexFetch(bondUrl);
+    if(bd.coupons){
+      const cCols=bd.coupons.columns;
+      bd.coupons.data.forEach(row=>{
+        const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+        coupons.push({date:obj.coupondate,value:parseFloat(obj.value)});
+      });
+    }
+    if(bd.amortizations){
+      const aCols=bd.amortizations.columns;
+      bd.amortizations.data.forEach(row=>{
+        const obj={};aCols.forEach((c,i)=>obj[c]=row[i]);
+        amorts.push({date:obj.amortdate,value:parseFloat(obj.value)});
+      });
+    }
+  }catch(e){}
+
+  return {secid,shortname,isin,faceValue,price,nkd,matDate,offerDate,coupons,amorts};
+}
+
+function computeProfit(b){
+  const today=new Date();today.setHours(0,0,0,0);
+  const matDate=new Date(b.matDate);
+
+  // Будущие купоны
+  const futureCoupons=b.coupons.filter(c=>new Date(c.date)>today);
+  const knownFuture=futureCoupons.filter(c=>!isNaN(c.value)&&c.value>0);
+  const unknownFuture=futureCoupons.filter(c=>isNaN(c.value)||c.value<=0);
+
+  // Определяем горизонт: оферта → скрытая оферта → погашение
+  let horizonDate=matDate;
+  let horizonType='Погашение';
+  let isOffer=false;
+  if(b.offerDate&&new Date(b.offerDate)>today){
+    horizonDate=new Date(b.offerDate);
+    horizonType='Оферта';
+    isOffer=true;
+  }else if(knownFuture.length>0&&unknownFuture.length>0){
+    horizonDate=new Date(knownFuture[knownFuture.length-1].date);
+    horizonType='Скрытая оферта';
+    isOffer=true;
+  }
+
+  // Дни до горизонта
+  const daysToHorizon=Math.round((horizonDate-today)/86400000);
+  if(daysToHorizon<=0)return {error:'Бумага уже погашена или горизонт в прошлом'};
+
+  // Сумма купонов до горизонта
+  const couponsUntilHorizon=knownFuture.filter(c=>new Date(c.date)<=horizonDate);
+  const totalCoupons=couponsUntilHorizon.reduce((s,c)=>s+c.value,0);
+
+  // Возврат номинала (или то что осталось от номинала после амортизации)
+  // Для упрощения: если до горизонта не было амортизаций, возвращается полный faceValue.
+  // Если были амортизации — суммируем то, что вернётся к горизонту.
+  const amortsUntilHorizon=b.amorts.filter(a=>{
+    const d=new Date(a.date);
+    return d>today && d<=horizonDate && !isNaN(a.value) && a.value>0;
+  });
+  let amortReturn=amortsUntilHorizon.reduce((s,a)=>s+a.value,0);
+  // Если в горизонте нет амортизации (т.е. в дату погашения/оферты не было amort из MOEX) — возвращаем faceValue
+  if(amortReturn===0){
+    amortReturn=b.faceValue;
+  }else{
+    // Проверим, есть ли запись точно на дату горизонта — если нет, добавим оставшийся номинал
+    const exactOnHorizon=amortsUntilHorizon.some(a=>new Date(a.date).getTime()===horizonDate.getTime());
+    if(!exactOnHorizon){
+      // если уже была частичная амортизация, но в горизонте отдельно номинал не выплачивается — это редкий случай
+      // оставляем как есть
+    }
+  }
+
+  // Грязная цена за 1 бумагу
+  const dirtyPrice=b.price/100*b.faceValue+b.nkd;
+
+  // Прибыль
+  const totalReceive=totalCoupons+amortReturn;
+  const profit=totalReceive-dirtyPrice;
+  const perDay=profit/daysToHorizon;
+  const perYear=perDay*365;
+  // Простая доходность годовых
+  const simpleAnnual=(profit/dirtyPrice)/(daysToHorizon/365)*100;
+
+  return {
+    secid:b.secid,shortname:b.shortname,isin:b.isin,
+    price:b.price,nkd:b.nkd,faceValue:b.faceValue,dirtyPrice,
+    horizonDate,horizonType,isOffer,
+    daysToHorizon,
+    numCoupons:couponsUntilHorizon.length,
+    totalCoupons,amortReturn,totalReceive,
+    profit,perDay,perYear,simpleAnnual
+  };
+}
+
+async function run(){
+  const st=document.getElementById('status');
+  const inputs=Array.from(rowsEl.querySelectorAll('.isin')).map(i=>i.value.trim().toUpperCase()).filter(x=>x);
+  if(inputs.length<1){
+    st.className='status err';st.textContent='Введи хотя бы один ISIN';return;
+  }
+
+  document.getElementById('resultsCard').classList.add('hidden');
+  st.className='status';st.innerHTML='<span class="loader"></span>Загрузка...';
+
+  const results=[];
+  for(let i=0;i<inputs.length;i++){
+    try{
+      st.innerHTML='<span class="loader"></span>Загрузка '+inputs[i]+' ('+(i+1)+'/'+inputs.length+')...';
+      const b=await loadBond(inputs[i]);
+      const r=computeProfit(b);
+      r.error=r.error||null;
+      results.push(r);
+      // Подпись имени бумаги в форму
+      const row=rowsEl.querySelectorAll('.input-row')[i];
+      if(row)row.querySelector('.nm').textContent=b.shortname;
+    }catch(e){
+      results.push({isin:inputs[i],error:e.message||'Ошибка'});
+    }
+  }
+
+  // Найдём лучшую по ₽/день среди успешных
+  const successful=results.filter(r=>!r.error&&r.perDay!=null);
+  let bestIdx=-1;
+  if(successful.length>0){
+    let bestVal=-Infinity;
+    successful.forEach(r=>{
+      if(r.perDay>bestVal){bestVal=r.perDay;}
+    });
+    bestIdx=results.findIndex(r=>r.perDay===bestVal && !r.error);
+  }
+
+  // Рендер
+  const grid=document.getElementById('resultsGrid');
+  grid.innerHTML='';
+  results.forEach((r,i)=>{
+    let html='<div class="bond-card'+(i===bestIdx?' best':'')+'">';
+    if(i===bestIdx && successful.length>1)html+='<span class="ribbon">лучшая</span>';
+    if(r.error){
+      html+='<h3>'+(r.isin||'?')+'</h3><div class="isin">Ошибка: '+r.error+'</div></div>';
+      grid.insertAdjacentHTML('beforeend',html);
+      return;
+    }
+    const horizonStr=r.horizonDate.toLocaleDateString('ru-RU');
+    const horizonNote=r.isOffer?' ('+r.horizonType.toLowerCase()+')':'';
+    html+='<h3>'+r.shortname+'</h3>'+
+      '<div class="isin">'+r.isin+'</div>'+
+      '<div class="row"><span class="lbl">Цена</span><span class="val">'+r.price.toFixed(2)+'%</span></div>'+
+      '<div class="row"><span class="lbl">НКД</span><span class="val">'+r.nkd.toFixed(2)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Грязная цена</span><span class="val">'+r.dirtyPrice.toFixed(2)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Горизонт'+horizonNote+'</span><span class="val">'+horizonStr+'</span></div>'+
+      '<div class="row"><span class="lbl">Дней до '+r.horizonType.toLowerCase()+'</span><span class="val">'+r.daysToHorizon+'</span></div>'+
+      '<div class="row"><span class="lbl">Купонов будет</span><span class="val">'+r.numCoupons+'</span></div>'+
+      '<div class="row"><span class="lbl">Сумма купонов</span><span class="val">'+r.totalCoupons.toFixed(2)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Возврат номинала</span><span class="val">'+r.amortReturn.toFixed(2)+' ₽</span></div>'+
+      '<div class="row '+(r.profit>=0?'profit':'negative')+'"><span class="lbl">Прибыль</span><span class="val">'+r.profit.toFixed(2)+' ₽</span></div>'+
+      '<div class="row highlight"><span class="lbl">₽ в день</span><span class="val">'+r.perDay.toFixed(3)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">₽ в год</span><span class="val">'+r.perYear.toFixed(0)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Простая доходность</span><span class="val">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>';
+    html+='</div>';
+    grid.insertAdjacentHTML('beforeend',html);
+  });
+
+  document.getElementById('resultsCard').classList.remove('hidden');
+
+  if(successful.length===results.length){
+    st.className='status ok';st.textContent='Готово · '+successful.length+' бумаг';
+  }else{
+    st.className='status err';st.textContent='Загружено '+successful.length+' из '+results.length+'. См. ошибки в карточках.';
+  }
+}
+</script>
+</body>
+</html>
