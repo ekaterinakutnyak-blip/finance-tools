@@ -71,13 +71,17 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 <div class="container">
 <a href="index.html" class="back-link">← Все калькуляторы</a>
 <h1>Сравнение облигаций · сколько заработаю в день</h1>
-<p class="subtitle">Прибыль в рублях за всё время до погашения, поделённая на дни. Простое сравнение бумаг с разными сроками и купонами.</p>
+<p class="subtitle">Прибыль на одинаковую сумму вложений (10 000 ₽), делённая на дни до погашения. Честное сравнение бумаг с разной ценой, сроком и купоном.</p>
 
 <div class="card">
   <div class="card-title">Бумаги для сравнения</div>
   <div id="rowsContainer"></div>
   <div class="row-actions">
     <button type="button" class="btn-add" id="addBtn" onclick="addRow()">+ Добавить бумагу</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:1rem;flex-wrap:wrap">
+    <label style="font-size:0.82rem;color:var(--text2)">Сумма вложений, ₽:</label>
+    <input type="text" id="investAmount" value="100000" inputmode="numeric" style="width:130px;padding:0.5rem 0.7rem;font-family:var(--mono);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
     <button type="button" class="btn" onclick="run()">Сравнить</button>
   </div>
   <div class="status" id="status"></div>
@@ -89,10 +93,12 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   <div class="method">
     <strong>Методика:</strong><br>
     1. С Мосбиржи подтягиваются: чистая цена, НКД, дата погашения и все будущие купоны.<br>
-    2. <strong>Грязная цена</strong> = чистая цена × номинал / 100 + НКД — это то, что отдаёшь за 1 бумагу.<br>
-    3. <strong>Прибыль</strong> = сумма всех будущих купонов + номинал − грязная цена.<br>
-    4. <strong>Заработок в день</strong> = прибыль / дней до погашения.<br>
-    5. Если у бумаги есть оферта или фиксированы только ближайшие купоны (скрытая оферта) — расчёт идёт до этой даты, а не до погашения.<br><br>
+    2. <strong>Грязная цена</strong> = чистая цена × номинал / 100 + НКД — это сколько стоит одна бумага.<br>
+    3. На введённую сумму покупается <strong>целое</strong> число бумаг = округление вниз (сумма / грязная цена). Часть денег остаётся неиспользованной — это <strong>остаток</strong>.<br>
+    4. <strong>Прибыль</strong> = (купоны до горизонта + возврат номинала − грязная цена) × число купленных бумаг.<br>
+    5. <strong>Заработок в день</strong> = прибыль / дней до погашения. Доходность считается от <strong>всей введённой суммы</strong>, включая неработающий остаток — потому что эти деньги реально не вложены.<br>
+    6. Если у бумаги есть оферта или фиксированы только ближайшие купоны (скрытая оферта) — расчёт идёт до этой даты, а не до погашения.<br><br>
+    <strong>Почему на фиксированную сумму, а не на 1 бумагу:</strong> у бумаг разная цена. На одни и те же деньги дисконтной ОФЗ за 600 ₽ купишь больше штук, чем купонной за 1000 ₽. Сравнивать «прибыль на 1 штуку» некорректно — победит просто более дорогая бумага. Поэтому считаем на одинаковую сумму вложений и целыми бумагами.<br><br>
     Реинвестирование купонов не учитывается. Налоги не учитываются (бумаги обычно покупаются на ИИС-Б или с ЛДВ).<br><br>
     <strong style="color:var(--red)">Важно:</strong> метрика «₽ в день» не учитывает кредитный риск. Сравнивать имеет смысл бумаги <strong>одного кредитного качества</strong> — например, две ОФЗ между собой, или два эмитента из одного эшелона. Сравнение ОФЗ с ВДО по этой метрике даст обманчивый результат: ВДО заработает больше в день, но и риск дефолта в десятки раз выше. Для оценки кредитного качества используй <a href="pro/pd-calculator.html" style="color:var(--accent)">калькулятор PD</a> и <a href="pro/zspread-calculator.html" style="color:var(--accent)">Z-spread</a> (PRO).
   </div>
@@ -264,13 +270,11 @@ function computeProfit(b){
   // Грязная цена за 1 бумагу
   const dirtyPrice=b.price/100*b.faceValue+b.nkd;
 
-  // Прибыль
+  // Прибыль на 1 бумагу
   const totalReceive=totalCoupons+amortReturn;
-  const profit=totalReceive-dirtyPrice;
-  const perDay=profit/daysToHorizon;
-  const perYear=perDay*365;
-  // Простая доходность годовых
-  const simpleAnnual=(profit/dirtyPrice)/(daysToHorizon/365)*100;
+  const profitPerBond=totalReceive-dirtyPrice;
+  // Простая доходность годовых (от 1 бумаги — не зависит от суммы)
+  const simpleAnnual=(profitPerBond/dirtyPrice)/(daysToHorizon/365)*100;
 
   return {
     secid:b.secid,shortname:b.shortname,isin:b.isin,
@@ -279,8 +283,23 @@ function computeProfit(b){
     daysToHorizon,
     numCoupons:couponsUntilHorizon.length,
     totalCoupons,amortReturn,totalReceive,
-    profit,perDay,perYear,simpleAnnual
+    profitPerBond,simpleAnnual
   };
+}
+
+// Считает результат для конкретной суммы вложений (целыми лотами)
+function applyInvestAmount(r,investAmount){
+  // Целое число бумаг — округление вниз
+  const numBonds=Math.floor(investAmount/r.dirtyPrice);
+  const spent=numBonds*r.dirtyPrice;        // реально потрачено
+  const remainder=investAmount-spent;        // остаток, не работает
+  const totalProfit=r.profitPerBond*numBonds; // прибыль со всех купленных бумаг
+  // Доходность считаем от ВСЕЙ введённой суммы (остаток не работает - это честно)
+  const perDay=totalProfit/r.daysToHorizon;
+  const perYear=perDay*365;
+  // Доходность % годовых от всей суммы (с учётом простаивающего остатка)
+  const annualOnTotal=(totalProfit/investAmount)/(r.daysToHorizon/365)*100;
+  return {numBonds,spent,remainder,totalProfit,perDay,perYear,annualOnTotal};
 }
 
 async function run(){
@@ -288,6 +307,12 @@ async function run(){
   const inputs=Array.from(rowsEl.querySelectorAll('.isin')).map(i=>i.value.trim().toUpperCase()).filter(x=>x);
   if(inputs.length<1){
     st.className='status err';st.textContent='Введи хотя бы один ISIN';return;
+  }
+  // Сумма вложений
+  const investRaw=document.getElementById('investAmount').value.replace(/\s/g,'').replace(',','.');
+  const investAmount=parseFloat(investRaw);
+  if(isNaN(investAmount)||investAmount<=0){
+    st.className='status err';st.textContent='Введи корректную сумму вложений';return;
   }
 
   document.getElementById('resultsCard').classList.add('hidden');
@@ -300,8 +325,12 @@ async function run(){
       const b=await loadBond(inputs[i]);
       const r=computeProfit(b);
       r.error=r.error||null;
+      // Применяем сумму вложений
+      if(!r.error){
+        const inv=applyInvestAmount(r,investAmount);
+        Object.assign(r,inv);
+      }
       results.push(r);
-      // Подпись имени бумаги в форму
       const row=rowsEl.querySelectorAll('.input-row')[i];
       if(row)row.querySelector('.nm').textContent=b.shortname;
     }catch(e){
@@ -309,20 +338,19 @@ async function run(){
     }
   }
 
-  // Найдём лучшую по ₽/день среди успешных
+  // Лучшая по ₽/день среди успешных
   const successful=results.filter(r=>!r.error&&r.perDay!=null);
   let bestIdx=-1;
   if(successful.length>0){
     let bestVal=-Infinity;
-    successful.forEach(r=>{
-      if(r.perDay>bestVal){bestVal=r.perDay;}
-    });
+    successful.forEach(r=>{if(r.perDay>bestVal)bestVal=r.perDay;});
     bestIdx=results.findIndex(r=>r.perDay===bestVal && !r.error);
   }
 
   // Рендер
   const grid=document.getElementById('resultsGrid');
   grid.innerHTML='';
+  const fmtRub=v=>v.toLocaleString('ru-RU',{maximumFractionDigits:0});
   results.forEach((r,i)=>{
     let html='<div class="bond-card'+(i===bestIdx?' best':'')+'">';
     if(i===bestIdx && successful.length>1)html+='<span class="ribbon">лучшая</span>';
@@ -337,16 +365,18 @@ async function run(){
       '<div class="isin">'+r.isin+'</div>'+
       '<div class="row"><span class="lbl">Цена</span><span class="val">'+r.price.toFixed(2)+'%</span></div>'+
       '<div class="row"><span class="lbl">НКД</span><span class="val">'+r.nkd.toFixed(2)+' ₽</span></div>'+
-      '<div class="row"><span class="lbl">Грязная цена</span><span class="val">'+r.dirtyPrice.toFixed(2)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Грязная цена (1 шт)</span><span class="val">'+r.dirtyPrice.toFixed(2)+' ₽</span></div>'+
       '<div class="row"><span class="lbl">Горизонт'+horizonNote+'</span><span class="val">'+horizonStr+'</span></div>'+
       '<div class="row"><span class="lbl">Дней до '+r.horizonType.toLowerCase()+'</span><span class="val">'+r.daysToHorizon+'</span></div>'+
       '<div class="row"><span class="lbl">Купонов будет</span><span class="val">'+r.numCoupons+'</span></div>'+
-      '<div class="row"><span class="lbl">Сумма купонов</span><span class="val">'+r.totalCoupons.toFixed(2)+' ₽</span></div>'+
-      '<div class="row"><span class="lbl">Возврат номинала</span><span class="val">'+r.amortReturn.toFixed(2)+' ₽</span></div>'+
-      '<div class="row '+(r.profit>=0?'profit':'negative')+'"><span class="lbl">Прибыль</span><span class="val">'+r.profit.toFixed(2)+' ₽</span></div>'+
-      '<div class="row highlight"><span class="lbl">₽ в день</span><span class="val">'+r.perDay.toFixed(3)+' ₽</span></div>'+
-      '<div class="row"><span class="lbl">₽ в год</span><span class="val">'+r.perYear.toFixed(0)+' ₽</span></div>'+
-      '<div class="row"><span class="lbl">Простая доходность</span><span class="val">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>';
+      '<div class="row" style="border-top:2px solid var(--text2);margin-top:6px;padding-top:8px"><span class="lbl">Куплю бумаг</span><span class="val">'+r.numBonds+' шт</span></div>'+
+      '<div class="row"><span class="lbl">Потрачу</span><span class="val">'+fmtRub(r.spent)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Остаток (не работает)</span><span class="val">'+fmtRub(r.remainder)+' ₽</span></div>'+
+      '<div class="row '+(r.totalProfit>=0?'profit':'negative')+'"><span class="lbl">Прибыль за весь срок</span><span class="val">'+fmtRub(r.totalProfit)+' ₽</span></div>'+
+      '<div class="row highlight"><span class="lbl">₽ в день</span><span class="val">'+r.perDay.toFixed(2)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">₽ в год</span><span class="val">'+fmtRub(r.perYear)+' ₽</span></div>'+
+      '<div class="row"><span class="lbl">Доходность на всю сумму</span><span class="val">'+r.annualOnTotal.toFixed(2)+'% год.</span></div>'+
+      '<div class="row" style="opacity:0.6"><span class="lbl" style="font-size:0.72rem">справочно: доходность бумаги</span><span class="val" style="font-size:0.72rem">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>';
     html+='</div>';
     grid.insertAdjacentHTML('beforeend',html);
   });
@@ -354,7 +384,7 @@ async function run(){
   document.getElementById('resultsCard').classList.remove('hidden');
 
   if(successful.length===results.length){
-    st.className='status ok';st.textContent='Готово · '+successful.length+' бумаг';
+    st.className='status ok';st.textContent='Готово · '+successful.length+' бумаг · сумма вложений '+fmtRub(investAmount)+' ₽';
   }else{
     st.className='status err';st.textContent='Загружено '+successful.length+' из '+results.length+'. См. ошибки в карточках.';
   }
