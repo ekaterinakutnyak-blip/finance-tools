@@ -69,6 +69,26 @@ td:first-child{text-align:center;color:var(--text2)}
     <div class="field"><label>Частота пополнений</label><select id="a_freq"><option value="12">Ежемесячно</option><option value="4">Ежеквартально</option><option value="2">Раз в полгода</option><option value="1">Раз в год</option></select></div>
     <div class="field"><label>Срок, лет</label><input type="text" id="a_years" value="15" inputmode="decimal"></div>
   </div>
+  <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius)">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.82rem;color:var(--text)">
+      <input type="checkbox" id="a_index_on" style="width:16px;height:16px;cursor:pointer">
+      <span><strong>Индексировать пополнения</strong> — увеличивать сумму пополнения каждый год</span>
+    </label>
+    <div id="a_index_block" style="display:none;margin-top:10px;padding-left:24px">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.78rem">
+          <input type="radio" name="a_index_mode" value="inflation" checked style="cursor:pointer">
+          <span>На уровень инфляции</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.78rem">
+          <input type="radio" name="a_index_mode" value="custom" style="cursor:pointer">
+          <span>Своё значение, %:</span>
+        </label>
+        <input type="text" id="a_index_custom" value="5" inputmode="decimal" style="width:70px;padding:0.4rem 0.6rem;font-family:var(--mono);font-size:0.82rem;border:1px solid var(--border);border-radius:6px">
+      </div>
+      <div style="font-size:0.7rem;color:var(--text3);margin-top:6px">Индексация по годам: первый год пополнения постоянные, со второго года увеличиваются на выбранный процент.</div>
+    </div>
+  </div>
   <div style="margin-top:14px">
     <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:6px">Доходность</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
@@ -162,15 +182,30 @@ document.getElementById('a_period').addEventListener('change',updHist);
 let aC=null,iC=null;
 
 function calcA(){
-  const ini=pv('a_initial'),c=pv('a_contrib'),f=parseInt(document.getElementById('a_freq').value),y=pv('a_years'),rn=pv('a_rate')/100,inf=pv('a_inflation')/100;
-  if(y<=0)return;const rp=rn/f,tp=Math.round(y*f);const yd=[];let b=ini,tc=ini;
-  for(let i=1;i<=Math.ceil(y);i++){const pp=Math.min(f,tp-(i-1)*f);for(let p=0;p<pp;p++){b=b*(1+rp)+c;tc+=c}yd.push({y:i,n:b,r:b/Math.pow(1+inf,i),c:tc,g:b-tc})}
+  const ini=pv('a_initial'),c0=pv('a_contrib'),f=parseInt(document.getElementById('a_freq').value),y=pv('a_years'),rn=pv('a_rate')/100,inf=pv('a_inflation')/100;
+  // Индексация пополнений
+  const idxOn=document.getElementById('a_index_on').checked;
+  const idxMode=document.querySelector('input[name="a_index_mode"]:checked')?.value||'inflation';
+  const idxCustom=pv('a_index_custom')/100;
+  const idxRate=idxOn?(idxMode==='custom'?idxCustom:inf):0;
+  if(y<=0)return;const rp=rn/f,tp=Math.round(y*f);const yd=[];let b=ini,tc=ini,c=c0;
+  for(let i=1;i<=Math.ceil(y);i++){
+    // Со второго года увеличиваем пополнение
+    if(i>1&&idxRate>0)c=c*(1+idxRate);
+    const pp=Math.min(f,tp-(i-1)*f);
+    for(let p=0;p<pp;p++){b=b*(1+rp)+c;tc+=c}
+    yd.push({y:i,n:b,r:b/Math.pow(1+inf,i),c:tc,g:b-tc,contrib:c})
+  }
   const L=yd[yd.length-1];document.getElementById('a_res').classList.remove('hidden');
   const g=document.getElementById('a_grid');g.innerHTML='';
   [{l:'Итого (номинал)',v:fm(L.n)+' ₽',s:'будущие деньги',c:'hl'},{l:'Итого (реальные)',v:fm(L.r)+' ₽',s:'сегодняшние деньги',c:'hl'},{l:'Внесено',v:fm(L.c)+' ₽',s:'нач. + пополнения',c:'neutral'},{l:'Доход',v:fm(L.g)+' ₽',s:'сложный %',c:'neutral'},{l:'Множитель',v:(L.n/L.c).toFixed(1)+'×',s:'итого / внесено',c:'neutral'},{l:'Покуп. сила',v:((L.r/L.n)*100).toFixed(0)+'%',s:'через '+y+' лет',c:'neutral'}].forEach(m=>{const e=document.createElement('div');e.className='metric '+m.c;e.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';g.appendChild(e)});
   const x=document.getElementById('a_chart').getContext('2d');if(aC)aC.destroy();
   aC=new Chart(x,{type:'bar',data:{labels:yd.map(d=>''+d.y),datasets:[{label:'Внесено',data:yd.map(d=>d.c),backgroundColor:'rgba(27,107,154,0.25)',borderColor:'#1B6B9A',borderWidth:1,order:2},{label:'Номинал',data:yd.map(d=>d.n),backgroundColor:'rgba(45,90,61,0.25)',borderColor:'#2D5A3D',borderWidth:1,order:1},{label:'Реальные',data:yd.map(d=>d.r),type:'line',borderColor:'#B44040',borderWidth:2,pointRadius:2,fill:false,order:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11,family:'DM Sans'}}}},scales:{x:{title:{display:true,text:'Год'},ticks:{font:{size:9}},grid:{display:false}},y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>fm(v)},grid:{color:'rgba(0,0,0,0.04)'}}}}});
-  let h='<thead><tr><th>Год</th><th>Внесено</th><th>Номинал</th><th>Реальные</th><th>Доход</th></tr></thead><tbody>';yd.forEach(d=>{h+='<tr><td>'+d.y+'</td><td>'+fr(d.c)+'</td><td>'+fr(d.n)+'</td><td>'+fr(d.r)+'</td><td>'+fr(d.g)+'</td></tr>'});document.getElementById('a_table').innerHTML=h+'</tbody>'
+  // Таблица — добавляем колонку Пополнение если индексация включена
+  const showContrib=idxOn&&idxRate>0;
+  let h='<thead><tr><th>Год</th>'+(showContrib?'<th>Пополнение</th>':'')+'<th>Внесено</th><th>Номинал</th><th>Реальные</th><th>Доход</th></tr></thead><tbody>';
+  yd.forEach(d=>{h+='<tr><td>'+d.y+'</td>'+(showContrib?'<td>'+fr(d.contrib)+'</td>':'')+'<td>'+fr(d.c)+'</td><td>'+fr(d.n)+'</td><td>'+fr(d.r)+'</td><td>'+fr(d.g)+'</td></tr>'});
+  document.getElementById('a_table').innerHTML=h+'</tbody>'
 }
 
 // ============================================================
@@ -392,7 +427,13 @@ function transfer(){
 }
 
 document.getElementById('i_strat').addEventListener('change',function(){document.getElementById('i_dfield').classList.toggle('hidden',this.value==='perpetual');calcI()});
-document.querySelectorAll('#a_initial,#a_contrib,#a_years,#a_rate,#a_inflation').forEach(e=>e.addEventListener('input',calcA));
+document.querySelectorAll('#a_initial,#a_contrib,#a_years,#a_rate,#a_inflation,#a_index_custom').forEach(e=>e.addEventListener('input',calcA));
+// Чекбокс индексации: показ/скрытие блока + пересчёт
+document.getElementById('a_index_on').addEventListener('change',function(){
+  document.getElementById('a_index_block').style.display=this.checked?'block':'none';
+  calcA();
+});
+document.querySelectorAll('input[name="a_index_mode"]').forEach(e=>e.addEventListener('change',calcA));
 document.getElementById('a_years').addEventListener('input',function(){document.getElementById('i_yto').value=this.value;calcI()});
 document.getElementById('a_freq').addEventListener('change',calcA);
 document.querySelectorAll('#i_capital,#i_rate,#i_inflation,#i_dyears,#i_yto').forEach(e=>e.addEventListener('input',calcI));
