@@ -405,6 +405,25 @@ function portReturns(weights,retMap,tickers){
   return out;
 }
 
+// Бета и R² портфеля относительно бенчмарка (SPY)
+function betaR2(portRet,benchRet){
+  const n=Math.min(portRet.length,benchRet.length);
+  if(n<10)return {beta:NaN,r2:NaN};
+  const p=portRet.slice(-n),b=benchRet.slice(-n);
+  let sp=0,sb=0;for(let i=0;i<n;i++){sp+=p[i];sb+=b[i];}
+  const mp=sp/n,mb=sb/n;
+  let cov=0,vb=0,vp=0;
+  for(let i=0;i<n;i++){
+    const dp=p[i]-mp,db=b[i]-mb;
+    cov+=dp*db;vb+=db*db;vp+=dp*dp;
+  }
+  cov/=(n-1);vb/=(n-1);vp/=(n-1);
+  const beta=vb>0?cov/vb:NaN;
+  const corr=(vp>0&&vb>0)?cov/Math.sqrt(vp*vb):NaN;
+  const r2=isNaN(corr)?NaN:corr*corr;
+  return {beta,r2};
+}
+
 function logReturns(closes){
   const r=new Array(closes.length-1);
   for(let i=1;i<closes.length;i++)r[i-1]=Math.log(closes[i]/closes[i-1]);
@@ -776,6 +795,27 @@ async function run(){
     updateMyTotal(); // Перерисуем подсказки штук → стоимость
     const yearsActual=common.length/252;
 
+    // ===== Загрузка бенчмарка SPY =====
+    let retBenchSPY=null,retMapBench=null,benchTickers=null;
+    try{
+      st.innerHTML='<span class="loader"></span>Загрузка бенчмарка (SPY)...';
+      const candSPY=await fetchCandles('SPY',fromStr,tillStr);
+      const mapS={};candSPY.forEach(c=>mapS[c.date]=c.close);
+      const benchCommon=common.filter(d=>mapS[d]!=null);
+      if(benchCommon.length>=60){
+        retBenchSPY=logReturns(benchCommon.map(d=>mapS[d]));
+        retMapBench={};
+        tickers.forEach(t=>{
+          const m={};allCandles[t].forEach(c=>m[c.date]=c.close);
+          const closes=benchCommon.map(d=>m[d]);
+          retMapBench[t]=logReturns(closes);
+        });
+        benchTickers=tickers;
+      }
+    }catch(eb){
+      console.warn('SPY не загружен:',eb.message);
+    }
+
     // Equal weights
     const N=tickers.length;
     const eqW=new Array(N).fill(1/N);
@@ -931,6 +971,15 @@ async function run(){
     if(userPort){
       cards.push({cls:'user',title:'Ваш портфель',data:userPort,extraLabel:'Sharpe'});
     }
+    // Расчёт беты и R² для каждой карточки, если SPY загружен
+    if(retBenchSPY && retMapBench){
+      cards.forEach(c=>{
+        const pr=portReturns(c.data.w,retMapBench,benchTickers);
+        const bS=betaR2(pr,retBenchSPY);
+        c.data.betaSPY=bS.beta;
+        c.data.r2=bS.r2;
+      });
+    }
     cards.forEach(c=>{
       const el=document.createElement('div');el.className='opt-card '+c.cls;
       let weightsHtml='';
@@ -942,9 +991,16 @@ async function run(){
       if(c.cls==='user' && c.data.mode==='shares' && c.data.totalValue){
         extraInfo='<div style="font-size:0.7rem;color:var(--text2);margin-bottom:4px;font-family:var(--mono)">Стоимость: $'+c.data.totalValue.toLocaleString('en-US',{maximumFractionDigits:0})+'</div>';
       }
+      let betaBlock='';
+      if(c.data.betaSPY!=null && !isNaN(c.data.betaSPY)){
+        const bS=c.data.betaSPY.toFixed(2);
+        const r2=(c.data.r2*100).toFixed(0);
+        betaBlock='<div class="opt-card-stats" style="margin-top:4px;font-size:0.72rem;border-top:1px solid rgba(0,0,0,0.06);padding-top:4px">β SPY <strong>'+bS+'</strong> · R² <strong>'+r2+'%</strong></div>';
+      }
       el.innerHTML='<div class="opt-card-title">'+c.title+'</div>'+
         extraInfo+
         '<div class="opt-card-stats">Доходность <strong>'+(c.data.r*100).toFixed(1)+'%</strong> · σ <strong>'+(c.data.v*100).toFixed(1)+'%</strong><br>Просадка <strong>−'+(c.data.d*100).toFixed(1)+'%</strong> · '+c.extraLabel+' <strong>'+c.data.s.toFixed(2)+'</strong></div>'+
+        betaBlock+
         '<div class="opt-weights">'+weightsHtml+'</div>';
       og.appendChild(el);
     });
