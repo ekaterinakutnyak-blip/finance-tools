@@ -66,8 +66,91 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .method strong{color:var(--text)}
 .back-link{display:inline-block;font-size:0.82rem;color:var(--text2);text-decoration:none;margin-bottom:1.25rem}
 .back-link:hover{color:var(--accent)}
+
+/* ===== ПЕЧАТЬ В PDF ===== */
+@media print{
+  /* Скрываем всё что не нужно в PDF */
+  .back-link,
+  .input-row,
+  #addBtn,
+  .row-actions,
+  .status,
+  .footer,
+  button,
+  .method{
+    display:none !important;
+  }
+  /* Прячем блок ввода полностью, оставляем только заголовок + результаты */
+  .card:first-of-type{
+    display:none !important;
+  }
+  /* Скрываем CTA-блок к PRO */
+  #resultsCard > div[style*="linear-gradient"]{
+    display:none !important;
+  }
+  /* Базовые настройки печати */
+  body{
+    background:#fff !important;
+    font-size:11pt;
+    color:#000;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .container{
+    max-width:100% !important;
+    padding:0 !important;
+  }
+  /* Заголовок страницы — крупно сверху на PDF */
+  h1{
+    font-size:18pt;
+    margin-bottom:4pt;
+    color:#2D5A3D !important;
+  }
+  .subtitle{
+    font-size:9pt;
+    margin-bottom:12pt;
+  }
+  /* Карточки облигаций */
+  .card{
+    border:none !important;
+    padding:0 !important;
+    margin:0 !important;
+    background:transparent !important;
+    page-break-inside:avoid;
+  }
+  .card-title{display:none !important;}
+  .compare-grid{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr)) !important;
+    gap:8pt !important;
+  }
+  .bond-card{
+    border:1px solid #999 !important;
+    background:#fff !important;
+    page-break-inside:avoid;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .bond-card.best{
+    border:2px solid #0F8043 !important;
+    background:#F0F8F2 !important;
+  }
+  .bond-card .ribbon{
+    background:#0F8043 !important;
+    color:#fff !important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .bond-card .row{font-size:9pt !important;}
+  .bond-card .row.highlight .val{color:#2D5A3D !important;}
+  .bond-card .row.profit .val{color:#0F8043 !important;}
+  /* Печать в landscape если бумаг 3+ */
+  @page{
+    margin:1cm;
+    size:A4 portrait;
+  }
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -93,8 +176,8 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
     <div class="card-title" style="margin-bottom:0">Результаты сравнения</div>
     <button type="button" onclick="downloadPDF()" style="padding:0.55rem 1.1rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Скачать PDF
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Сохранить PDF
     </button>
   </div>
   <div style="height:14px"></div>
@@ -424,106 +507,10 @@ async function run(){
 }
 
 function downloadPDF(){
-  console.log('=== PDF DOWNLOAD START ===');
   if(!window._lastResults){alert('Сначала выполните расчёт');return;}
-  const results=window._lastResults;
-  const bestIdx=window._lastBestIdx;
-  const investAmount=window._lastInvest;
-  const today=new Date().toLocaleDateString('ru-RU');
-  const fmtRub=v=>v.toLocaleString('ru-RU',{maximumFractionDigits:0});
-  const successful=results.filter(r=>!r.error);
-  if(successful.length===0){alert('Нет успешных результатов');return;}
-  console.log('successful cards:',successful.length);
-
-  // Строим карточку с inline-стилями (без зависимости от внешнего CSS)
-  function cardHTML(r,isBest){
-    const bg=isBest?'#E8F0EB':'#F3F2EE';
-    const border=isBest?'#0F8043':'#E5E4DF';
-    const horizonStr=r.horizonDate.toLocaleDateString('ru-RU');
-    const horizonNote=r.isOffer?' ('+r.horizonType.toLowerCase()+')':'';
-    const ribbon=isBest?'<div style="position:absolute;top:-9px;right:12px;background:#0F8043;color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px">лучшая</div>':'';
-    function row(lbl,val,color,bold,big,topBorder){
-      const c=color||'#1A1A18';
-      const w=bold?'600':'500';
-      const fs=big?'15px':'12px';
-      const tb=topBorder?'border-top:2px solid #1A1A18;padding-top:8px;margin-top:6px;':'';
-      return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:12px;border-bottom:1px solid #E5E4DF;'+tb+'"><span style="color:#6B6A65">'+lbl+'</span><span style="font-family:JetBrains Mono,monospace;font-weight:'+w+';color:'+c+';font-size:'+fs+'">'+val+'</span></div>';
-    }
-    function rowHighlight(lbl,val){
-      return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;font-size:13px;border-top:2px solid #1A1A18;border-bottom:2px solid #1A1A18;margin:6px 0"><span style="color:#1A1A18;font-weight:600">'+lbl+'</span><span style="font-family:JetBrains Mono,monospace;font-weight:700;color:#2D5A3D;font-size:16px">'+val+'</span></div>';
-    }
-    return '<div style="background:'+bg+';border:1px solid '+border+';border-radius:10px;padding:16px;position:relative;width:280px;box-sizing:border-box;font-family:DM Sans,Arial,sans-serif;color:#1A1A18">'+
-      ribbon+
-      '<div style="font-size:14px;font-weight:600;margin-bottom:2px">'+r.shortname+'</div>'+
-      '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:#9C9B96;margin-bottom:10px">'+r.isin+'</div>'+
-      row('Цена',r.price.toFixed(2)+'%')+
-      row('НКД',r.nkd.toFixed(2)+' ₽')+
-      row('Грязная цена (1 шт)',r.dirtyPrice.toFixed(2)+' ₽')+
-      row('Горизонт'+horizonNote,horizonStr)+
-      row('Дней до '+r.horizonType.toLowerCase(),String(r.daysToHorizon))+
-      row('Купонов будет',String(r.numCoupons))+
-      row('Куплю бумаг',r.numBonds+' шт',null,true,false,true)+
-      row('Потрачу',fmtRub(r.spent)+' ₽')+
-      row('Остаток (не работает)',fmtRub(r.remainder)+' ₽')+
-      row('Прибыль за весь срок',fmtRub(r.totalProfit)+' ₽','#0F8043',true)+
-      rowHighlight('₽ в день',r.perDay.toFixed(2)+' ₽')+
-      row('₽ в год',fmtRub(r.perYear)+' ₽')+
-      row('Доходность на всю сумму',r.annualOnTotal.toFixed(2)+'% год.')+
-      '<div style="display:flex;justify-content:space-between;padding-top:6px;font-size:10px;color:#9C9B96"><span>справочно: доходность бумаги</span><span style="font-family:JetBrains Mono,monospace">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>'+
-    '</div>';
-  }
-
-  let cardsHTML='';
-  successful.forEach((r,i)=>{
-    const origIdx=results.indexOf(r);
-    cardsHTML+=cardHTML(r,origIdx===bestIdx);
-  });
-
-  const numCards=successful.length;
-  const wrapperWidth=numCards*280+(numCards-1)*12+48;
-
-  const wrapper=document.createElement('div');
-  wrapper.style.cssText='padding:24px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:'+wrapperWidth+'px;box-sizing:border-box';
-  wrapper.innerHTML=
-    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:12px;margin-bottom:14px">'+
-      '<div style="font-size:20px;font-weight:600;color:#2D5A3D;margin-bottom:2px">investtools.pro</div>'+
-      '<div style="font-size:13px;color:#6B6A65">Сравнение облигаций по доходу в день</div>'+
-    '</div>'+
-    '<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;color:#6B6A65">'+
-      '<div>Сумма вложений: <strong style="color:#1A1A18">'+fmtRub(parseFloat(investAmount))+' ₽</strong></div>'+
-      '<div>Дата расчёта: <strong style="color:#1A1A18">'+today+'</strong></div>'+
-    '</div>'+
-    '<div style="display:flex;gap:12px;align-items:flex-start">'+cardsHTML+'</div>'+
-    '<div style="margin-top:16px;padding-top:10px;border-top:1px solid #E5E4DF;font-size:10px;color:#9C9B96;line-height:1.5">'+
-      'Метрика «₽ в день» не учитывает кредитный риск. Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк'+
-    '</div>';
-
-  // Полностью видимый для надёжности
-  wrapper.style.position='fixed';
-  wrapper.style.top='0';
-  wrapper.style.left='0';
-  wrapper.style.zIndex='99999';
-  document.body.appendChild(wrapper);
-  console.log('wrapper size:',wrapper.offsetWidth,'x',wrapper.offsetHeight);
-
-  setTimeout(()=>{
-    console.log('starting html2pdf...');
-    const opt={
-      margin:[6,6,6,6],
-      filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
-      image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},
-      jsPDF:{unit:'mm',format:'a4',orientation:numCards>=3?'landscape':'portrait'}
-    };
-    html2pdf().set(opt).from(wrapper).save().then(()=>{
-      console.log('PDF saved OK');
-      if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
-    }).catch(e=>{
-      console.error('PDF error:',e);
-      if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
-      alert('Ошибка генерации PDF: '+e.message);
-    });
-  },500);
+  // Используем встроенную браузерную печать в PDF
+  // print-стили (@media print) в <style> прячут лишнее и оставляют только результаты
+  window.print();
 }
 </script>
 </body>
