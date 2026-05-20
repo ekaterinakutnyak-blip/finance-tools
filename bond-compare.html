@@ -424,114 +424,67 @@ async function run(){
 }
 
 function downloadPDF(){
-  if(!window._lastResults){alert('Сначала выполните расчёт');return;}
-  const results=window._lastResults;
-  const bestIdx=window._lastBestIdx;
-  const investAmount=window._lastInvest;
+  const grid=document.getElementById('resultsGrid');
+  if(!grid.innerHTML){alert('Сначала выполните расчёт');return;}
+  const investAmount=document.getElementById('investAmount').value;
+  const fmtRub=v=>(typeof v==='number'?v.toLocaleString('ru-RU',{maximumFractionDigits:0}):v);
   const today=new Date().toLocaleDateString('ru-RU');
-  const fmtRub=v=>v.toLocaleString('ru-RU',{maximumFractionDigits:0});
-  // Только успешные бумаги
-  const successful=results.map((r,i)=>({r,idx:i})).filter(o=>!o.r.error);
-  if(successful.length===0){alert('Нет успешных результатов для экспорта');return;}
+  // Количество карточек определяет ширину
+  const numCards=grid.children.length;
+  // Считаем нужную ширину так чтобы карточки помещались (каждая ~280px + промежутки)
+  const cardWidth=280;
+  const gap=12;
+  const gridWidth=numCards*cardWidth+(numCards-1)*gap;
+  const wrapperWidth=gridWidth+60; // +padding
 
-  // Строки таблицы: метрика | значение по каждой бумаге
-  const rows=[
-    {label:'ISIN',get:r=>r.isin,mono:true,small:true},
-    {label:'Цена',get:r=>r.price.toFixed(2)+'%',mono:true},
-    {label:'НКД',get:r=>r.nkd.toFixed(2)+' ₽',mono:true},
-    {label:'Грязная цена (1 шт)',get:r=>r.dirtyPrice.toFixed(2)+' ₽',mono:true},
-    {label:'Горизонт',get:r=>r.horizonDate.toLocaleDateString('ru-RU')+(r.isOffer?' ('+r.horizonType.toLowerCase()+')':''),mono:true},
-    {label:'Дней до '+(successful[0].r.horizonType||'погашения').toLowerCase(),get:r=>String(r.daysToHorizon),mono:true},
-    {label:'Купонов будет',get:r=>String(r.numCoupons),mono:true},
-    {label:'',sep:true},
-    {label:'Куплю бумаг',get:r=>r.numBonds+' шт',mono:true,bold:true},
-    {label:'Потрачу',get:r=>fmtRub(r.spent)+' ₽',mono:true},
-    {label:'Остаток (не работает)',get:r=>fmtRub(r.remainder)+' ₽',mono:true},
-    {label:'Прибыль за весь срок',get:r=>fmtRub(r.totalProfit)+' ₽',mono:true,green:true},
-    {label:'₽ в день',get:r=>r.perDay.toFixed(2)+' ₽',mono:true,bold:true,highlight:true},
-    {label:'₽ в год',get:r=>fmtRub(r.perYear)+' ₽',mono:true},
-    {label:'Доходность на всю сумму',get:r=>r.annualOnTotal.toFixed(2)+'% год.',mono:true},
-    {label:'Доходность бумаги (справ.)',get:r=>r.simpleAnnual.toFixed(2)+'% год.',mono:true,muted:true}
-  ];
-
-  // Заголовки колонок
-  let thead='<tr><th style="text-align:left;padding:8px 10px;border-bottom:2px solid #2D5A3D;font-size:11px;color:#6B6A65;font-weight:500">Параметр</th>';
-  successful.forEach((o,i)=>{
-    const isBest=o.idx===bestIdx;
-    const bg=isBest?'#E8F0EB':'#F3F2EE';
-    const color=isBest?'#2D5A3D':'#1A1A18';
-    thead+='<th style="text-align:right;padding:8px 10px;border-bottom:2px solid #2D5A3D;font-size:12px;color:'+color+';font-weight:600;background:'+bg+'">'+(o.r.shortname||o.r.isin)+(isBest?' ★':'')+'</th>';
+  // Клонируем grid и принудительно ставим фикс-ширины карточкам и flexbox layout
+  const gridClone=grid.cloneNode(true);
+  gridClone.style.cssText='display:flex;gap:'+gap+'px;flex-wrap:nowrap;width:'+gridWidth+'px';
+  Array.from(gridClone.children).forEach(card=>{
+    card.style.flex='0 0 '+cardWidth+'px';
+    card.style.maxWidth=cardWidth+'px';
+    card.style.boxSizing='border-box';
   });
-  thead+='</tr>';
-
-  // Строки
-  let tbody='';
-  rows.forEach(row=>{
-    if(row.sep){
-      tbody+='<tr><td colspan="'+(successful.length+1)+'" style="padding:4px 0;border-top:1px solid #C9C8C2"></td></tr>';
-      return;
-    }
-    const labelStyle='padding:5px 10px;font-size:11px;color:'+(row.muted?'#9C9B96':'#6B6A65')+';border-bottom:1px solid #EFEDE7';
-    tbody+='<tr><td style="'+labelStyle+'">'+row.label+'</td>';
-    successful.forEach(o=>{
-      let cellColor=row.muted?'#9C9B96':'#1A1A18';
-      if(row.green)cellColor='#0F8043';
-      let bg=row.highlight?'#E8F0EB':'transparent';
-      if(o.idx===bestIdx && !row.highlight)bg='rgba(232,240,235,0.4)';
-      const fs=row.small?'10px':(row.muted?'10px':'12px');
-      const fw=row.bold?'600':'400';
-      tbody+='<td style="text-align:right;padding:5px 10px;font-family:JetBrains Mono,monospace;font-size:'+fs+';color:'+cellColor+';font-weight:'+fw+';background:'+bg+';border-bottom:1px solid #EFEDE7">'+row.get(o.r)+'</td>';
-    });
-    tbody+='</tr>';
-  });
-
-  // Ширина wrapper подгоняется под кол-во колонок
-  const wrapperWidth=Math.min(1280,500+successful.length*200);
 
   const wrapper=document.createElement('div');
-  wrapper.style.cssText='padding:24px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:'+wrapperWidth+'px';
+  wrapper.style.cssText='padding:24px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:'+wrapperWidth+'px;box-sizing:border-box';
   wrapper.innerHTML=
-    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:12px;margin-bottom:16px">'+
+    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:12px;margin-bottom:14px">'+
       '<div style="font-size:20px;font-weight:600;color:#2D5A3D;margin-bottom:2px">investtools.pro</div>'+
       '<div style="font-size:13px;color:#6B6A65">Сравнение облигаций по доходу в день</div>'+
     '</div>'+
     '<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;color:#6B6A65">'+
-      '<div>Сумма вложений: <strong style="color:#1A1A18">'+fmtRub(investAmount)+' ₽</strong></div>'+
+      '<div>Сумма вложений: <strong style="color:#1A1A18">'+fmtRub(parseFloat(investAmount))+' ₽</strong></div>'+
       '<div>Дата расчёта: <strong style="color:#1A1A18">'+today+'</strong></div>'+
-    '</div>'+
-    '<table style="width:100%;border-collapse:collapse">'+
-      '<thead>'+thead+'</thead>'+
-      '<tbody>'+tbody+'</tbody>'+
-    '</table>'+
-    '<div style="margin-top:18px;padding-top:10px;border-top:1px solid #E5E4DF;font-size:10px;color:#9C9B96;line-height:1.5">'+
-      '★ — лучшая по «₽ в день». Метрика не учитывает кредитный риск. Сравнение бумаг разного кредитного качества по этой метрике даст обманчивый результат. '+
-      'Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк'+
     '</div>';
+  wrapper.appendChild(gridClone);
+  const footer=document.createElement('div');
+  footer.style.cssText='margin-top:16px;padding-top:10px;border-top:1px solid #E5E4DF;font-size:10px;color:#9C9B96;line-height:1.5';
+  footer.innerHTML='Метрика «₽ в день» не учитывает кредитный риск. Сравнение бумаг разного кредитного качества по этой метрике даст обманчивый результат. Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк';
+  wrapper.appendChild(footer);
 
-  // Помещаем wrapper в DOM как видимый, но за пределами окна — html2canvas требует видимости
+  // Размещаем wrapper в DOM (видимо, но за пределами viewport)
   wrapper.style.position='fixed';
   wrapper.style.top='0';
-  wrapper.style.left='-'+(wrapperWidth+100)+'px';
-  wrapper.style.zIndex='-1';
+  wrapper.style.left='100vw';
   document.body.appendChild(wrapper);
 
-  // Даём браузеру время отрисовать (шрифты, layout)
   setTimeout(()=>{
     const opt={
-      margin:[8,8,8,8],
+      margin:[6,6,6,6],
       filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
-      jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',width:wrapperWidth,windowWidth:wrapperWidth},
+      jsPDF:{unit:'mm',format:'a4',orientation:numCards>=3?'landscape':'portrait'}
     };
     html2pdf().set(opt).from(wrapper).save().then(()=>{
-      if(wrapper.parentNode)document.body.removeChild(wrapper);
+      if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
     }).catch(e=>{
       console.error('PDF error:',e);
-      if(wrapper.parentNode)document.body.removeChild(wrapper);
+      if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
       alert('Ошибка генерации PDF: '+e.message);
     });
-  },300);
+  },400);
 }
 </script>
 </body>
