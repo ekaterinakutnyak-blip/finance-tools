@@ -424,20 +424,23 @@ async function run(){
 }
 
 function downloadPDF(){
+  console.log('=== PDF DOWNLOAD START ===');
   const grid=document.getElementById('resultsGrid');
-  if(!grid.innerHTML){alert('Сначала выполните расчёт');return;}
+  console.log('grid found:',!!grid,'children:',grid?grid.children.length:0);
+  if(!grid || !grid.innerHTML){alert('Сначала выполните расчёт');return;}
+  console.log('grid innerHTML length:',grid.innerHTML.length);
+  console.log('html2pdf available:',typeof html2pdf);
+
   const investAmount=document.getElementById('investAmount').value;
   const fmtRub=v=>(typeof v==='number'?v.toLocaleString('ru-RU',{maximumFractionDigits:0}):v);
   const today=new Date().toLocaleDateString('ru-RU');
-  // Количество карточек определяет ширину
   const numCards=grid.children.length;
-  // Считаем нужную ширину так чтобы карточки помещались (каждая ~280px + промежутки)
   const cardWidth=280;
   const gap=12;
   const gridWidth=numCards*cardWidth+(numCards-1)*gap;
-  const wrapperWidth=gridWidth+60; // +padding
+  const wrapperWidth=gridWidth+60;
+  console.log('layout:',{numCards,gridWidth,wrapperWidth});
 
-  // Клонируем grid и принудительно ставим фикс-ширины карточкам и flexbox layout
   const gridClone=grid.cloneNode(true);
   gridClone.style.cssText='display:flex;gap:'+gap+'px;flex-wrap:nowrap;width:'+gridWidth+'px';
   Array.from(gridClone.children).forEach(card=>{
@@ -447,6 +450,7 @@ function downloadPDF(){
   });
 
   const wrapper=document.createElement('div');
+  wrapper.id='pdf-wrapper-temp';
   wrapper.style.cssText='padding:24px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:'+wrapperWidth+'px;box-sizing:border-box';
   wrapper.innerHTML=
     '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:12px;margin-bottom:14px">'+
@@ -460,31 +464,37 @@ function downloadPDF(){
   wrapper.appendChild(gridClone);
   const footer=document.createElement('div');
   footer.style.cssText='margin-top:16px;padding-top:10px;border-top:1px solid #E5E4DF;font-size:10px;color:#9C9B96;line-height:1.5';
-  footer.innerHTML='Метрика «₽ в день» не учитывает кредитный риск. Сравнение бумаг разного кредитного качества по этой метрике даст обманчивый результат. Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк';
+  footer.innerHTML='Метрика «₽ в день» не учитывает кредитный риск. Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк';
   wrapper.appendChild(footer);
 
-  // Размещаем wrapper в DOM (видимо, но за пределами viewport)
+  // ВИДИМО размещаем — поверх страницы, чтобы убедиться что есть контент
   wrapper.style.position='fixed';
-  wrapper.style.top='0';
-  wrapper.style.left='100vw';
+  wrapper.style.top='10px';
+  wrapper.style.left='10px';
+  wrapper.style.zIndex='99999';
+  wrapper.style.border='3px solid red';
   document.body.appendChild(wrapper);
+  console.log('wrapper appended, size:',wrapper.offsetWidth,'x',wrapper.offsetHeight);
+  console.log('wrapper visible:',wrapper.offsetParent!==null);
 
   setTimeout(()=>{
+    console.log('starting html2pdf...');
     const opt={
       margin:[6,6,6,6],
       filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',width:wrapperWidth,windowWidth:wrapperWidth},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},
       jsPDF:{unit:'mm',format:'a4',orientation:numCards>=3?'landscape':'portrait'}
     };
     html2pdf().set(opt).from(wrapper).save().then(()=>{
+      console.log('PDF saved OK');
       if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
     }).catch(e=>{
       console.error('PDF error:',e);
       if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
       alert('Ошибка генерации PDF: '+e.message);
     });
-  },400);
+  },800);
 }
 </script>
 </body>
