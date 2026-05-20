@@ -20,8 +20,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--green:#0F8043;--red:#B44040;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
-.container{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 3rem}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;font-size:17px}
+.container{max-width:1240px;margin:0 auto;padding:2rem 1.5rem 3rem}
+@media(max-width:760px){body{font-size:17px}.container{padding:1.2rem 1rem 2rem}}
 h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem}
 .subtitle{font-size:0.88rem;color:var(--text2);margin-bottom:1.5rem}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem}
@@ -29,12 +30,12 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .card.hidden{display:none}
 .input-row{display:flex;align-items:center;gap:8px;margin-bottom:0.6rem}
 .input-row .num{width:18px;font-family:var(--mono);font-size:0.72rem;color:var(--text3);text-align:right}
-.input-row input{flex:1;padding:0.55rem 0.7rem;font-family:var(--mono);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);min-width:0}
+.input-row input{flex:1;padding:0.7rem 0.9rem;font-family:var(--mono);font-size:0.92rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);min-width:0}
 .input-row input:focus{outline:none;border-color:var(--accent)}
 .input-row .rm{padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text3);font-size:0.9rem}
 .input-row .rm:hover{color:var(--red);border-color:var(--red)}
 .input-row .nm{flex:0 0 130px;font-size:0.78rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btn{display:inline-block;padding:0.6rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:0.88rem;font-weight:500;cursor:pointer;text-decoration:none}
+.btn{display:inline-block;padding:0.7rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:0.95rem;font-weight:500;cursor:pointer;text-decoration:none}
 .btn:hover{opacity:0.88}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
 .btn-add{padding:0.5rem 1rem;background:transparent;color:var(--accent);border:1px dashed var(--accent);border-radius:8px;font-family:var(--sans);font-size:0.82rem;cursor:pointer}
@@ -66,6 +67,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .back-link{display:inline-block;font-size:0.82rem;color:var(--text2);text-decoration:none;margin-bottom:1.25rem}
 .back-link:hover{color:var(--accent)}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -81,15 +83,42 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-top:1rem;flex-wrap:wrap">
     <label style="font-size:0.82rem;color:var(--text2)">Сумма вложений, ₽:</label>
-    <input type="text" id="investAmount" value="100000" inputmode="numeric" style="width:130px;padding:0.5rem 0.7rem;font-family:var(--mono);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+    <input type="text" id="investAmount" value="100000" inputmode="numeric" style="width:150px;padding:0.7rem 0.9rem;font-family:var(--mono);font-size:0.95rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
     <button type="button" class="btn" onclick="run()">Сравнить</button>
   </div>
   <div class="status" id="status"></div>
 </div>
 
 <div class="card hidden" id="resultsCard">
-  <div class="card-title">Результаты сравнения</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div class="card-title" style="margin-bottom:0">Результаты сравнения</div>
+    <button type="button" onclick="downloadPDF()" style="padding:0.55rem 1.1rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Скачать PDF
+    </button>
+  </div>
+  <div style="height:14px"></div>
   <div class="compare-grid" id="resultsGrid"></div>
+
+  <div style="margin-top:1.5rem;padding:1.2rem 1.4rem;background:linear-gradient(135deg,#FDFAF5,#F8F0E0);border:1px solid #E8DCC5;border-radius:var(--radius)">
+    <div style="font-size:0.92rem;font-weight:600;color:var(--text);margin-bottom:6px">А теперь — насколько эти бумаги надёжны?</div>
+    <div style="font-size:0.82rem;color:var(--text2);line-height:1.5;margin-bottom:12px">
+      «₽ в день» не учитывает кредитный риск. ВДО легко обыгрывает ОФЗ по доходности — но риск дефолта в десятки раз выше. Перед покупкой проверьте бумагу в PRO-калькуляторах:
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="pro/pd-calculator.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--accent);color:#fff;border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Вероятность дефолта · PRO
+      </a>
+      <a href="pro/zspread-calculator.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Z-spread к КБД ОФЗ · PRO
+      </a>
+      <a href="pro/credit-metrics.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Кредитный анализ эмитента · PRO
+      </a>
+    </div>
+    <div style="font-size:0.7rem;color:var(--text3);margin-top:10px">PRO — 500 ₽/мес, доступ ко всем 6 продвинутым калькуляторам</div>
+  </div>
+
   <div class="method">
     <strong>Методика:</strong><br>
     1. С Мосбиржи подтягиваются: чистая цена, НКД, дата погашения и все будущие купоны.<br>
@@ -100,7 +129,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
     6. Если у бумаги есть оферта или фиксированы только ближайшие купоны (скрытая оферта) — расчёт идёт до этой даты, а не до погашения.<br><br>
     <strong>Почему на фиксированную сумму, а не на 1 бумагу:</strong> у бумаг разная цена. На одни и те же деньги дисконтной ОФЗ за 600 ₽ купишь больше штук, чем купонной за 1000 ₽. Сравнивать «прибыль на 1 штуку» некорректно — победит просто более дорогая бумага. Поэтому считаем на одинаковую сумму вложений и целыми бумагами.<br><br>
     Реинвестирование купонов не учитывается. Налоги не учитываются (бумаги обычно покупаются на ИИС-Б или с ЛДВ).<br><br>
-    <strong style="color:var(--red)">Важно:</strong> метрика «₽ в день» не учитывает кредитный риск. Сравнивать имеет смысл бумаги <strong>одного кредитного качества</strong> — например, две ОФЗ между собой, или два эмитента из одного эшелона. Сравнение ОФЗ с ВДО по этой метрике даст обманчивый результат: ВДО заработает больше в день, но и риск дефолта в десятки раз выше. Для оценки кредитного качества используй <a href="pro/pd-calculator.html" style="color:var(--accent)">калькулятор PD</a> и <a href="pro/zspread-calculator.html" style="color:var(--accent)">Z-spread</a> (PRO).
+    <strong style="color:var(--red)">Важно:</strong> метрика «₽ в день» не учитывает кредитный риск. Сравнивать так имеет смысл бумаги <strong>одного кредитного качества</strong>: две ОФЗ между собой, или два эмитента из одного эшелона. Для оценки кредитного качества используйте PRO-калькуляторы выше.
   </div>
 </div>
 
@@ -388,6 +417,40 @@ async function run(){
   }else{
     st.className='status err';st.textContent='Загружено '+successful.length+' из '+results.length+'. См. ошибки в карточках.';
   }
+}
+
+function downloadPDF(){
+  // Собираем готовый блок для печати — заголовок + параметры + карточки
+  const grid=document.getElementById('resultsGrid');
+  if(!grid.innerHTML){alert('Сначала выполните расчёт');return;}
+  const investAmount=document.getElementById('investAmount').value;
+  const today=new Date().toLocaleDateString('ru-RU');
+  // Строим HTML для PDF — со стилями inline, чтобы не зависеть от внешнего CSS при рендере
+  const wrapper=document.createElement('div');
+  wrapper.style.cssText='padding:30px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:780px';
+  wrapper.innerHTML=
+    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:14px;margin-bottom:20px">'+
+      '<div style="font-size:22px;font-weight:600;color:#2D5A3D;margin-bottom:4px">investtools.pro</div>'+
+      '<div style="font-size:14px;color:#6B6A65">Сравнение облигаций по доходу в день</div>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;color:#6B6A65">'+
+      '<div>Сумма вложений: <strong style="color:#1A1A18">'+investAmount+' ₽</strong></div>'+
+      '<div>Дата расчёта: <strong style="color:#1A1A18">'+today+'</strong></div>'+
+    '</div>'+
+    grid.outerHTML+
+    '<div style="margin-top:30px;padding-top:14px;border-top:1px solid #E5E4DF;font-size:11px;color:#9C9B96;line-height:1.5">'+
+      'Метрика «₽ в день» не учитывает кредитный риск. Сравнение бумаг разного кредитного качества по этой метрике даст обманчивый результат. '+
+      'Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк'+
+    '</div>';
+  // Опции html2pdf
+  const opt={
+    margin:[10,10,10,10],
+    filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
+    image:{type:'jpeg',quality:0.98},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+  };
+  html2pdf().set(opt).from(wrapper).save();
 }
 </script>
 </body>
