@@ -508,25 +508,30 @@ function downloadPDF(){
       'Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк'+
     '</div>';
 
-  // Временно добавляем в DOM (нужно для рендера html2canvas)
-  wrapper.style.position='absolute';
-  wrapper.style.left='-99999px';
+  // Помещаем wrapper в DOM как видимый, но за пределами окна — html2canvas требует видимости
+  wrapper.style.position='fixed';
+  wrapper.style.top='0';
+  wrapper.style.left='-'+(wrapperWidth+100)+'px';
+  wrapper.style.zIndex='-1';
   document.body.appendChild(wrapper);
 
-  const opt={
-    margin:[8,8,8,8],
-    filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
-    image:{type:'jpeg',quality:0.98},
-    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-    jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}
-  };
-  html2pdf().set(opt).from(wrapper).save().then(()=>{
-    document.body.removeChild(wrapper);
-  }).catch(e=>{
-    console.error('PDF error:',e);
-    document.body.removeChild(wrapper);
-    alert('Ошибка генерации PDF: '+e.message);
-  });
+  // Даём браузеру время отрисовать (шрифты, layout)
+  setTimeout(()=>{
+    const opt={
+      margin:[8,8,8,8],
+      filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
+      image:{type:'jpeg',quality:0.98},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}
+    };
+    html2pdf().set(opt).from(wrapper).save().then(()=>{
+      if(wrapper.parentNode)document.body.removeChild(wrapper);
+    }).catch(e=>{
+      console.error('PDF error:',e);
+      if(wrapper.parentNode)document.body.removeChild(wrapper);
+      alert('Ошибка генерации PDF: '+e.message);
+    });
+  },300);
 }
 </script>
 </body>
