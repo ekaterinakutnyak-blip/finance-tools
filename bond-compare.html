@@ -425,30 +425,33 @@ function downloadPDF(){
   if(!grid.innerHTML){alert('Сначала выполните расчёт');return;}
   const investAmount=document.getElementById('investAmount').value;
   const today=new Date().toLocaleDateString('ru-RU');
-  // Строим HTML для PDF — со стилями inline, чтобы не зависеть от внешнего CSS при рендере
+  // Считаем количество карточек, для landscape A4 (ширина ~1100px при scale 2)
+  const numCards=grid.children.length;
+  // Ширина wrapper — подгоняем под landscape A4
+  const wrapperWidth=numCards<=2?900:numCards===3?1100:1280;
   const wrapper=document.createElement('div');
-  wrapper.style.cssText='padding:30px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:780px';
+  wrapper.style.cssText='padding:24px;font-family:DM Sans,Arial,sans-serif;color:#1A1A18;background:#fff;width:'+wrapperWidth+'px';
   wrapper.innerHTML=
-    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:14px;margin-bottom:20px">'+
-      '<div style="font-size:22px;font-weight:600;color:#2D5A3D;margin-bottom:4px">investtools.pro</div>'+
-      '<div style="font-size:14px;color:#6B6A65">Сравнение облигаций по доходу в день</div>'+
+    '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:12px;margin-bottom:16px">'+
+      '<div style="font-size:20px;font-weight:600;color:#2D5A3D;margin-bottom:2px">investtools.pro</div>'+
+      '<div style="font-size:13px;color:#6B6A65">Сравнение облигаций по доходу в день</div>'+
     '</div>'+
-    '<div style="display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;color:#6B6A65">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:12px;color:#6B6A65">'+
       '<div>Сумма вложений: <strong style="color:#1A1A18">'+investAmount+' ₽</strong></div>'+
       '<div>Дата расчёта: <strong style="color:#1A1A18">'+today+'</strong></div>'+
     '</div>'+
     grid.outerHTML+
-    '<div style="margin-top:30px;padding-top:14px;border-top:1px solid #E5E4DF;font-size:11px;color:#9C9B96;line-height:1.5">'+
+    '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #E5E4DF;font-size:10px;color:#9C9B96;line-height:1.5">'+
       'Метрика «₽ в день» не учитывает кредитный риск. Сравнение бумаг разного кредитного качества по этой метрике даст обманчивый результат. '+
       'Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк'+
     '</div>';
-  // Опции html2pdf
+  // Опции html2pdf — landscape для широких раскладок
   const opt={
-    margin:[10,10,10,10],
+    margin:[8,8,8,8],
     filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
     image:{type:'jpeg',quality:0.98},
-    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',windowWidth:wrapperWidth+50},
+    jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}
   };
   html2pdf().set(opt).from(wrapper).save();
 }
