@@ -467,16 +467,19 @@ function downloadPDF(){
   footer.innerHTML='Метрика «₽ в день» не учитывает кредитный риск. Данные с Московской биржи (MOEX ISS API). investtools.pro · Екатерина Кутняк';
   wrapper.appendChild(footer);
 
-  // Размещаем wrapper как обычный элемент в самом конце body
-  // visibility:hidden + height:0 не сработают для html2canvas
-  // Решение: opacity:0 + pointer-events:none + position:absolute с реальной видимостью
-  wrapper.style.position='absolute';
+  // Wrapper делаем ПОЛНОСТЬЮ ВИДИМЫМ на 1 секунду — это надёжнее всего для html2canvas
+  // Пользователь увидит мерцание, но PDF сохранится правильно
+  wrapper.style.position='fixed';
   wrapper.style.top='0';
   wrapper.style.left='0';
   wrapper.style.zIndex='99999';
-  wrapper.style.opacity='0';
-  wrapper.style.pointerEvents='none';
+  wrapper.style.boxShadow='0 0 50px rgba(0,0,0,0.3)';
   document.body.appendChild(wrapper);
+  // Чтобы пользователь понял что происходит — добавим заголовок
+  const banner=document.createElement('div');
+  banner.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#2D5A3D;color:#fff;padding:20px 40px;border-radius:12px;font-family:DM Sans;font-size:16px;font-weight:500;z-index:100000;box-shadow:0 10px 30px rgba(0,0,0,0.3)';
+  banner.textContent='Создаём PDF…';
+  document.body.appendChild(banner);
   console.log('wrapper appended, size:',wrapper.offsetWidth,'x',wrapper.offsetHeight);
   console.log('wrapper visible:',wrapper.offsetParent!==null);
 
@@ -486,18 +489,20 @@ function downloadPDF(){
       margin:[6,6,6,6],
       filename:'investtools_bond_compare_'+today.replace(/\./g,'-')+'.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true,width:wrapperWidth,windowWidth:wrapperWidth},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:true},
       jsPDF:{unit:'mm',format:'a4',orientation:numCards>=3?'landscape':'portrait'}
     };
     html2pdf().set(opt).from(wrapper).save().then(()=>{
       console.log('PDF saved OK');
       if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
+      if(banner.parentNode)banner.parentNode.removeChild(banner);
     }).catch(e=>{
       console.error('PDF error:',e);
       if(wrapper.parentNode)wrapper.parentNode.removeChild(wrapper);
+      if(banner.parentNode)banner.parentNode.removeChild(banner);
       alert('Ошибка генерации PDF: '+e.message);
     });
-  },800);
+  },1000);
 }
 </script>
 </body>
