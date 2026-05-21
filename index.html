@@ -31,6 +31,10 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .badge{font-size:0.65rem;font-family:var(--mono);padding:2px 8px;border-radius:4px;font-weight:500}
 .badge-free{background:#EDF7F1;color:#2D7A4F}
 .badge-pro{background:#FDF7ED;color:#A67A2E}
+.badge-new{background:#FFE9D6;color:#C25A1E;animation:newPulse 2s ease-in-out infinite}
+@keyframes newPulse{0%,100%{opacity:1}50%{opacity:0.65}}
+.card.is-new{border-color:#E8A26E;background:linear-gradient(135deg,#FFFCF8,#FFF);position:relative}
+.card.is-new::before{content:'НОВИНКА';position:absolute;top:14px;right:14px;font-size:0.6rem;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:#FFE9D6;color:#C25A1E;font-weight:600;letter-spacing:0.05em}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem;text-decoration:none;display:block;transition:border-color 0.2s,transform 0.15s}
 .card:hover{border-color:var(--accent);transform:translateY(-2px)}
 .card h3{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:0.3rem}
@@ -70,6 +74,12 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   <h2>Личные финансы</h2>
   <span class="badge badge-free">Бесплатно</span>
 </div>
+
+<a class="card s1 is-new" href="bond-vs-deposit.html">
+  <h3>Облигация vs Депозит</h3>
+  <p>Положить на депозит или купить облигацию? Считаем оба варианта на одной сумме за один срок. Большая плашка-победитель + разница в рублях. Автоподбор ОФЗ под срок депозита.</p>
+  <div class="tags"><span class="tag">Депозит</span><span class="tag">ОФЗ автоподбор</span><span class="tag">Кто выиграл</span><span class="tag">PDF</span></div>
+</a>
 
 <a class="card s1" href="savings.html">
   <h3>Накопления и пассивный доход</h3>
