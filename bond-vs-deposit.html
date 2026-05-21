@@ -357,7 +357,11 @@ async function fetchOfzListFromMoex(){
   d.securities.data.forEach(row=>{
     const obj={};cols.forEach((c,i)=>obj[c]=row[i]);
     if(!obj.MATDATE)return;
-    if(!obj.SECID||!obj.SECID.startsWith('SU'))return; // только SU-серия (ОФЗ-ПД)
+    if(!obj.SECID||!obj.SECID.startsWith('SU'))return;
+    // Фильтруем только ОФЗ-ПД (постоянный купон).
+    // SECID формат: SU26XXXRMFSY где 26 = ОФЗ-ПД, 29 = ОФЗ-ПК (флоатер), 52 = ОФЗ-ИН, 25 = старые короткие
+    const code=obj.SECID.substr(2,2);
+    if(code!=='26')return; // оставляем только 26-серию (ОФЗ-ПД)
     result.push({secid:obj.SECID,matDate:obj.MATDATE,shortname:obj.SHORTNAME});
   });
   return result;
@@ -495,6 +499,15 @@ function computeBond(b,amount,termMonths,useTax){
     return d>today && d<=horizon && !isNaN(c.value) && c.value>0;
   });
   const totalCoupons=futureCoupons.reduce((s,c)=>s+c.value,0);
+
+  // Проверка на флоатер: если в горизонт попадают купонные даты, но их значения неизвестны
+  const allFutureUnpriced=b.coupons.filter(c=>{
+    const d=new Date(c.date);
+    return d>today && d<=horizon && (isNaN(c.value)||c.value<=0);
+  });
+  if(futureCoupons.length===0 && allFutureUnpriced.length>0){
+    throw new Error('У бумаги '+b.shortname+' плавающий купон (флоатер). Будущие купоны зависят от ставки RUONIA и точно неизвестны — расчёт невозможен. Выберите ОФЗ-ПД с постоянным купоном.');
+  }
 
   // Грязная цена за 1 бумагу
   const dirtyPrice=b.price/100*b.faceValue+b.nkd;
