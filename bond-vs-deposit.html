@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Облигация vs Депозит · сравнение</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--green:#0F8043;--red:#B44040;--blue:#1B6B9A;--blue-light:#E6F1FB;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;font-size:17px}
+.container{max-width:1240px;margin:0 auto;padding:2rem 1.5rem 3rem}
+@media(max-width:760px){body{font-size:17px}.container{padding:1.2rem 1rem 2rem}}
+h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem}
+.subtitle{font-size:0.88rem;color:var(--text2);margin-bottom:1.5rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1rem}
+.card-title{font-size:0.72rem;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem}
+.card.hidden{display:none}
+.input-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:0.82rem;color:var(--text2)}
+.field input,.field select{padding:0.7rem 0.9rem;font-family:var(--mono);font-size:0.95rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.field .hint{font-size:0.72rem;color:var(--text3)}
+.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:700px){.compare-row{grid-template-columns:1fr}}
+.subcard{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}
+.subcard.deposit{border-color:var(--blue);background:var(--blue-light)}
+.subcard.bond{border-color:var(--accent);background:var(--accent-light)}
+.subcard h3{font-size:1rem;font-weight:600;margin-bottom:0.85rem;display:flex;align-items:center;gap:8px}
+.subcard h3 .badge{font-size:0.65rem;font-weight:600;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase}
+.subcard.deposit .badge{background:var(--blue);color:#fff}
+.subcard.bond .badge{background:var(--accent);color:#fff}
+.subcard .field{margin-bottom:0.65rem}
+.btn{display:inline-block;padding:0.7rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:0.95rem;font-weight:500;cursor:pointer;text-decoration:none}
+.btn:hover{opacity:0.88}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{background:transparent;color:var(--accent);border:1px dashed var(--accent)}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-top:0.75rem;font-size:0.85rem;color:var(--text2);cursor:pointer}
+.checkbox-row input{width:16px;height:16px;cursor:pointer}
+.row-actions{display:flex;gap:10px;align-items:center;margin-top:1rem;flex-wrap:wrap}
+.status{font-size:0.78rem;color:var(--text2);margin-top:0.75rem;min-height:1.2em}
+.status.err{color:var(--red)}
+.status.ok{color:var(--green)}
+.loader{display:inline-block;width:10px;height:10px;border:2px solid var(--surface2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Победитель — большая плашка сверху */
+.winner-banner{padding:1.5rem;border-radius:var(--radius-lg);margin-bottom:1.5rem;text-align:center;border:2px solid;position:relative}
+.winner-banner.bond-wins{background:linear-gradient(135deg,#E8F0EB,#D4E6DC);border-color:var(--accent)}
+.winner-banner.deposit-wins{background:linear-gradient(135deg,#E6F1FB,#D4E4F3);border-color:var(--blue)}
+.winner-banner.tie{background:#F3F2EE;border-color:var(--border)}
+.winner-banner .label{font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
+.winner-banner .title{font-size:1.4rem;font-weight:700;margin-bottom:6px;line-height:1.2}
+.winner-banner.bond-wins .title{color:var(--accent)}
+.winner-banner.deposit-wins .title{color:var(--blue)}
+.winner-banner .delta{font-family:var(--mono);font-size:2rem;font-weight:700;margin:8px 0}
+.winner-banner.bond-wins .delta{color:var(--accent)}
+.winner-banner.deposit-wins .delta{color:var(--blue)}
+.winner-banner .descr{font-size:0.85rem;color:var(--text2)}
+
+/* Карточки результатов */
+.result-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1rem}
+@media(max-width:700px){.result-cards{grid-template-columns:1fr}}
+.result-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;position:relative}
+.result-card.deposit{background:var(--blue-light);border-color:var(--blue)}
+.result-card.bond{background:var(--accent-light);border-color:var(--accent)}
+.result-card.is-winner{box-shadow:0 0 0 2px currentColor}
+.result-card.deposit.is-winner{color:var(--blue)}
+.result-card.bond.is-winner{color:var(--accent)}
+.result-card .crown{position:absolute;top:-10px;right:14px;background:#fff;border:1px solid currentColor;color:inherit;font-size:0.7rem;font-weight:600;padding:3px 9px;border-radius:4px}
+.result-card h4{color:var(--text);font-size:1.05rem;font-weight:600;margin-bottom:0.85rem}
+.result-card .row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:0.86rem;border-bottom:1px solid var(--border);color:var(--text)}
+.result-card .row:last-child{border-bottom:none}
+.result-card .row .lbl{color:var(--text2)}
+.result-card .row .val{font-family:var(--mono);font-weight:500}
+.result-card .row.highlight{padding-top:10px;padding-bottom:10px;margin:6px 0;border-top:2px solid var(--text);border-bottom:2px solid var(--text)}
+.result-card .row.highlight .lbl{font-weight:600;color:var(--text)}
+.result-card .row.highlight .val{font-size:1.05rem;font-weight:700;color:inherit}
+
+/* Печать в PDF */
+@media print{
+  .back-link,.input-grid,.row-actions,.status,.footer,button,.method,.checkbox-row{display:none !important}
+  .card:first-of-type{display:none !important}
+  #resultsCard > div[style*="linear-gradient"]{display:none !important}
+  body{background:#fff !important;font-size:11pt;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .container{max-width:100% !important;padding:0 !important}
+  h1{font-size:18pt;margin-bottom:4pt;color:#2D5A3D !important}
+  .subtitle{font-size:9pt;margin-bottom:12pt}
+  .card{border:none !important;padding:0 !important;margin:0 !important;background:transparent !important;page-break-inside:avoid}
+  .card-title{display:none !important}
+  .winner-banner,.result-card{-webkit-print-color-adjust:exact;print-color-adjust:exact;page-break-inside:avoid}
+  @page{margin:1cm;size:A4 portrait}
+}
+
+.footer{margin-top:2rem;font-size:0.72rem;color:var(--text3);text-align:center}
+.footer a{color:var(--text2)}
+.method{margin-top:1.5rem;padding:1rem 1.2rem;background:var(--surface2);border-radius:var(--radius);font-size:0.75rem;color:var(--text2);line-height:1.55}
+.method strong{color:var(--text)}
+.back-link{display:inline-block;font-size:0.82rem;color:var(--text2);text-decoration:none;margin-bottom:1.25rem}
+.back-link:hover{color:var(--accent)}
+.toggle-isin-btn{padding:0.5rem 0.9rem;background:transparent;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text2);font-size:0.8rem;font-family:var(--sans);width:100%}
+.toggle-isin-btn:hover{border-color:var(--accent);color:var(--accent)}
+.toggle-isin-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent);border-style:solid}
+.isin-input{margin-top:0.6rem}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="index.html" class="back-link">← Все калькуляторы</a>
+<h1>Облигация vs Депозит</h1>
+<p class="subtitle">Сравнение на одной сумме за один срок. Сколько в итоге у вас на руках — в рублях, не в процентах.</p>
+
+<div class="card">
+  <div class="card-title">Параметры</div>
+
+  <!-- Общие параметры -->
+  <div class="input-grid">
+    <div class="field">
+      <label>Сумма вложений, ₽</label>
+      <input type="text" id="amount" value="1000000" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Срок</label>
+      <div style="display:flex;gap:8px">
+        <input type="number" id="termValue" value="3" min="1" max="30" style="flex:1">
+        <select id="termUnit" style="flex:0 0 110px">
+          <option value="years">лет</option>
+          <option value="months">месяцев</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Два блока: депозит и облигация -->
+  <div class="compare-row" style="margin-top:1.25rem">
+
+    <!-- Депозит -->
+    <div class="subcard deposit">
+      <h3>Депозит <span class="badge">Банк</span></h3>
+      <div class="field">
+        <label>Ставка по депозиту, % годовых</label>
+        <input type="number" id="depRate" value="18.5" step="0.1" min="0" max="100">
+      </div>
+      <div class="field">
+        <label>Капитализация процентов</label>
+        <select id="depCap">
+          <option value="none">Нет (выплата в конце срока)</option>
+          <option value="monthly" selected>Ежемесячная</option>
+          <option value="quarterly">Ежеквартальная</option>
+          <option value="yearly">Ежегодная</option>
+        </select>
+        <div class="hint">При капитализации % начисляются на накопленные проценты</div>
+      </div>
+    </div>
+
+    <!-- Облигация -->
+    <div class="subcard bond">
+      <h3>Облигация <span class="badge">Биржа</span></h3>
+      <div class="field">
+        <label>ISIN облигации</label>
+        <input type="text" id="bondIsin" placeholder="Например: SU26238RMFS4 или RU000A10F470" style="text-transform:uppercase">
+        <div class="hint" id="bondHint">Введите ISIN ОФЗ или корпоративной бумаги</div>
+      </div>
+      <button type="button" class="toggle-isin-btn" id="autoPickBtn" onclick="toggleAutoPick()">
+        🎯 Автоподбор ОФЗ по сроку
+      </button>
+      <div class="hint" id="autoHint" style="margin-top:6px;display:none">Сами найдём ОФЗ с погашением ближе всего к концу депозита</div>
+    </div>
+  </div>
+
+  <!-- Налоги -->
+  <label class="checkbox-row">
+    <input type="checkbox" id="useTax">
+    <span>Учесть налоги (НДФЛ 13% на доход свыше необлагаемого минимума по депозитам)</span>
+  </label>
+  <div class="hint" id="taxHint" style="font-size:0.7rem;color:var(--text3);margin-top:4px;display:none">
+    Необлагаемая сумма по депозитам в 2026 ≈ 220 000 ₽ в год (1 млн × ставка ЦБ). Купоны облигаций облагаются полностью.
+  </div>
+
+  <div class="row-actions">
+    <button type="button" class="btn" onclick="run()">Сравнить</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="card hidden" id="resultsCard">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div class="card-title" style="margin-bottom:0">Результат сравнения</div>
+    <button type="button" onclick="downloadPDF()" style="padding:0.55rem 1.1rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:0.85rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Сохранить PDF
+    </button>
+  </div>
+  <div style="height:14px"></div>
+
+  <!-- Победитель -->
+  <div id="winnerBanner"></div>
+
+  <!-- Карточки результатов -->
+  <div class="result-cards" id="resultCards"></div>
+
+  <!-- CTA к PRO -->
+  <div style="margin-top:1.5rem;padding:1.2rem 1.4rem;background:linear-gradient(135deg,#FDFAF5,#F8F0E0);border:1px solid #E8DCC5;border-radius:var(--radius)">
+    <div style="font-size:0.92rem;font-weight:600;color:var(--text);margin-bottom:6px">Облигация выгоднее. Но насколько она надёжна?</div>
+    <div style="font-size:0.82rem;color:var(--text2);line-height:1.5;margin-bottom:12px">
+      Депозит застрахован АСВ (до 1.4 млн), облигация — нет. Перед покупкой проверьте бумагу:
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="pro/pd-calculator.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--accent);color:#fff;border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Вероятность дефолта · PRO
+      </a>
+      <a href="pro/zspread-calculator.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Z-spread к КБД · PRO
+      </a>
+      <a href="pro/credit-metrics.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:500">
+        Кредитный анализ · PRO
+      </a>
+    </div>
+    <div style="font-size:0.7rem;color:var(--text3);margin-top:10px">PRO — 500 ₽/мес, доступ ко всем 6 продвинутым калькуляторам</div>
+  </div>
+
+  <div class="method">
+    <strong>Методика:</strong><br>
+    1. <strong>Депозит:</strong> расчёт сложного процента с учётом капитализации. Без капитализации — простая формула S × (1 + r × t).<br>
+    2. <strong>Облигация:</strong> с MOEX подтягивается чистая цена, НКД, все будущие купоны и дата погашения. На введённую сумму покупается целое число бумаг. К дате погашения суммируются: все купоны + номинал. От этого вычитается стоимость покупки (грязная цена × число бумаг). Остаток денег («не работает») учитывается при расчёте эффективной доходности.<br>
+    3. <strong>Если облигация погашается раньше срока депозита</strong> — расчёт идёт до её погашения, и в результате это отмечается. Корректное сравнение возможно при близких сроках.<br>
+    4. <strong>Налоги</strong> (если включены):<br>
+    — Депозит: процент-доход минус необлагаемая сумма (1 млн × ставка ЦБ ≈ 220 000 ₽ в 2026) × 13%.<br>
+    — Облигация: купоны + дисконт × 13%. ИИС-Б и ЛДВ не учитываются (можно вычесть налог из результата самостоятельно).<br><br>
+    <strong style="color:var(--red)">Важно:</strong> депозит застрахован государством через АСВ до 1.4 млн ₽. По облигациям нет страховки — есть кредитный риск эмитента. Сравнение «голой» доходностью без учёта надёжности эмитента имеет смысл только для ОФЗ или AAA-корпоратов.
+  </div>
+</div>
+
+<div class="footer">
+  Данные: MOEX ISS API · <a href="index.html">Все калькуляторы</a>
+</div>
+</div>
+
+<script>
+// === MOEX fetch helper ===
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+
+// === Налоги ===
+const TAX_RATE=0.13;
+const DEPOSIT_TAX_FREE=220000; // 2026: ~1 млн × 22% ключа
+
+// === UI helpers ===
+function toggleAutoPick(){
+  const btn=document.getElementById('autoPickBtn');
+  const hint=document.getElementById('autoHint');
+  const isin=document.getElementById('bondIsin');
+  const isActive=btn.classList.toggle('active');
+  if(isActive){
+    btn.textContent='✓ Автоподбор ОФЗ включён';
+    hint.style.display='block';
+    isin.disabled=true;
+    isin.style.opacity='0.5';
+    isin.value='';
+  }else{
+    btn.textContent='🎯 Автоподбор ОФЗ по сроку';
+    hint.style.display='none';
+    isin.disabled=false;
+    isin.style.opacity='1';
+  }
+}
+
+document.getElementById('useTax').addEventListener('change',e=>{
+  document.getElementById('taxHint').style.display=e.target.checked?'block':'none';
+});
+
+// === Расчёт депозита ===
+function computeDeposit(amount,rate,termMonths,capFreq,useTax){
+  const r=rate/100;
+  const months=termMonths;
+  let final=amount;
+  let totalInterest=0;
+
+  if(capFreq==='none'){
+    // Простой процент: S + S × r × (months/12)
+    totalInterest=amount*r*(months/12);
+    final=amount+totalInterest;
+  }else{
+    // Сложный процент с капитализацией
+    let periodsPerYear;
+    if(capFreq==='monthly')periodsPerYear=12;
+    else if(capFreq==='quarterly')periodsPerYear=4;
+    else periodsPerYear=1; // yearly
+    const periodsTotal=months/12*periodsPerYear;
+    const periodRate=r/periodsPerYear;
+    final=amount*Math.pow(1+periodRate,periodsTotal);
+    totalInterest=final-amount;
+  }
+
+  // Налог
+  let tax=0;
+  if(useTax){
+    // Необлагаемая сумма работает по году, для упрощения — на весь срок пропорционально
+    const yearsExposed=months/12;
+    const taxFreeTotal=DEPOSIT_TAX_FREE*yearsExposed;
+    const taxableInterest=Math.max(0,totalInterest-taxFreeTotal);
+    tax=taxableInterest*TAX_RATE;
+  }
+
+  const finalAfterTax=final-tax;
+  const profit=finalAfterTax-amount;
+  const effectiveAnnual=(profit/amount)/(months/12)*100;
+
+  return {amount,rate,termMonths,capFreq,totalInterest,tax,final,finalAfterTax,profit,effectiveAnnual};
+}
+
+// === Облигация: загрузка с MOEX (берём из bond-compare) ===
+async function loadBond(isin){
+  const searchUrl='https://iss.moex.com/iss/securities.json?q='+encodeURIComponent(isin)+'&iss.meta=off&limit=10';
+  const sd=await moexFetch(searchUrl);
+  const cols=sd.securities.columns;
+  const rows=sd.securities.data;
+  const secidIdx=cols.indexOf('secid'),isTraded=cols.indexOf('is_traded'),groupIdx=cols.indexOf('group');
+  let secid=null;
+  for(const row of rows){
+    if(row[isTraded]==1 && (row[groupIdx]==='stock_bonds'||row[groupIdx]==='stock_bonds_subordinated')){
+      secid=row[secidIdx];break;
+    }
+  }
+  if(!secid)throw new Error('Бумага '+isin+' не найдена или не торгуется');
+
+  let sec=null,md={};
+  for(const b of ['TQCB','TQOB','TQIR','TQOD','EQOB','TQIY']){
+    try{
+      const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/'+b+'/securities/'+secid+'.json?iss.meta=off';
+      const d=await moexFetch(url);
+      if(d.securities.data.length){
+        const sCols=d.securities.columns;const sRows=d.securities.data;
+        sec={};sCols.forEach((c,i)=>sec[c]=sRows[0][i]);
+        if(d.marketdata.data.length){
+          const mCols=d.marketdata.columns;const mRows=d.marketdata.data;
+          mCols.forEach((c,i)=>md[c]=mRows[0][i]);
+        }
+        break;
+      }
+    }catch(e){}
+  }
+  if(!sec)throw new Error('Не удалось получить параметры '+secid);
+
+  const shortname=sec.SHORTNAME||sec.SECNAME||secid;
+  const faceValue=parseFloat(sec.FACEVALUE||'1000');
+  const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
+  const nkd=parseFloat(sec.ACCRUEDINT||'0');
+  const matDate=sec.MATDATE||'';
+
+  // Купоны
+  let coupons=[];
+  try{
+    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.meta=off&limit=unlimited';
+    const bd=await moexFetch(bondUrl);
+    if(bd.coupons){
+      const cCols=bd.coupons.columns;
+      bd.coupons.data.forEach(row=>{
+        const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+        coupons.push({date:obj.coupondate,value:parseFloat(obj.value)});
+      });
+    }
+  }catch(e){}
+
+  return {secid,shortname,isin,faceValue,price,nkd,matDate,coupons};
+}
+
+// === Автоподбор ОФЗ ===
+async function findOFZForTerm(termMonths){
+  // Запрашиваем все ОФЗ-ПД на TQOB
+  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off';
+  const d=await moexFetch(url);
+  const sCols=d.securities.columns;
+  const today=new Date();today.setHours(0,0,0,0);
+  const targetDate=new Date(today);
+  targetDate.setMonth(targetDate.getMonth()+termMonths);
+
+  const candidates=[];
+  d.securities.data.forEach(row=>{
+    const obj={};sCols.forEach((c,i)=>obj[c]=row[i]);
+    if(!obj.MATDATE)return;
+    const m=new Date(obj.MATDATE);
+    if(m<=today)return;
+    // ОФЗ-ПД — секции с SECID начинающимся на SU
+    if(!obj.SECID||!obj.SECID.startsWith('SU'))return;
+    // Не амортизационные (исключаем АД и др.) — обычно SECID 5-я цифра соответствует типу
+    const diff=Math.abs(m-targetDate);
+    candidates.push({secid:obj.SECID,matDate:obj.MATDATE,diff,shortname:obj.SHORTNAME});
+  });
+  candidates.sort((a,b)=>a.diff-b.diff);
+  if(candidates.length===0)throw new Error('Не нашли подходящих ОФЗ. Введите ISIN вручную.');
+  return candidates[0].secid;
+}
+
+// === Расчёт по облигации ===
+function computeBond(b,amount,termMonths,useTax){
+  const today=new Date();today.setHours(0,0,0,0);
+  const matDate=new Date(b.matDate);
+  // Целевая дата окончания (срок депозита)
+  const targetDate=new Date(today);
+  targetDate.setMonth(targetDate.getMonth()+termMonths);
+  // Реальный горизонт = min(maturity, targetDate)
+  const horizon=matDate<targetDate?matDate:targetDate;
+  const earlyRedemption=matDate<targetDate;
+  const daysToHorizon=Math.round((horizon-today)/86400000);
+  if(daysToHorizon<=0)throw new Error('Бумага уже погашена или горизонт в прошлом');
+
+  // Купоны до горизонта (включая дату горизонта)
+  const futureCoupons=b.coupons.filter(c=>{
+    const d=new Date(c.date);
+    return d>today && d<=horizon && !isNaN(c.value) && c.value>0;
+  });
+  const totalCoupons=futureCoupons.reduce((s,c)=>s+c.value,0);
+
+  // Грязная цена за 1 бумагу
+  const dirtyPrice=b.price/100*b.faceValue+b.nkd;
+  // Целое число бумаг на введённую сумму
+  const numBonds=Math.floor(amount/dirtyPrice);
+  if(numBonds===0)throw new Error('Сумма меньше стоимости одной бумаги');
+  const spent=numBonds*dirtyPrice;
+  const remainder=amount-spent;
+
+  // Возврат номинала на горизонте (только если это maturity)
+  const principalReturn=matDate.getTime()===horizon.getTime()?b.faceValue*numBonds:0;
+  // Если облигация ещё не погашена — на конец депозита у инвестора есть бумаги по рыночной цене.
+  // Для простоты в этом калькуляторе считаем, что если matDate > targetDate, всё равно «возвращается»
+  // номинал (как если бы инвестор додержал). Это упрощение, нужно отметить в результате.
+  // ВАРИАНТ: брать principalReturn=b.faceValue*numBonds только при maturity; в остальных случаях
+  // считать «прибыль = купоны + НКД на момент продажи». Но НКД нужно прогнозировать.
+  // В этой версии — простой подход: считаем что номинал возвращается всегда. См. пометку.
+  const principalReturnAlways=b.faceValue*numBonds;
+
+  // Купоны со всех бумаг
+  const totalCouponsAll=totalCoupons*numBonds;
+  // Прибыль "без налогов"
+  const totalReceive=totalCouponsAll+principalReturnAlways;
+  const grossProfit=totalReceive-spent;
+
+  // Налог
+  let tax=0;
+  if(useTax){
+    // Купоны + дисконт (если есть) × 13%. ЛДВ/ИИС не учитываем.
+    tax=Math.max(0,grossProfit)*TAX_RATE;
+  }
+  const finalAfterTax=spent+grossProfit-tax+remainder; // итоговая сумма на руках = потраченное + прибыль − налог + неработающий остаток
+  const profit=finalAfterTax-amount;
+  // Эффективная доходность от ВСЕЙ суммы (включая остаток)
+  const effectiveAnnual=(profit/amount)/(daysToHorizon/365)*100;
+
+  return {
+    shortname:b.shortname,isin:b.isin,secid:b.secid,
+    price:b.price,nkd:b.nkd,dirtyPrice,
+    numBonds,spent,remainder,
+    horizonDate:horizon,daysToHorizon,
+    matDate,earlyRedemption,
+    numCoupons:futureCoupons.length,
+    totalCouponsAll,principalReturn:principalReturnAlways,
+    grossProfit,tax,finalAfterTax,profit,effectiveAnnual
+  };
+}
+
+// === Форматирование ===
+function fmtRub(v){return v.toLocaleString('ru-RU',{maximumFractionDigits:0})}
+function fmtRub2(v){return v.toLocaleString('ru-RU',{maximumFractionDigits:2})}
+
+// === Главная функция запуска ===
+async function run(){
+  const st=document.getElementById('status');
+  const amount=parseFloat(document.getElementById('amount').value.replace(/\s/g,'').replace(',','.'));
+  if(isNaN(amount)||amount<=0){st.className='status err';st.textContent='Введите корректную сумму';return;}
+  const termVal=parseFloat(document.getElementById('termValue').value);
+  const termUnit=document.getElementById('termUnit').value;
+  if(isNaN(termVal)||termVal<=0){st.className='status err';st.textContent='Введите корректный срок';return;}
+  const termMonths=termUnit==='years'?termVal*12:termVal;
+
+  const depRate=parseFloat(document.getElementById('depRate').value);
+  if(isNaN(depRate)||depRate<=0){st.className='status err';st.textContent='Введите ставку депозита';return;}
+  const depCap=document.getElementById('depCap').value;
+
+  const useTax=document.getElementById('useTax').checked;
+
+  const autoPick=document.getElementById('autoPickBtn').classList.contains('active');
+  let bondIsin=document.getElementById('bondIsin').value.trim().toUpperCase();
+  if(!autoPick && !bondIsin){st.className='status err';st.textContent='Введите ISIN облигации или включите автоподбор';return;}
+
+  document.getElementById('resultsCard').classList.add('hidden');
+  st.className='status';st.innerHTML='<span class="loader"></span>Расчёт…';
+
+  // Депозит — синхронно
+  const depResult=computeDeposit(amount,depRate,termMonths,depCap,useTax);
+
+  // Облигация — с MOEX
+  let bondResult=null,bondError=null;
+  try{
+    if(autoPick){
+      st.innerHTML='<span class="loader"></span>Подбираем ОФЗ под срок…';
+      bondIsin=await findOFZForTerm(termMonths);
+    }
+    st.innerHTML='<span class="loader"></span>Загружаем '+bondIsin+'…';
+    const b=await loadBond(bondIsin);
+    bondResult=computeBond(b,amount,termMonths,useTax);
+  }catch(e){
+    bondError=e.message;
+  }
+
+  if(bondError){
+    st.className='status err';st.textContent='Ошибка с облигацией: '+bondError;
+    return;
+  }
+
+  // Сохраняем для PDF
+  window._lastDep=depResult;
+  window._lastBond=bondResult;
+  window._lastAmount=amount;
+  window._lastTermMonths=termMonths;
+  window._lastUseTax=useTax;
+
+  renderResults(depResult,bondResult,amount,termMonths,useTax);
+  st.className='status ok';st.textContent='Готово';
+}
+
+function renderResults(dep,bond,amount,termMonths,useTax){
+  const banner=document.getElementById('winnerBanner');
+  const cards=document.getElementById('resultCards');
+
+  // Победитель
+  const depFinal=dep.finalAfterTax;
+  const bondFinal=bond.finalAfterTax;
+  const delta=Math.abs(depFinal-bondFinal);
+  const bondWins=bondFinal>depFinal;
+  const deltaPct=(delta/Math.min(depFinal,bondFinal)*100);
+
+  let bannerHTML='';
+  if(delta<100){
+    bannerHTML='<div class="winner-banner tie"><div class="label">Результат</div><div class="title">Равноценно</div><div class="descr">Разница меньше 100 ₽ — фактически одинаково</div></div>';
+  }else if(bondWins){
+    bannerHTML='<div class="winner-banner bond-wins">'+
+      '<div class="label">Победитель</div>'+
+      '<div class="title">Облигация выгоднее</div>'+
+      '<div class="delta">+'+fmtRub(delta)+' ₽</div>'+
+      '<div class="descr">или <strong>+'+deltaPct.toFixed(2)+'%</strong> сверху от депозита за тот же срок</div>'+
+    '</div>';
+  }else{
+    bannerHTML='<div class="winner-banner deposit-wins">'+
+      '<div class="label">Победитель</div>'+
+      '<div class="title">Депозит выгоднее</div>'+
+      '<div class="delta">+'+fmtRub(delta)+' ₽</div>'+
+      '<div class="descr">или <strong>+'+deltaPct.toFixed(2)+'%</strong> сверху от облигации за тот же срок</div>'+
+    '</div>';
+  }
+  banner.innerHTML=bannerHTML;
+
+  // Карточка депозита
+  const capLabel={none:'Без капитализации',monthly:'Ежемесячная',quarterly:'Ежеквартальная',yearly:'Ежегодная'}[dep.capFreq];
+  let depCard='<div class="result-card deposit'+(!bondWins?' is-winner':'')+'">';
+  if(!bondWins && delta>=100)depCard+='<span class="crown">★ Победитель</span>';
+  depCard+='<h4>Депозит · '+dep.rate.toFixed(2)+'% год.</h4>'+
+    '<div class="row"><span class="lbl">Сумма вложений</span><span class="val">'+fmtRub(dep.amount)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Срок</span><span class="val">'+(termMonths>=12?(termMonths/12).toFixed(1)+' лет':termMonths+' мес')+'</span></div>'+
+    '<div class="row"><span class="lbl">Капитализация</span><span class="val">'+capLabel+'</span></div>'+
+    '<div class="row"><span class="lbl">Начислено процентов</span><span class="val">'+fmtRub(dep.totalInterest)+' ₽</span></div>';
+  if(useTax){
+    depCard+='<div class="row"><span class="lbl">Налог НДФЛ</span><span class="val">−'+fmtRub(dep.tax)+' ₽</span></div>';
+  }
+  depCard+='<div class="row highlight"><span class="lbl">В конце срока на руках</span><span class="val">'+fmtRub(dep.finalAfterTax)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Чистая прибыль</span><span class="val">+'+fmtRub(dep.profit)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Эффективная ставка</span><span class="val">'+dep.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
+  '</div>';
+
+  // Карточка облигации
+  let bondCard='<div class="result-card bond'+(bondWins?' is-winner':'')+'">';
+  if(bondWins && delta>=100)bondCard+='<span class="crown">★ Победитель</span>';
+  const horizonStr=bond.horizonDate.toLocaleDateString('ru-RU');
+  const horizonNote=bond.earlyRedemption?' <span style="font-size:0.7rem;color:var(--text3)">(погашена раньше)</span>':'';
+  bondCard+='<h4>Облигация · '+bond.shortname+'</h4>'+
+    '<div class="row"><span class="lbl">ISIN</span><span class="val" style="font-size:0.78rem">'+bond.isin+'</span></div>'+
+    '<div class="row"><span class="lbl">Цена / НКД</span><span class="val">'+bond.price.toFixed(2)+'% · '+bond.nkd.toFixed(2)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Грязная цена (1 шт)</span><span class="val">'+bond.dirtyPrice.toFixed(2)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Куплю бумаг</span><span class="val">'+bond.numBonds+' шт</span></div>'+
+    '<div class="row"><span class="lbl">Потрачу</span><span class="val">'+fmtRub(bond.spent)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Остаток (не работает)</span><span class="val">'+fmtRub(bond.remainder)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Горизонт'+horizonNote+'</span><span class="val">'+horizonStr+'</span></div>'+
+    '<div class="row"><span class="lbl">Купонов будет</span><span class="val">'+bond.numCoupons+' шт</span></div>'+
+    '<div class="row"><span class="lbl">Сумма купонов</span><span class="val">'+fmtRub(bond.totalCouponsAll)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Возврат номинала</span><span class="val">'+fmtRub(bond.principalReturn)+' ₽</span></div>';
+  if(useTax){
+    bondCard+='<div class="row"><span class="lbl">Налог НДФЛ</span><span class="val">−'+fmtRub(bond.tax)+' ₽</span></div>';
+  }
+  bondCard+='<div class="row highlight"><span class="lbl">В конце срока на руках</span><span class="val">'+fmtRub(bond.finalAfterTax)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Чистая прибыль</span><span class="val">+'+fmtRub(bond.profit)+' ₽</span></div>'+
+    '<div class="row"><span class="lbl">Эффективная ставка</span><span class="val">'+bond.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
+  '</div>';
+
+  cards.innerHTML=depCard+bondCard;
+
+  // Меняем текст CTA в зависимости от победителя
+  const ctaTitle=document.querySelector('#resultsCard div[style*="linear-gradient"] div:first-child');
+  if(ctaTitle){
+    if(bondWins){
+      ctaTitle.textContent='Облигация выгоднее. Но насколько она надёжна?';
+    }else{
+      ctaTitle.textContent='Здесь депозит выиграл. Хотите глубже разобраться в облигациях?';
+    }
+  }
+
+  document.getElementById('resultsCard').classList.remove('hidden');
+}
+
+function downloadPDF(){
+  if(!window._lastDep||!window._lastBond){alert('Сначала выполните расчёт');return;}
+  window.print();
+}
+</script>
+</body>
+</html>
