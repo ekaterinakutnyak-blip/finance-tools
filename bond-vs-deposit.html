@@ -115,6 +115,18 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .toggle-isin-btn:hover{border-color:var(--accent);color:var(--accent)}
 .toggle-isin-btn.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent);border-style:solid}
 .isin-input{margin-top:0.6rem}
+
+/* Список ОФЗ */
+.ofz-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.15s;gap:10px}
+.ofz-item:hover{border-color:var(--accent);background:var(--accent-light)}
+.ofz-item.recommended{border-color:var(--accent);background:var(--accent-light);border-width:2px}
+.ofz-item.recommended::before{content:'★';color:var(--accent);font-size:1.1rem;margin-right:6px}
+.ofz-item .ofz-name{font-weight:600;color:var(--text);font-size:0.88rem}
+.ofz-item .ofz-isin{font-family:var(--mono);font-size:0.7rem;color:var(--text3);margin-top:2px}
+.ofz-item .ofz-date{font-family:var(--mono);font-size:0.75rem;color:var(--text2);text-align:right;white-space:nowrap}
+.ofz-item .ofz-delta{font-size:0.7rem;color:var(--text3);margin-top:2px}
+.ofz-list-hint{font-size:0.7rem;color:var(--text3);margin-bottom:8px;line-height:1.4}
+.ofz-loading{padding:14px;text-align:center;font-size:0.8rem;color:var(--text2)}
 </style>
 </head>
 <body>
@@ -172,12 +184,12 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
       <div class="field">
         <label>ISIN облигации</label>
         <input type="text" id="bondIsin" placeholder="Например: SU26238RMFS4 или RU000A10F470" style="text-transform:uppercase">
-        <div class="hint" id="bondHint">Введите ISIN ОФЗ или корпоративной бумаги</div>
+        <div class="hint" id="bondHint">Введите ISIN или подберите ОФЗ из списка ниже</div>
       </div>
-      <button type="button" class="toggle-isin-btn" id="autoPickBtn" onclick="toggleAutoPick()">
-        🎯 Автоподбор ОФЗ по сроку
+      <button type="button" class="toggle-isin-btn" id="showOfzBtn" onclick="loadOfzList()">
+        🎯 Показать ОФЗ под мой срок
       </button>
-      <div class="hint" id="autoHint" style="margin-top:6px;display:none">Сами найдём ОФЗ с погашением ближе всего к концу депозита</div>
+      <div id="ofzList" style="margin-top:10px;display:none"></div>
     </div>
   </div>
 
@@ -269,23 +281,97 @@ const TAX_RATE=0.13;
 const DEPOSIT_TAX_FREE=220000; // 2026: ~1 млн × 22% ключа
 
 // === UI helpers ===
-function toggleAutoPick(){
-  const btn=document.getElementById('autoPickBtn');
-  const hint=document.getElementById('autoHint');
-  const isin=document.getElementById('bondIsin');
-  const isActive=btn.classList.toggle('active');
-  if(isActive){
-    btn.textContent='✓ Автоподбор ОФЗ включён';
-    hint.style.display='block';
-    isin.disabled=true;
-    isin.style.opacity='0.5';
-    isin.value='';
-  }else{
-    btn.textContent='🎯 Автоподбор ОФЗ по сроку';
-    hint.style.display='none';
-    isin.disabled=false;
-    isin.style.opacity='1';
+// === Список ОФЗ под срок депозита ===
+async function loadOfzList(){
+  const termVal=parseFloat(document.getElementById('termValue').value);
+  const termUnit=document.getElementById('termUnit').value;
+  if(isNaN(termVal)||termVal<=0){
+    alert('Сначала укажите срок депозита');
+    return;
   }
+  const termMonths=termUnit==='years'?termVal*12:termVal;
+
+  const btn=document.getElementById('showOfzBtn');
+  const listEl=document.getElementById('ofzList');
+  listEl.style.display='block';
+  listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Загружаем ОФЗ с Мосбиржи…</div>';
+  btn.disabled=true;
+
+  try{
+    const allOfz=await fetchOfzListFromMoex();
+    const today=new Date();today.setHours(0,0,0,0);
+    const targetDate=new Date(today);
+    targetDate.setMonth(targetDate.getMonth()+termMonths);
+    // Фильтруем будущие, сортируем по близости к сроку
+    const future=allOfz.filter(o=>{
+      const m=new Date(o.matDate);
+      return m>today;
+    }).map(o=>{
+      const m=new Date(o.matDate);
+      const monthsToMat=(m-today)/(86400000*30.44);
+      return {...o,monthsToMat,diff:Math.abs(monthsToMat-termMonths)};
+    });
+    future.sort((a,b)=>a.diff-b.diff);
+    const top=future.slice(0,5);
+    if(top.length===0){
+      listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">ОФЗ под этот срок не нашли</div>';
+      btn.disabled=false;
+      return;
+    }
+    // Рендер
+    let html='<div class="ofz-list-hint">Кликните на бумагу — она подставится в поле выше. ★ — наиболее близкая по сроку к вашему депозиту.</div>';
+    top.forEach((o,i)=>{
+      const matStr=new Date(o.matDate).toLocaleDateString('ru-RU');
+      let deltaTxt;
+      if(o.monthsToMat>=12){
+        const years=(o.monthsToMat/12).toFixed(1);
+        deltaTxt='через '+years+' лет';
+      }else{
+        deltaTxt='через '+Math.round(o.monthsToMat)+' мес';
+      }
+      const isBest=i===0;
+      html+='<div class="ofz-item'+(isBest?' recommended':'')+'" onclick="pickOfz(\''+o.secid+'\')">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="ofz-name">'+(o.shortname||o.secid)+'</div>'+
+          '<div class="ofz-isin">'+o.secid+'</div>'+
+        '</div>'+
+        '<div class="ofz-date">'+
+          '<div>'+matStr+'</div>'+
+          '<div class="ofz-delta">'+deltaTxt+'</div>'+
+        '</div>'+
+      '</div>';
+    });
+    listEl.innerHTML=html;
+    btn.textContent='🔄 Обновить список';
+  }catch(e){
+    listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">Не удалось загрузить: '+e.message+'</div>';
+  }
+  btn.disabled=false;
+}
+
+async function fetchOfzListFromMoex(){
+  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off';
+  const d=await moexFetch(url);
+  const cols=d.securities.columns;
+  const result=[];
+  d.securities.data.forEach(row=>{
+    const obj={};cols.forEach((c,i)=>obj[c]=row[i]);
+    if(!obj.MATDATE)return;
+    if(!obj.SECID||!obj.SECID.startsWith('SU'))return; // только SU-серия (ОФЗ-ПД)
+    result.push({secid:obj.SECID,matDate:obj.MATDATE,shortname:obj.SHORTNAME});
+  });
+  return result;
+}
+
+function pickOfz(secid){
+  document.getElementById('bondIsin').value=secid;
+  document.getElementById('bondHint').textContent='Выбрана: '+secid+' — нажмите «Сравнить»';
+  document.getElementById('bondHint').style.color='var(--accent)';
+  // Подсветим выбранную в списке
+  document.querySelectorAll('.ofz-item').forEach(el=>{
+    el.style.opacity='0.5';
+    if(el.textContent.includes(secid))el.style.opacity='1';
+  });
 }
 
 document.getElementById('useTax').addEventListener('change',e=>{
@@ -388,32 +474,7 @@ async function loadBond(isin){
   return {secid,shortname,isin,faceValue,price,nkd,matDate,coupons};
 }
 
-// === Автоподбор ОФЗ ===
-async function findOFZForTerm(termMonths){
-  // Запрашиваем все ОФЗ-ПД на TQOB
-  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off';
-  const d=await moexFetch(url);
-  const sCols=d.securities.columns;
-  const today=new Date();today.setHours(0,0,0,0);
-  const targetDate=new Date(today);
-  targetDate.setMonth(targetDate.getMonth()+termMonths);
-
-  const candidates=[];
-  d.securities.data.forEach(row=>{
-    const obj={};sCols.forEach((c,i)=>obj[c]=row[i]);
-    if(!obj.MATDATE)return;
-    const m=new Date(obj.MATDATE);
-    if(m<=today)return;
-    // ОФЗ-ПД — секции с SECID начинающимся на SU
-    if(!obj.SECID||!obj.SECID.startsWith('SU'))return;
-    // Не амортизационные (исключаем АД и др.) — обычно SECID 5-я цифра соответствует типу
-    const diff=Math.abs(m-targetDate);
-    candidates.push({secid:obj.SECID,matDate:obj.MATDATE,diff,shortname:obj.SHORTNAME});
-  });
-  candidates.sort((a,b)=>a.diff-b.diff);
-  if(candidates.length===0)throw new Error('Не нашли подходящих ОФЗ. Введите ISIN вручную.');
-  return candidates[0].secid;
-}
+// === Автоподбор ОФЗ (старая функция удалена — теперь loadOfzList с кликами) ===
 
 // === Расчёт по облигации ===
 function computeBond(b,amount,termMonths,useTax){
@@ -502,9 +563,8 @@ async function run(){
 
   const useTax=document.getElementById('useTax').checked;
 
-  const autoPick=document.getElementById('autoPickBtn').classList.contains('active');
-  let bondIsin=document.getElementById('bondIsin').value.trim().toUpperCase();
-  if(!autoPick && !bondIsin){st.className='status err';st.textContent='Введите ISIN облигации или включите автоподбор';return;}
+  const bondIsin=document.getElementById('bondIsin').value.trim().toUpperCase();
+  if(!bondIsin){st.className='status err';st.textContent='Введите ISIN облигации или выберите из списка ОФЗ';return;}
 
   document.getElementById('resultsCard').classList.add('hidden');
   st.className='status';st.innerHTML='<span class="loader"></span>Расчёт…';
@@ -515,10 +575,6 @@ async function run(){
   // Облигация — с MOEX
   let bondResult=null,bondError=null;
   try{
-    if(autoPick){
-      st.innerHTML='<span class="loader"></span>Подбираем ОФЗ под срок…';
-      bondIsin=await findOFZForTerm(termMonths);
-    }
     st.innerHTML='<span class="loader"></span>Загружаем '+bondIsin+'…';
     const b=await loadBond(bondIsin);
     bondResult=computeBond(b,amount,termMonths,useTax);
