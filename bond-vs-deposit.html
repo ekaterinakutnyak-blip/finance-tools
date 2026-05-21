@@ -127,6 +127,16 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .ofz-item .ofz-delta{font-size:0.7rem;color:var(--text3);margin-top:2px}
 .ofz-list-hint{font-size:0.7rem;color:var(--text3);margin-bottom:8px;line-height:1.4}
 .ofz-loading{padding:14px;text-align:center;font-size:0.8rem;color:var(--text2)}
+
+/* Бейджи рейтингов корпоратов */
+.rating-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.68rem;font-weight:700;font-family:var(--mono);letter-spacing:0.02em;vertical-align:middle;margin-left:6px}
+.rating-aaa{background:#D7EBDD;color:#1F5232}
+.rating-aap{background:#E0EAF7;color:#1F3F6E}
+.rating-aa{background:#E8EEF6;color:#3A5278}
+.rating-aam{background:#EEE9DD;color:#5F4F2A}
+.corp-issuer{font-size:0.72rem;color:var(--text3);margin-top:2px}
+.corp-disclaimer{margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:0.72rem;color:var(--text2);line-height:1.5}
+.corp-disclaimer strong{color:var(--text)}
 </style>
 </head>
 <body>
@@ -190,6 +200,10 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
         🎯 Показать ОФЗ под мой срок
       </button>
       <div id="ofzList" style="margin-top:10px;display:none"></div>
+      <button type="button" class="toggle-isin-btn" id="showCorpBtn" onclick="loadCorpList()" style="margin-top:8px">
+        🏢 Корпораты AAA/AA под мой срок
+      </button>
+      <div id="corpList" style="margin-top:10px;display:none"></div>
     </div>
   </div>
 
@@ -375,6 +389,194 @@ function pickOfz(secid){
   document.querySelectorAll('.ofz-item').forEach(el=>{
     el.style.opacity='0.5';
     if(el.textContent.includes(secid))el.style.opacity='1';
+  });
+}
+
+// === Список корпоратов AAA/AA под срок депозита ===
+const BONDS_LIST_URL='https://raw.githubusercontent.com/ekaterinakutnyak-blip/finance-tools/main/bonds-list.json';
+let _bondsListCache=null;
+
+async function loadBondsList(){
+  if(_bondsListCache)return _bondsListCache;
+  const resp=await fetch(BONDS_LIST_URL,{cache:'no-cache'});
+  if(!resp.ok)throw new Error('Не удалось загрузить список корпоратов');
+  const data=await resp.json();
+  _bondsListCache=data;
+  return data;
+}
+
+// Тянем основные параметры пачкой ISIN из MOEX за один запрос
+async function fetchCorpMaturities(isins){
+  if(isins.length===0)return [];
+  // MOEX поддерживает фильтр по списку ISIN через securities=...
+  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQCB/securities.json?iss.meta=off&securities='+isins.join(',');
+  const d=await moexFetch(url);
+  const cols=d.securities.columns;
+  const result=[];
+  d.securities.data.forEach(row=>{
+    const obj={};cols.forEach((c,i)=>obj[c]=row[i]);
+    if(!obj.MATDATE)return;
+    result.push({secid:obj.SECID,matDate:obj.MATDATE,shortname:obj.SHORTNAME});
+  });
+  return result;
+}
+
+// Проверяем что у бумаги нет оферты до depositEnd (через купонное расписание)
+// Возвращает true если бумага "чистая" — последний known-купон не дальше 30 дней ОТ КОНЦА ДЕПОЗИТА
+async function checkBondClean(isin,depositEnd){
+  try{
+    const url='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+isin+'.json?iss.meta=off&limit=100';
+    const d=await moexFetch(url);
+    const cols=d.coupons.columns;
+    const idxDate=cols.indexOf('coupondate');
+    const idxVal=cols.indexOf('value_rub');
+    if(idxDate<0||idxVal<0)return false;
+    // ищем последний купон с известным значением value_rub > 0
+    let lastKnown=null;
+    d.coupons.data.forEach(row=>{
+      const dt=row[idxDate];
+      const val=row[idxVal];
+      if(dt&&val!==null&&val!==undefined&&val>0){
+        const d2=new Date(dt);
+        if(!lastKnown||d2>lastKnown)lastKnown=d2;
+      }
+    });
+    if(!lastKnown)return false;
+    // Известные купоны должны покрывать срок депозита (с запасом 30 дней)
+    const cutoff=new Date(depositEnd);
+    cutoff.setDate(cutoff.getDate()-30);
+    return lastKnown>=cutoff;
+  }catch(e){
+    return false;
+  }
+}
+
+function ratingBadgeClass(r){
+  if(r==='AAA')return 'rating-aaa';
+  if(r==='AA+')return 'rating-aap';
+  if(r==='AA')return 'rating-aa';
+  if(r==='AA-')return 'rating-aam';
+  return 'rating-aa';
+}
+
+const RATING_ORDER={'AAA':1,'AA+':2,'AA':3,'AA-':4};
+
+async function loadCorpList(){
+  const termVal=parseFloat(document.getElementById('termValue').value);
+  const termUnit=document.getElementById('termUnit').value;
+  if(isNaN(termVal)||termVal<=0){
+    alert('Сначала укажите срок депозита');
+    return;
+  }
+  const termMonths=termUnit==='years'?termVal*12:termVal;
+
+  const btn=document.getElementById('showCorpBtn');
+  const listEl=document.getElementById('corpList');
+  listEl.style.display='block';
+  listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Загружаем список корпоратов…</div>';
+  btn.disabled=true;
+
+  try{
+    const all=await loadBondsList();
+    const today=new Date();today.setHours(0,0,0,0);
+    const depositEnd=new Date(today);
+    depositEnd.setMonth(depositEnd.getMonth()+Math.round(termMonths));
+
+    // Тянем сроки погашения пачкой
+    listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Запрашиваем данные с Мосбиржи…</div>';
+    const isins=all.map(b=>b.isin);
+    // MOEX securities фильтр имеет ограничение по длине URL — режем на пачки по 50
+    const chunks=[];
+    for(let i=0;i<isins.length;i+=50)chunks.push(isins.slice(i,i+50));
+    let allMoex=[];
+    for(const ch of chunks){
+      const part=await fetchCorpMaturities(ch);
+      allMoex=allMoex.concat(part);
+    }
+    const moexByIsin={};
+    allMoex.forEach(o=>{moexByIsin[o.secid]=o;});
+
+    // Объединяем JSON и MOEX: оставляем только бумаги с MATDATE > сегодня
+    const enriched=all.filter(b=>moexByIsin[b.isin]).map(b=>{
+      const m=moexByIsin[b.isin];
+      const mDate=new Date(m.matDate);
+      const monthsToMat=(mDate-today)/(86400000*30.44);
+      return {
+        ...b,
+        matDate:m.matDate,
+        shortname:m.shortname||b.issuer,
+        monthsToMat,
+        ratingOrder:RATING_ORDER[b.rating]||99,
+      };
+    }).filter(b=>b.monthsToMat>0);
+
+    // Сортировка: сначала по рейтингу (AAA→AA+→AA→AA−), потом по близости к сроку депозита
+    enriched.forEach(b=>{b.diff=Math.abs(b.monthsToMat-termMonths);});
+    enriched.sort((a,b)=>a.ratingOrder-b.ratingOrder||a.diff-b.diff);
+
+    // Берём топ-15 для проверки оферт, потом из них покажем 5 первых "чистых"
+    const candidates=enriched.slice(0,15);
+    if(candidates.length===0){
+      listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">Корпоратов под этот срок не нашли</div>';
+      btn.disabled=false;
+      return;
+    }
+
+    listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Проверяем оферты по купонному расписанию…</div>';
+    const clean=[];
+    for(const c of candidates){
+      if(clean.length>=5)break;
+      const ok=await checkBondClean(c.isin,depositEnd);
+      if(ok)clean.push(c);
+    }
+
+    if(clean.length===0){
+      listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">Все бумаги в выборке имеют оферту или плавающий купон до конца депозита</div>';
+      btn.disabled=false;
+      return;
+    }
+
+    let html='<div class="ofz-list-hint">Кликните на бумагу — она подставится в поле выше. ★ — лучшая по сочетанию рейтинг + близость к сроку.</div>';
+    clean.forEach((b,i)=>{
+      const matStr=new Date(b.matDate).toLocaleDateString('ru-RU');
+      let deltaTxt;
+      if(b.monthsToMat>=12){
+        const years=(b.monthsToMat/12).toFixed(1);
+        deltaTxt='через '+years+' лет';
+      }else{
+        deltaTxt='через '+Math.round(b.monthsToMat)+' мес';
+      }
+      const isBest=i===0;
+      const cls=ratingBadgeClass(b.rating);
+      html+='<div class="ofz-item'+(isBest?' recommended':'')+'" onclick="pickCorp(\''+b.isin+'\')">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="ofz-name">'+(b.shortname||b.issuer)+
+            ' <span class="rating-badge '+cls+'">'+b.rating+'</span>'+
+          '</div>'+
+          '<div class="ofz-isin">'+b.isin+'</div>'+
+        '</div>'+
+        '<div class="ofz-date">'+
+          '<div>'+matStr+'</div>'+
+          '<div class="ofz-delta">'+deltaTxt+'</div>'+
+        '</div>'+
+      '</div>';
+    });
+    html+='<div class="corp-disclaimer"><strong>Это не рекомендация к покупке.</strong> Бумаги отобраны по рейтингу AAA/AA и сроку, оферты автоматически отсеяны. Перед сделкой проверьте кредитный риск эмитента в PRO-калькуляторах (вероятность дефолта, Z-spread, кредитные метрики).</div>';
+    listEl.innerHTML=html;
+    btn.textContent='🔄 Обновить список корпоратов';
+  }catch(e){
+    listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">Не удалось загрузить: '+e.message+'</div>';
+  }
+  btn.disabled=false;
+}
+
+function pickCorp(isin){
+  document.getElementById('bondIsin').value=isin;
+  document.getElementById('bondHint').textContent='Выбрана: '+isin+' — нажмите «Сравнить»';
+  document.getElementById('bondHint').style.color='var(--accent)';
+  document.querySelectorAll('#corpList .ofz-item').forEach(el=>{
+    el.style.opacity='0.5';
+    if(el.textContent.includes(isin))el.style.opacity='1';
   });
 }
 
