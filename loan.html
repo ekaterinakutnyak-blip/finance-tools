@@ -74,6 +74,9 @@ td:first-child{text-align:center;color:var(--text2)}
 .compare{grid-template-columns:1fr 1fr 1fr}
 @media(max-width:760px){.compare{grid-template-columns:1fr}}
 .warn-box{background:#FEF3E0;border:1px solid #E8C078;border-radius:var(--radius);padding:8px 10px;margin-top:6px;font-size:0.74rem;color:#6B4D1D;line-height:1.45}
+.calc-btn{padding:0.85rem 2.5rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.calc-btn:hover{background:#214530}
+.calc-btn:disabled{opacity:0.5;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -109,9 +112,12 @@ td:first-child{text-align:center;color:var(--text2)}
     </div>
     <div id="bondHint" class="hint-status">Введите параметры выше, потом подберите ОФЗ</div>
     <div id="ofzList" style="margin-top:8px;display:none"></div>
-    <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked onchange="calc()"> <span>Учесть налоговый вычет за проценты по ипотеке (13%, потолок 390 000 ₽)</span></label>
-    <button type="button" class="ofz-pick-btn" onclick="calc()" style="margin-top:0.75rem;width:auto">Рассчитать с ОФЗ</button>
+    <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked> <span>Учесть налоговый вычет за проценты по ипотеке (13%, потолок 390 000 ₽)</span></label>
   </div>
+</div>
+
+<div style="text-align:center;margin:0.5rem 0 1.25rem">
+  <button type="button" class="calc-btn" onclick="calc()">Рассчитать</button>
 </div>
 
 <div class="card" id="resCard">
@@ -607,7 +613,9 @@ function toggleSchedule(){
   w.style.display=w.style.display==='none'?'':'none';
 }
 
-document.querySelectorAll('#loan,#term,#rate,#freq,#epPeriod,#epAmount').forEach(e=>e.addEventListener('input',calc));
+document.querySelectorAll('#loan,#term,#rate,#freq,#epPeriod,#epAmount').forEach(e=>e.addEventListener('input',()=>{
+  // не пересчитываем автоматически — ждём кнопку
+}));
 calc();
 </script>
 </body>
