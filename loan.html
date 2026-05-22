@@ -350,8 +350,8 @@ function calc(){
     // Option 1 card
     let h1='<div class="compare-col'+(best==='payment'?' best':'')+'"><h3>Уменьшение платежа'+(best==='payment'?' ✓':'')+'</h3>';
     h1+='<div class="item"><span class="lbl">Новый платёж</span><span class="val">'+fm(newPayment1)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Снижение платежа</span><span class="val">−'+fm(payment-newPayment1)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Оставшийся срок</span><span class="val">'+remainingPeriods1+' мес.</span></div>';
+    h1+='<div class="item"><span class="lbl">Платёж стал меньше на</span><span class="val" style="color:var(--green)">'+fm(payment-newPayment1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Срок (без изм.)</span><span class="val">'+remainingPeriods1+' мес.</span></div>';
     h1+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
     h1+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter1)+'</span></div>';
     h1+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt1)+'</span></div>';
@@ -361,8 +361,8 @@ function calc(){
     // Option 2 card
     let h2='<div class="compare-col'+(best==='term'?' best':'')+'"><h3>Уменьшение срока'+(best==='term'?' ✓':'')+'</h3>';
     h2+='<div class="item"><span class="lbl">Платёж</span><span class="val">'+fm(payment)+' (без изм.)</span></div>';
-    h2+='<div class="item"><span class="lbl">Оставшийся срок</span><span class="val">'+newNper2+' мес.</span></div>';
-    h2+='<div class="item"><span class="lbl">Сокращение срока</span><span class="val">−'+(savedYears>0?savedYears+' лет ':'')+(savedMo>0?savedMo+' мес.':'')+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Новый срок</span><span class="val">'+newNper2+' мес. ('+Math.floor(newNper2/F)+' лет '+(newNper2%F)+' мес.)</span></div>';
+    h2+='<div class="item"><span class="lbl">Сократили на</span><span class="val" style="color:var(--green)">'+(savedYears>0?savedYears+' лет ':'')+(savedMo>0?savedMo+' мес.':'')+'</span></div>';
     h2+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
     h2+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter2)+'</span></div>';
     h2+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt2)+'</span></div>';
@@ -525,13 +525,14 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     // К концу ипотеки: получаем возврат номинала ОФЗ (если бумага ещё жива)
     let bondRedemption=0;
     let bondRedeemedEarly=false;
-    if(bondMat>=new Date(today.getTime()+n*(86400000*365.25/12))){
-      // бумага доживёт до конца ипотеки
+    const mortgageEndApprox=new Date(today.getTime()+n*(86400000*365.25/12));
+    // допуск 90 дней — если ОФЗ гасится в пределах 90 дней до конца ипотеки, считаем "вовремя"
+    const daysEarly=(mortgageEndApprox-bondMat)/86400000;
+    if(daysEarly<=90){
+      // бумага доживёт до конца ипотеки (или с небольшим опережением)
       bondRedemption=bondsNeeded*bond.faceValue;
     }else{
       bondRedeemedEarly=true;
-      // бумага погасится раньше — номинал придёт раньше
-      // упрощённо: считаем что юзер положит этот номинал под подушку до конца ипотеки
       bondRedemption=bondsNeeded*bond.faceValue;
     }
     
@@ -573,7 +574,10 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     
     let warn='';
     if(bondRedeemedEarly){
-      warn='<div class="warn-box">⚠ ОФЗ ('+fmDate(bond.matDate)+') гасится раньше ипотеки. Номинал поступит на счёт и должен полежать до конца срока.</div>';
+      // считаем сколько лет между погашением ОФЗ и окончанием ипотеки
+      const mortgageEndDate=new Date(today.getTime()+n*(86400000*365.25/12));
+      const yearsDiff=((mortgageEndDate-bondMat)/(86400000*365.25)).toFixed(1);
+      warn='<div class="warn-box">⚠ ОФЗ гасится '+fmDate(bond.matDate)+' — это на ~'+yearsDiff+' лет раньше окончания ипотеки. Номинал ('+fm(bondRedemption)+') поступит на счёт и будет лежать без процента до конца срока, после чего войдёт в итог.</div>';
     }
     
     const winning=savingB>0;
@@ -582,11 +586,15 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     html+='<div class="item"><span class="lbl">Куплено</span><span class="val">'+bondsNeeded.toLocaleString('ru-RU')+' шт</span></div>';
     html+='<div class="item"><span class="lbl">Вложено в ОФЗ</span><span class="val">'+fm(investment)+'</span></div>';
     html+='<div class="item"><span class="lbl">Доплата из зарплаты</span><span class="val">'+fm(userOutOfPocket)+'</span></div>';
-    html+='<div class="item"><span class="lbl">Возврат номинала</span><span class="val" style="color:var(--green)">+'+fm(bondRedemption)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Возврат номинала ОФЗ</span><span class="val" style="color:var(--green)">+'+fm(bondRedemption)+'</span></div>';
     if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">+'+fm(finalAccum)+'</span></div>';
     if(useDed)html+='<div class="item"><span class="lbl">Вычет за %%</span><span class="val" style="color:var(--green)">+'+fm(refund)+'</span></div>';
     html+='<div class="item"><span class="lbl">Чистая переплата</span><span class="val" style="color:'+(netCostB<netCostA?'var(--green)':'var(--red)')+'">'+fm(netCostB)+'</span></div>';
-    html+='<div class="item"><span class="lbl">vs стратегия «↓ срок»</span><span class="val" style="color:'+(savingB>0?'var(--green)':'var(--red)')+'">'+(savingB>0?'+':'')+fm(savingB)+'</span></div>';
+    if(winning){
+      html+='<div class="item"><span class="lbl">Выгоднее «↓ срок» на</span><span class="val" style="color:var(--green)">+'+fm(savingB)+'</span></div>';
+    }else{
+      html+='<div class="item"><span class="lbl">Проиграно «↓ срок»</span><span class="val" style="color:var(--red)">−'+fm(Math.abs(savingB))+'</span></div>';
+    }
     html+=warn;
     
     placeholder.innerHTML=html;
