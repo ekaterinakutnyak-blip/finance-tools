@@ -199,7 +199,9 @@ async function loadOfzList(){
       list.push({secid:o.SECID,shortname:o.SHORTNAME,matDate:o.MATDATE,cp:o.COUPONPERCENT,m2m,diff:Math.abs(m2m-remainingMonths)});
     });
     list.sort((a,b)=>a.diff-b.diff);
-    const top=list.slice(0,5);
+    // отсев бумаг с очень низким купоном (дисконтные / флоатеры с мин. фикс. частью)
+    const filtered=list.filter(b=>b.cp&&b.cp>=3);
+    const top=filtered.slice(0,5);
     if(!top.length){listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">ОФЗ не найдены</div>';return}
     let html='<div class="ofz-loading" style="text-align:left;padding:6px 4px">Кликните на бумагу. ★ — ближайшая к оставшемуся сроку '+Math.round(remainingMonths)+' мес.</div>';
     top.forEach((b,i)=>{
@@ -216,7 +218,16 @@ async function loadOfzList(){
 }
 function pickOfz(secid){
   document.getElementById('bondIsin').value=secid;
-  const h=document.getElementById('bondHint');h.textContent='Выбрана: '+secid+' — нажмите «Рассчитать с ОФЗ»';h.className='hint-status ok';
+  const h=document.getElementById('bondHint');h.textContent='Выбрана: '+secid+' — нажмите «Рассчитать»';h.className='hint-status ok';
+  // подсветка выбранной в списке
+  document.querySelectorAll('#ofzList .ofz-item').forEach(el=>{
+    el.classList.remove('recommended');
+    el.style.opacity='0.5';
+    if(el.textContent.includes(secid)){
+      el.classList.add('recommended');
+      el.style.opacity='1';
+    }
+  });
 }
 
 // Загрузка данных конкретной ОФЗ
