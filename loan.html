@@ -52,6 +52,28 @@ td{text-align:right;padding:0.35rem 0.5rem;border-bottom:1px solid var(--surface
 td:first-child{text-align:center;color:var(--text2)}
 .footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
 .toggle-detail{font-family:var(--sans);font-size:0.75rem;color:var(--accent2);background:none;border:none;cursor:pointer;margin-top:8px;text-decoration:underline}
+.ofz-toggle{display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.88rem;line-height:1.5}
+.ofz-toggle input{margin-top:4px}
+.ofz-pick-btn{display:inline-flex;align-items:center;gap:6px;padding:0.55rem 0.9rem;background:var(--accent2-light);color:var(--accent2);border:1px solid var(--accent2);border-radius:var(--radius);cursor:pointer;font-size:0.82rem;font-weight:500;font-family:var(--sans)}
+.ofz-pick-btn:hover{background:#D5E8F5}
+.ofz-pick-btn:disabled{opacity:0.5;cursor:not-allowed}
+.hint-status{font-size:0.78rem;color:var(--text2);margin-top:8px;min-height:1.2em}
+.hint-status.ok{color:var(--green)}
+.hint-status.err{color:var(--red)}
+.ofz-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all 0.15s;gap:10px}
+.ofz-item:hover{border-color:var(--accent2);background:var(--accent2-light)}
+.ofz-item.recommended{border-color:var(--accent2);background:var(--accent2-light)}
+.ofz-item.recommended::before{content:"★";color:var(--accent2);margin-right:4px}
+.ofz-name{font-weight:600;font-size:0.88rem}
+.ofz-isin{font-family:var(--mono);font-size:0.7rem;color:var(--text3)}
+.ofz-date{text-align:right;font-size:0.76rem;color:var(--text2)}
+.ofz-delta{color:var(--text3);font-size:0.7rem;margin-top:1px}
+.loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ofz-loading{padding:14px;text-align:center;font-size:0.8rem;color:var(--text2)}
+.compare{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:760px){.compare{grid-template-columns:1fr}}
+.warn-box{background:#FEF3E0;border:1px solid #E8C078;border-radius:var(--radius);padding:8px 10px;margin-top:6px;font-size:0.74rem;color:#6B4D1D;line-height:1.45}
 </style>
 </head>
 <body>
@@ -74,6 +96,21 @@ td:first-child{text-align:center;color:var(--text2)}
   <div class="input-grid">
     <div class="field"><label>Через сколько платежей</label><input type="text" id="epPeriod" value="12" inputmode="decimal"><span class="hint">номер платежа, после которого вносится доп. сумма</span></div>
     <div class="field"><label>Сумма досрочного погашения</label><input type="text" id="epAmount" value="1000000" inputmode="decimal"><span class="hint">₽</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Сравнить с покупкой ОФЗ</div>
+  <label class="ofz-toggle"><input type="checkbox" id="useOfz" onchange="toggleOfzBlock()"> <span>Вместо досрочного гашения положить эту сумму в ОФЗ и платить ипотеку из купонов</span></label>
+  <div id="ofzBlock" style="display:none;margin-top:1rem">
+    <div class="input-grid">
+      <div class="field"><label>ISIN облигации</label><input type="text" id="bondIsin" placeholder="напр. SU26238RMFS4"></div>
+      <div class="field" style="justify-content:flex-end"><button type="button" class="ofz-pick-btn" onclick="loadOfzList()">🎯 Подобрать ОФЗ под оставшийся срок</button></div>
+    </div>
+    <div id="bondHint" class="hint-status">Введите параметры выше, потом подберите ОФЗ</div>
+    <div id="ofzList" style="margin-top:8px;display:none"></div>
+    <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked onchange="calc()"> <span>Учесть налоговый вычет за проценты по ипотеке (13%, потолок 390 000 ₽)</span></label>
+    <button type="button" class="ofz-pick-btn" onclick="calc()" style="margin-top:0.75rem;width:auto">Рассчитать с ОФЗ</button>
   </div>
 </div>
 
@@ -106,6 +143,109 @@ td:first-child{text-align:center;color:var(--text2)}
 function pv(id){const v=document.getElementById(id).value.replace(/\s/g,'').replace(',','.');return v===''?0:parseFloat(v)}
 function fm(v){return Math.round(Math.abs(v)).toLocaleString('ru-RU')+' ₽'}
 function fmy(v){if(Math.abs(v)>=1e6)return(v/1e6).toFixed(2)+' млн';return Math.round(v).toLocaleString('ru-RU')}
+
+// === MOEX helper ===
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+function fmDate(d){if(!d)return '—';return new Date(d).toLocaleDateString('ru-RU')}
+
+function toggleOfzBlock(){
+  const on=document.getElementById('useOfz').checked;
+  document.getElementById('ofzBlock').style.display=on?'block':'none';
+  if(!on)calc();
+}
+
+// Подбор ОФЗ: ищем под ОСТАТОК срока (после месяца досрочки)
+async function loadOfzList(){
+  const Y=pv('term'),F=pv('freq'),epP=pv('epPeriod');
+  if(!Y||!F)return alert('Сначала введите срок и периодичность');
+  const totalPayments=Y*F;
+  const remainingPayments=Math.max(1,totalPayments-epP);
+  const remainingMonths=remainingPayments*(12/F);
+  
+  const listEl=document.getElementById('ofzList');
+  listEl.style.display='block';
+  listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Загружаем список ОФЗ…</div>';
+  
+  try{
+    const url='https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off&securities.columns=SECID,SHORTNAME,MATDATE,COUPONPERCENT';
+    const d=await moexFetch(url);
+    const cols=d.securities.columns;
+    const today=new Date();today.setHours(0,0,0,0);
+    const list=[];
+    d.securities.data.forEach(row=>{
+      const o={};cols.forEach((c,i)=>o[c]=row[i]);
+      if(!o.SECID||!o.SECID.startsWith('SU26'))return;
+      if(!o.MATDATE)return;
+      const md=new Date(o.MATDATE);
+      if(md<=today)return;
+      const m2m=(md-today)/(86400000*30.44);
+      list.push({secid:o.SECID,shortname:o.SHORTNAME,matDate:o.MATDATE,cp:o.COUPONPERCENT,m2m,diff:Math.abs(m2m-remainingMonths)});
+    });
+    list.sort((a,b)=>a.diff-b.diff);
+    const top=list.slice(0,5);
+    if(!top.length){listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">ОФЗ не найдены</div>';return}
+    let html='<div class="ofz-loading" style="text-align:left;padding:6px 4px">Кликните на бумагу. ★ — ближайшая к оставшемуся сроку '+Math.round(remainingMonths)+' мес.</div>';
+    top.forEach((b,i)=>{
+      const yrs=(b.m2m/12).toFixed(1);
+      html+='<div class="ofz-item'+(i===0?' recommended':'')+'" onclick="pickOfz(\''+b.secid+'\')">'+
+        '<div style="flex:1;min-width:0"><div class="ofz-name">'+(b.shortname||b.secid)+'</div>'+
+        '<div class="ofz-isin">'+b.secid+' · купон '+(b.cp?b.cp.toFixed(2)+'%':'—')+'</div></div>'+
+        '<div class="ofz-date"><div>'+fmDate(b.matDate)+'</div><div class="ofz-delta">через '+yrs+' лет</div></div></div>';
+    });
+    listEl.innerHTML=html;
+  }catch(e){
+    listEl.innerHTML='<div class="ofz-loading" style="color:var(--red)">Не удалось: '+e.message+'</div>';
+  }
+}
+function pickOfz(secid){
+  document.getElementById('bondIsin').value=secid;
+  const h=document.getElementById('bondHint');h.textContent='Выбрана: '+secid+' — нажмите «Рассчитать с ОФЗ»';h.className='hint-status ok';
+}
+
+// Загрузка данных конкретной ОФЗ
+async function loadBondData(isin){
+  const desc=await moexFetch('https://iss.moex.com/iss/securities/'+isin+'.json?iss.meta=off');
+  const boards=['TQOB','TQOD','TQCB','TQIR','TQIY','EQOB'];
+  let bd=null;
+  for(const board of boards){
+    try{
+      const r=await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/'+board+'/securities/'+isin+'.json?iss.meta=off');
+      if(r.securities&&r.securities.data&&r.securities.data.length>0){
+        const cols=r.securities.columns;const o={};cols.forEach((c,i)=>o[c]=r.securities.data[0][i]);
+        if(o.PREVLEGALCLOSEPRICE||o.PREVWAPRICE||o.LAST){
+          bd=o;
+          if(r.marketdata&&r.marketdata.data&&r.marketdata.data.length>0){
+            const mc=r.marketdata.columns;const mo={};mc.forEach((c,i)=>mo[c]=r.marketdata.data[0][i]);bd=Object.assign(bd,mo);
+          }
+          break;
+        }
+      }
+    }catch(e){}
+  }
+  if(!bd)throw new Error('Бумага не найдена');
+  const bz=await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+isin+'.json?iss.meta=off&limit=200');
+  const cc=bz.coupons.columns;
+  const coupons=bz.coupons.data.map(row=>{const o={};cc.forEach((c,i)=>o[c]=row[i]);return o});
+  const dc=desc.description.columns;const dobj={};
+  desc.description.data.forEach(row=>{dobj[row[dc.indexOf('name')]]=row[dc.indexOf('value')]});
+  const faceValue=parseFloat(dobj.FACEVALUE)||1000;
+  const price=parseFloat(bd.LAST)||parseFloat(bd.PREVLEGALCLOSEPRICE)||parseFloat(bd.PREVWAPRICE);
+  if(!price)throw new Error('Нет цены');
+  const nkd=parseFloat(bd.ACCRUEDINT)||0;
+  const dirtyPrice=faceValue*price/100+nkd;
+  return {isin,shortname:dobj.SHORTNAME||bd.SHORTNAME||isin,faceValue,price,nkd,dirtyPrice,matDate:dobj.MATDATE,coupons};
+}
 
 function pmt(rate,nper,pv){if(rate===0)return-pv/nper;return-pv*rate/(1-Math.pow(1+rate,-nper))}
 function fv(rate,nper,pmt,pv){return-(pv*Math.pow(1+rate,nper)+pmt*(Math.pow(1+rate,nper)-1)/rate)}
@@ -262,6 +402,187 @@ function calc(){
 
   // Payment schedule (base)
   buildSchedule(L,r,n,payment);
+  
+  // Дополнительный сценарий ОФЗ (если включён)
+  if(document.getElementById('useOfz')&&document.getElementById('useOfz').checked){
+    appendOfzScenario(L,r,n,F,payment,epP,epA,totalInterest);
+  }
+}
+
+// === Сценарий с покупкой ОФЗ на сумму досрочки ===
+async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
+  const isin=document.getElementById('bondIsin').value.trim().toUpperCase();
+  const useDed=document.getElementById('useDeduction').checked;
+  const cb=document.getElementById('compareBlock');
+  if(!isin)return;
+  if(!epA||epA<=0||epP<=0||epP>=n)return;
+
+  // Заглушка-индикатор в compareBlock
+  const placeholder=document.createElement('div');
+  placeholder.className='compare-col';
+  placeholder.id='ofzCol';
+  placeholder.innerHTML='<h3>Купить ОФЗ</h3><div class="ofz-loading"><span class="loader"></span> Загружаем данные облигации…</div>';
+  cb.appendChild(placeholder);
+
+  try{
+    const bond=await loadBondData(isin);
+    const today=new Date();today.setHours(0,0,0,0);
+    const bondMat=new Date(bond.matDate);
+    
+    // Сколько штук ОФЗ покупаем на сумму epA
+    const bondsNeeded=Math.floor(epA/bond.dirtyPrice);
+    if(bondsNeeded<=0)throw new Error('Суммы недостаточно для покупки даже одной бумаги');
+    const investment=bondsNeeded*bond.dirtyPrice;
+    const cashRemainder=epA-investment;
+    
+    // Готовим расписание купонов: дата → сумма выплаты (на ВСЕ бумаги, после НДФЛ)
+    // Создаём массив для каждого месяца от epP+1 до n: сколько чистого купона приходит
+    // (упрощение: считаем что купоны делятся равномерно по месяцам периода)
+    // Альтернативно — берём все будущие купоны и распределяем по месяцам
+    
+    // 1) Сначала отбираем будущие купоны
+    const futureCoupons=bond.coupons
+      .filter(c=>c.coupondate&&c.value&&new Date(c.coupondate)>=today)
+      .map(c=>({date:new Date(c.coupondate),value:parseFloat(c.value)}))
+      .sort((a,b)=>a.date-b.date);
+    
+    // 2) Симулируем кешфлоу помесячно с месяца досрочки (epP+1)
+    // Платёж по ипотеке остаётся как был (payment), но в каждом месяце:
+    //  - юзер платит банку: payment
+    //  - получает купон (после НДФЛ × 0.87): если в этот месяц приходится купон
+    // Купоны помесячно начисляем приближённо: купон за период (полугодовой обычно)
+    // делим на число месяцев между предыдущим купоном и текущим
+    // Для упрощения: купон зачисляется в месяц, когда он реально приходит
+    
+    // Создаём карту "номер платежа от начала ипотеки → купон в этом месяце"
+    // Месяц 1 ипотеки = today + 1 месяц
+    const couponByPmt={};
+    futureCoupons.forEach(c=>{
+      // Сколько месяцев от today до этого купона
+      const monthsAhead=Math.round((c.date-today)/(86400000*30.44));
+      const pmtNum=Math.max(1,monthsAhead); // привязка к номеру платежа от today
+      // Учитываем только в пределах ипотеки
+      if(pmtNum>n*(12/F))return;
+      const couponAfterTax=c.value*bondsNeeded*0.87;
+      couponByPmt[pmtNum]=(couponByPmt[pmtNum]||0)+couponAfterTax;
+    });
+    
+    // Симуляция: с месяца 1 платим как обычно payment, но с epP+1 начинаем получать купоны
+    // Ipa: на самом деле купоны идут с момента покупки (epP+1), не с начала
+    // Но мы считаем что юзер покупает ОФЗ в момент досрочки (месяц epP+1), не в день 0
+    // Уточнение: для простоты считаем что покупка происходит сегодня (месяц 0).
+    // Купоны идут все время, но юзер их использует "виртуально" с момента epP+1.
+    // Поскольку до epP+1 он бы их положил под подушку — учтём их в накоплении.
+    
+    let bal=L;                  // остаток ипотеки
+    let cumInterest=0;          // накопленные проценты
+    let userOutOfPocket=0;      // сколько потратил из своих (помимо стартовых epA)
+    let accumulatedCoupons=0;   // накопленные купоны (до момента epP)
+    let monthlyCouponPlan=[];   // помесячный купон на весь срок (для графика)
+    
+    for(let i=1;i<=n;i++){
+      const interest=bal*r;
+      cumInterest+=interest;
+      const coupon=couponByPmt[i]||0;
+      monthlyCouponPlan.push(coupon);
+      
+      // До месяца epP — обычные платежи из своих
+      // С месяца epP+1 — купоны идут на платежи
+      if(i<=epP){
+        userOutOfPocket+=payment;
+        accumulatedCoupons+=coupon;
+      }else{
+        // купон + накопленные могут покрыть платёж
+        const available=coupon+accumulatedCoupons;
+        if(available>=payment){
+          accumulatedCoupons=available-payment;
+        }else{
+          userOutOfPocket+=(payment-available);
+          accumulatedCoupons=0;
+        }
+      }
+      bal=bal+interest-payment;
+      if(bal<0)bal=0;
+    }
+    
+    // К концу ипотеки: получаем возврат номинала ОФЗ (если бумага ещё жива)
+    let bondRedemption=0;
+    let bondRedeemedEarly=false;
+    if(bondMat>=new Date(today.getTime()+n*(86400000*365.25/12))){
+      // бумага доживёт до конца ипотеки
+      bondRedemption=bondsNeeded*bond.faceValue;
+    }else{
+      bondRedeemedEarly=true;
+      // бумага погасится раньше — номинал придёт раньше
+      // упрощённо: считаем что юзер положит этот номинал под подушку до конца ипотеки
+      bondRedemption=bondsNeeded*bond.faceValue;
+    }
+    
+    // Налоговый вычет
+    const refund=useDed?Math.min(baseTotalInterest,3_000_000)*0.13:0;
+    
+    // Накопленные купоны на конец ипотеки добавляем тоже
+    const finalAccum=accumulatedCoupons;
+    
+    // Итого: сколько потратил из кошелька = epA (на ОФЗ) + userOutOfPocket
+    // Получил обратно: bondRedemption + finalAccum + refund + cashRemainder
+    // Чистая переплата (стратегия Б) = расходы − поступления − тело ипотеки
+    const totalSpentB=epA+userOutOfPocket; // сколько ушло из кармана
+    const totalBackB=bondRedemption+finalAccum+refund+cashRemainder;
+    const netCostB=totalSpentB-totalBackB; // сколько в итоге ушло из капитала
+    
+    // Для сравнения: что было бы без ОФЗ — досрочно гасили
+    // Это уже посчитано в compareBlock (опции 1 и 2). Возьмём опцию 2 (уменьшение срока) как базовую
+    // — посчитаем здесь же
+    let bSim=L,intBefore=0;
+    for(let i=0;i<epP;i++){const x=bSim*r;intBefore+=x;bSim=bSim+x-payment}
+    const balAtEP=bSim;
+    const newBal=balAtEP-epA;
+    let b2sim=newBal,intAfter2=0,newNper2=0;
+    while(b2sim>0.01 && newNper2<n*2){
+      const x=b2sim*r;intAfter2+=x;b2sim=b2sim+x-payment;newNper2++;
+      if(b2sim<=0)break;
+    }
+    const totalIntDosroch=intBefore+intAfter2;
+    const refundDosroch=useDed?Math.min(totalIntDosroch,3_000_000)*0.13:0;
+    // Стоимость стратегии А: тело ипотеки + проценты, минус вычет
+    // Но в наших терминах: ушло из капитала = ipotekaTotalPaid + epA(ушло на досрочку) − epA(пошло в счёт долга) − refund
+    // Проще: переплата = всего уплачено - L
+    const totalPaidDosroch=payment*epP+epA+payment*newNper2;
+    const netCostA=totalPaidDosroch-L-refundDosroch;
+    
+    // Сравнение
+    const savingB=netCostA-netCostB; // если положительное — ОФЗ выгоднее
+    
+    let warn='';
+    if(bondRedeemedEarly){
+      warn='<div class="warn-box">⚠ ОФЗ ('+fmDate(bond.matDate)+') гасится раньше ипотеки. Номинал поступит на счёт и должен полежать до конца срока.</div>';
+    }
+    
+    const winning=savingB>0;
+    let html='<h3>Купить ОФЗ '+(winning?'✓':'')+'</h3>';
+    html+='<div class="item"><span class="lbl">Бумага</span><span class="val">'+bond.shortname+'</span></div>';
+    html+='<div class="item"><span class="lbl">Куплено</span><span class="val">'+bondsNeeded.toLocaleString('ru-RU')+' шт</span></div>';
+    html+='<div class="item"><span class="lbl">Вложено в ОФЗ</span><span class="val">'+fm(investment)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Доплата из зарплаты</span><span class="val">'+fm(userOutOfPocket)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Возврат номинала</span><span class="val" style="color:var(--green)">+'+fm(bondRedemption)+'</span></div>';
+    if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">+'+fm(finalAccum)+'</span></div>';
+    if(useDed)html+='<div class="item"><span class="lbl">Вычет за %%</span><span class="val" style="color:var(--green)">+'+fm(refund)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Чистая переплата</span><span class="val" style="color:'+(netCostB<netCostA?'var(--green)':'var(--red)')+'">'+fm(netCostB)+'</span></div>';
+    html+='<div class="item"><span class="lbl">vs стратегия «↓ срок»</span><span class="val" style="color:'+(savingB>0?'var(--green)':'var(--red)')+'">'+(savingB>0?'+':'')+fm(savingB)+'</span></div>';
+    html+=warn;
+    
+    placeholder.innerHTML=html;
+    if(winning){
+      placeholder.classList.add('best');
+      // снимаем флаг с других колонок если ОФЗ выиграло
+      Array.from(cb.querySelectorAll('.compare-col')).forEach(c=>{
+        if(c.id!=='ofzCol')c.classList.remove('best');
+      });
+    }
+  }catch(e){
+    placeholder.innerHTML='<h3>Купить ОФЗ</h3><div class="warn-box" style="background:#FDF0F0;border-color:#E89090;color:#8A3030">Ошибка: '+e.message+'</div>';
+  }
 }
 
 function buildSchedule(L,r,n,payment){
