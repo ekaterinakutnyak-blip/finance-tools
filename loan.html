@@ -34,7 +34,8 @@ h1{font-size:1.5rem;font-weight:600;letter-spacing:-0.02em}
 .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:1.25rem}
 @media(max-width:600px){.compare{grid-template-columns:1fr}}
 .compare-col{border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
-.compare-col h3{font-size:0.85rem;font-weight:600;margin-bottom:1rem}
+.compare-col h3{font-size:0.85rem;font-weight:600;margin-bottom:0.25rem}
+.col-sub{font-size:0.72rem;color:var(--text3);line-height:1.4;margin-bottom:0.85rem}
 .compare-col .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--surface2);font-size:0.82rem}
 .compare-col .item:last-child{border-bottom:none}
 .compare-col .item .lbl{color:var(--text2)}
@@ -87,30 +88,31 @@ td:first-child{text-align:center;color:var(--text2)}
 <div class="card">
   <div class="card-title">Параметры кредита</div>
   <div class="input-grid">
-    <div class="field"><label>Сумма кредита</label><input type="text" id="loan" value="8000000" inputmode="decimal"><span class="hint">₽</span></div>
-    <div class="field"><label>Срок, лет</label><input type="text" id="term" value="30" inputmode="decimal"></div>
-    <div class="field"><label>Ставка, % годовых</label><input type="text" id="rate" value="5" inputmode="decimal"></div>
-    <div class="field"><label>Платежей в год</label><input type="text" id="freq" value="12" inputmode="decimal"><span class="hint">12 = ежемесячно</span></div>
+    <div class="field"><label>Остаток долга</label><input type="text" id="loan" value="4000000" inputmode="decimal"><span class="hint">текущий долг по ипотеке; для новой ипотеки — полная сумма</span></div>
+    <div class="field"><label>Оставшийся срок, лет</label><input type="text" id="term" value="10" inputmode="decimal"><span class="hint">сколько ещё платить; для новой ипотеки — весь срок</span></div>
+    <div class="field"><label>Ставка, % годовых</label><input type="text" id="rate" value="7" inputmode="decimal"></div>
+    <input type="hidden" id="freq" value="12">
   </div>
 </div>
 
 <div class="card">
-  <div class="card-title">Досрочное погашение</div>
+  <div class="card-title">Досрочное погашение / Свободные деньги</div>
   <div class="input-grid">
-    <div class="field"><label>Через сколько платежей</label><input type="text" id="epPeriod" value="12" inputmode="decimal"><span class="hint">номер платежа, после которого вносится доп. сумма</span></div>
-    <div class="field"><label>Сумма досрочного погашения</label><input type="text" id="epAmount" value="1000000" inputmode="decimal"><span class="hint">₽</span></div>
+    <div class="field"><label>Когда вносим, мес. от сегодня</label><input type="text" id="epPeriod" value="1" inputmode="decimal"><span class="hint">обычно 1, если деньги уже на руках</span></div>
+    <div class="field"><label>Сумма свободных денег</label><input type="text" id="epAmount" value="2000000" inputmode="decimal"><span class="hint">₽ — для досрочки или покупки ОФЗ</span></div>
   </div>
 </div>
 
 <div class="card">
   <div class="card-title">Сравнить с покупкой ОФЗ</div>
   <label class="ofz-toggle"><input type="checkbox" id="useOfz" onchange="toggleOfzBlock()"> <span>Вместо досрочного гашения положить эту сумму в ОФЗ и платить ипотеку из купонов</span></label>
+  <div class="check-hint" style="margin-top:6px;font-size:0.74rem;color:var(--text3);line-height:1.5">Расчёт покажет: купоны (после НДФЛ 13%) частично покрывают платёж банку, в конце срока вернётся номинал ОФЗ. Учтён налоговый вычет за проценты по ипотеке.</div>
   <div id="ofzBlock" style="display:none;margin-top:1rem">
     <div class="input-grid">
       <div class="field"><label>ISIN облигации</label><input type="text" id="bondIsin" placeholder="напр. SU26238RMFS4"></div>
       <div class="field" style="justify-content:flex-end"><button type="button" class="ofz-pick-btn" onclick="loadOfzList()">🎯 Подобрать ОФЗ под оставшийся срок</button></div>
     </div>
-    <div id="bondHint" class="hint-status">Введите параметры выше, потом подберите ОФЗ</div>
+    <div id="bondHint" class="hint-status">Подбираем ОФЗ с погашением близко к концу ипотеки. Приоритет — бумагам, которые доживают до конца срока.</div>
     <div id="ofzList" style="margin-top:8px;display:none"></div>
     <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked> <span>Учесть налоговый вычет за проценты по ипотеке (13%, потолок 390 000 ₽)</span></label>
   </div>
@@ -198,7 +200,12 @@ async function loadOfzList(){
       const m2m=(md-today)/(86400000*30.44);
       list.push({secid:o.SECID,shortname:o.SHORTNAME,matDate:o.MATDATE,cp:o.COUPONPERCENT,m2m,diff:Math.abs(m2m-remainingMonths)});
     });
-    list.sort((a,b)=>a.diff-b.diff);
+    // приоритет: сначала бумаги ≥ срок ипотеки (они переживают конец и гасятся номиналом),
+    // потом — самые длинные из остальных
+    list.forEach(b=>{
+      b.priorityBin=b.m2m>=remainingMonths?0:1; // 0 = доживает, 1 = гасится раньше
+    });
+    list.sort((a,b)=>a.priorityBin-b.priorityBin||a.diff-b.diff);
     // отсев бумаг с очень низким купоном (дисконтные / флоатеры с мин. фикс. частью)
     const filtered=list.filter(b=>b.cp&&b.cp>=3);
     const top=filtered.slice(0,5);
@@ -349,6 +356,7 @@ function calc(){
 
     // Option 1 card
     let h1='<div class="compare-col'+(best==='payment'?' best':'')+'"><h3>Уменьшение платежа'+(best==='payment'?' ✓':'')+'</h3>';
+    h1+='<div class="col-sub">Внесли досрочку, платёж стал меньше, срок прежний</div>';
     h1+='<div class="item"><span class="lbl">Новый платёж</span><span class="val">'+fm(newPayment1)+'</span></div>';
     h1+='<div class="item"><span class="lbl">Платёж стал меньше на</span><span class="val" style="color:var(--green)">'+fm(payment-newPayment1)+'</span></div>';
     h1+='<div class="item"><span class="lbl">Срок (без изм.)</span><span class="val">'+remainingPeriods1+' мес.</span></div>';
@@ -360,6 +368,7 @@ function calc(){
 
     // Option 2 card
     let h2='<div class="compare-col'+(best==='term'?' best':'')+'"><h3>Уменьшение срока'+(best==='term'?' ✓':'')+'</h3>';
+    h2+='<div class="col-sub">Внесли досрочку, платёж прежний, срок сократился</div>';
     h2+='<div class="item"><span class="lbl">Платёж</span><span class="val">'+fm(payment)+' (без изм.)</span></div>';
     h2+='<div class="item"><span class="lbl">Новый срок</span><span class="val">'+newNper2+' мес. ('+Math.floor(newNper2/F)+' лет '+(newNper2%F)+' мес.)</span></div>';
     h2+='<div class="item"><span class="lbl">Сократили на</span><span class="val" style="color:var(--green)">'+(savedYears>0?savedYears+' лет ':'')+(savedMo>0?savedMo+' мес.':'')+'</span></div>';
@@ -582,6 +591,7 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     
     const winning=savingB>0;
     let html='<h3>Купить ОФЗ '+(winning?'✓':'')+'</h3>';
+    html+='<div class="col-sub">Деньги в ОФЗ, купоны идут на платёж банку</div>';
     html+='<div class="item"><span class="lbl">Бумага</span><span class="val">'+bond.shortname+'</span></div>';
     html+='<div class="item"><span class="lbl">Куплено</span><span class="val">'+bondsNeeded.toLocaleString('ru-RU')+' шт</span></div>';
     html+='<div class="item"><span class="lbl">Вложено в ОФЗ</span><span class="val">'+fm(investment)+'</span></div>';
