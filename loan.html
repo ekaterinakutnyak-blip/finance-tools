@@ -78,6 +78,11 @@ td:first-child{text-align:center;color:var(--text2)}
 .calc-btn{padding:0.85rem 2.5rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600;cursor:pointer;font-family:var(--sans)}
 .calc-btn:hover{background:#214530}
 .calc-btn:disabled{opacity:0.5;cursor:not-allowed}
+.item.total-cost{margin-top:8px;padding-top:8px;border-top:2px solid var(--accent);font-weight:700}
+.item.total-cost .lbl{color:var(--text)}
+.item.total-cost .val{font-size:1rem;color:var(--accent)}
+.compare-col.best .item.total-cost .val{color:var(--green)}
+.scenario-section{font-size:0.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin:0.8rem 0 0.2rem}
 </style>
 </head>
 <body>
@@ -106,7 +111,7 @@ td:first-child{text-align:center;color:var(--text2)}
 <div class="card">
   <div class="card-title">Сравнить с покупкой ОФЗ</div>
   <label class="ofz-toggle"><input type="checkbox" id="useOfz" onchange="toggleOfzBlock()"> <span>Вместо досрочного гашения положить эту сумму в ОФЗ и платить ипотеку из купонов</span></label>
-  <div class="check-hint" style="margin-top:6px;font-size:0.74rem;color:var(--text3);line-height:1.5">Расчёт покажет: купоны (после НДФЛ 13%) частично покрывают платёж банку, в конце срока вернётся номинал ОФЗ. Учтён налоговый вычет за проценты по ипотеке.</div>
+  <div class="check-hint" style="margin-top:6px;font-size:0.74rem;color:var(--text3);line-height:1.5">Расчёт покажет, во сколько вам реально обойдётся квартира при каждой стратегии — с учётом всех платежей, купонов и вычетов.</div>
   <div id="ofzBlock" style="display:none;margin-top:1rem">
     <div class="input-grid">
       <div class="field"><label>ISIN облигации</label><input type="text" id="bondIsin" placeholder="напр. SU26238RMFS4"></div>
@@ -114,7 +119,9 @@ td:first-child{text-align:center;color:var(--text2)}
     </div>
     <div id="bondHint" class="hint-status">Подбираем ОФЗ с погашением близко к концу ипотеки. Приоритет — бумагам, которые доживают до конца срока.</div>
     <div id="ofzList" style="margin-top:8px;display:none"></div>
-    <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked> <span>Учесть налоговый вычет за проценты по ипотеке (13%, потолок 390 000 ₽)</span></label>
+    <label class="ofz-toggle" style="margin-top:1rem"><input type="checkbox" id="useDeduction" checked> <span>Учесть вычет за <strong>проценты</strong> по ипотеке (до 390 000 ₽)</span></label>
+    <label class="ofz-toggle" style="margin-top:0.6rem"><input type="checkbox" id="usePropertyDeduction" checked> <span>Учесть вычет за <strong>покупку</strong> жилья (до 260 000 ₽)</span></label>
+    <div class="check-hint" style="margin-top:6px;font-size:0.74rem;color:var(--text3);line-height:1.5">Оба вычета даются один раз в жизни. Снимите галочку, если уже использовали.</div>
   </div>
 </div>
 
@@ -352,30 +359,48 @@ function calc(){
 
     const cb=document.getElementById('compareBlock');cb.innerHTML='';
 
-    const best=saving2>saving1?'term':'payment';
+    // === НОВАЯ МЕТРИКА: "Стоимость квартиры" для всех стратегий ===
+    // Стоимость = всё, что отдал банку  − налоговые вычеты
+    // (вычет за покупку и за %)
+    const useDed=document.getElementById('useDeduction')?document.getElementById('useDeduction').checked:false;
+    const usePropDed=document.getElementById('usePropertyDeduction')?document.getElementById('usePropertyDeduction').checked:false;
+    const propRefund=usePropDed?Math.min(L,2_000_000)*0.13:0;
+    
+    // Вычет за % по каждой стратегии
+    const refund1=useDed?Math.min(totalInt1,3_000_000)*0.13:0;
+    const refund2=useDed?Math.min(totalInt2,3_000_000)*0.13:0;
+    
+    // Стоимость квартиры по каждой стратегии
+    const cost1=totalPaid1-refund1-propRefund;
+    const cost2=totalPaid2-refund2-propRefund;
+
+    const best=cost1<cost2?'payment':'term';
 
     // Option 1 card
-    let h1='<div class="compare-col'+(best==='payment'?' best':'')+'"><h3>Уменьшение платежа'+(best==='payment'?' ✓':'')+'</h3>';
-    h1+='<div class="col-sub">Внесли досрочку, платёж стал меньше, срок прежний</div>';
+    let h1='<div class="compare-col'+(best==='payment'?' best':'')+'"><h3>↓ Платёж'+(best==='payment'?' ✓':'')+'</h3>';
+    h1+='<div class="col-sub">Досрочка снижает ежемесячный платёж, срок прежний</div>';
     h1+='<div class="item"><span class="lbl">Новый платёж</span><span class="val">'+fm(newPayment1)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Платёж стал меньше на</span><span class="val" style="color:var(--green)">'+fm(payment-newPayment1)+'</span></div>';
     h1+='<div class="item"><span class="lbl">Срок (без изм.)</span><span class="val">'+remainingPeriods1+' мес.</span></div>';
-    h1+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter1)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt1)+'</span></div>';
-    h1+='<div class="item"><span class="lbl">Экономия на %%</span><span class="val" style="color:var(--green)">'+fm(saving1)+'</span></div>';
+    h1+='<div class="scenario-section">Кошелёк за весь срок</div>';
+    h1+='<div class="item"><span class="lbl">Платежей банку</span><span class="val">'+fm(totalPaid1)+'</span></div>';
+    h1+='<div class="item"><span class="lbl">Из них проценты</span><span class="val">'+fm(totalInt1)+'</span></div>';
+    if(useDed)h1+='<div class="item"><span class="lbl">Вычет за %</span><span class="val" style="color:var(--green)">−'+fm(refund1)+'</span></div>';
+    if(usePropDed)h1+='<div class="item"><span class="lbl">Вычет за покупку</span><span class="val" style="color:var(--green)">−'+fm(propRefund)+'</span></div>';
+    h1+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost1)+'</span></div>';
     h1+='</div>';
 
     // Option 2 card
-    let h2='<div class="compare-col'+(best==='term'?' best':'')+'"><h3>Уменьшение срока'+(best==='term'?' ✓':'')+'</h3>';
-    h2+='<div class="col-sub">Внесли досрочку, платёж прежний, срок сократился</div>';
+    let h2='<div class="compare-col'+(best==='term'?' best':'')+'"><h3>↓ Срок'+(best==='term'?' ✓':'')+'</h3>';
+    h2+='<div class="col-sub">Досрочка сокращает срок, платёж прежний</div>';
     h2+='<div class="item"><span class="lbl">Платёж</span><span class="val">'+fm(payment)+' (без изм.)</span></div>';
-    h2+='<div class="item"><span class="lbl">Новый срок</span><span class="val">'+newNper2+' мес. ('+Math.floor(newNper2/F)+' лет '+(newNper2%F)+' мес.)</span></div>';
+    h2+='<div class="item"><span class="lbl">Новый срок</span><span class="val">'+(epP+newNper2)+' мес. ('+Math.floor((epP+newNper2)/F)+' лет '+((epP+newNper2)%F)+' мес)</span></div>';
     h2+='<div class="item"><span class="lbl">Сократили на</span><span class="val" style="color:var(--green)">'+(savedYears>0?savedYears+' лет ':'')+(savedMo>0?savedMo+' мес.':'')+'</span></div>';
-    h2+='<div class="item"><span class="lbl">Проценты до досрочного</span><span class="val">'+fm(intBefore)+'</span></div>';
-    h2+='<div class="item"><span class="lbl">Проценты после</span><span class="val">'+fm(intAfter2)+'</span></div>';
-    h2+='<div class="item"><span class="lbl">Итого переплата</span><span class="val">'+fm(totalInt2)+'</span></div>';
-    h2+='<div class="item"><span class="lbl">Экономия на %%</span><span class="val" style="color:var(--green)">'+fm(saving2)+'</span></div>';
+    h2+='<div class="scenario-section">Кошелёк за весь срок</div>';
+    h2+='<div class="item"><span class="lbl">Платежей банку</span><span class="val">'+fm(totalPaid2)+'</span></div>';
+    h2+='<div class="item"><span class="lbl">Из них проценты</span><span class="val">'+fm(totalInt2)+'</span></div>';
+    if(useDed)h2+='<div class="item"><span class="lbl">Вычет за %</span><span class="val" style="color:var(--green)">−'+fm(refund2)+'</span></div>';
+    if(usePropDed)h2+='<div class="item"><span class="lbl">Вычет за покупку</span><span class="val" style="color:var(--green)">−'+fm(propRefund)+'</span></div>';
+    h2+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost2)+'</span></div>';
     h2+='</div>';
 
     cb.innerHTML=h1+h2;
@@ -545,22 +570,23 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
       bondRedemption=bondsNeeded*bond.faceValue;
     }
     
-    // Налоговый вычет
+    // Налоговый вычет за %
     const refund=useDed?Math.min(baseTotalInterest,3_000_000)*0.13:0;
+    // Налоговый вычет за покупку жилья (одинаков для всех стратегий)
+    const usePropDed=document.getElementById('usePropertyDeduction')?document.getElementById('usePropertyDeduction').checked:false;
+    const propRefund=usePropDed?Math.min(L,2_000_000)*0.13:0;
     
     // Накопленные купоны на конец ипотеки добавляем тоже
     const finalAccum=accumulatedCoupons;
     
-    // Итого: сколько потратил из кошелька = epA (на ОФЗ) + userOutOfPocket
-    // Получил обратно: bondRedemption + finalAccum + refund + cashRemainder
-    // Чистая переплата (стратегия Б) = расходы − поступления − тело ипотеки
-    const totalSpentB=epA+userOutOfPocket; // сколько ушло из кармана
-    const totalBackB=bondRedemption+finalAccum+refund+cashRemainder;
-    const netCostB=totalSpentB-totalBackB; // сколько в итоге ушло из капитала
+    // ===== СТОИМОСТЬ КВАРТИРЫ по стратегии ОФЗ =====
+    // Отдал = вложено в ОФЗ + доплата из зарплаты
+    // Вернул = возврат номинала + накопленные купоны + остаток налом + вычет за % + вычет за покупку
+    const totalOut3=investment+userOutOfPocket;
+    const totalBack3=bondRedemption+finalAccum+cashRemainder+refund+propRefund;
+    const cost3=totalOut3-totalBack3;
     
-    // Для сравнения: что было бы без ОФЗ — досрочно гасили
-    // Это уже посчитано в compareBlock (опции 1 и 2). Возьмём опцию 2 (уменьшение срока) как базовую
-    // — посчитаем здесь же
+    // Для сравнения: пересчитаем стоимость стратегии "↓ срок" (она же best обычно)
     let bSim=L,intBefore=0;
     for(let i=0;i<epP;i++){const x=bSim*r;intBefore+=x;bSim=bSim+x-payment}
     const balAtEP=bSim;
@@ -570,40 +596,51 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
       const x=b2sim*r;intAfter2+=x;b2sim=b2sim+x-payment;newNper2++;
       if(b2sim<=0)break;
     }
-    const totalIntDosroch=intBefore+intAfter2;
-    const refundDosroch=useDed?Math.min(totalIntDosroch,3_000_000)*0.13:0;
-    // Стоимость стратегии А: тело ипотеки + проценты, минус вычет
-    // Но в наших терминах: ушло из капитала = ipotekaTotalPaid + epA(ушло на досрочку) − epA(пошло в счёт долга) − refund
-    // Проще: переплата = всего уплачено - L
-    const totalPaidDosroch=payment*epP+epA+payment*newNper2;
-    const netCostA=totalPaidDosroch-L-refundDosroch;
+    const totalIntTerm=intBefore+intAfter2;
+    const refundTerm=useDed?Math.min(totalIntTerm,3_000_000)*0.13:0;
+    const totalPaidTerm=payment*epP+epA+payment*newNper2;
+    const costTerm=totalPaidTerm-refundTerm-propRefund;
     
-    // Сравнение
-    const savingB=netCostA-netCostB; // если положительное — ОФЗ выгоднее
+    // Тоже стратегия "↓ платёж" для полноты
+    const remainingPeriods1=n-epP;
+    const newPayment1=Math.abs((newBal*r)/(1-Math.pow(1+r,-remainingPeriods1)));
+    let b1sim=newBal,intAfter1=0;
+    for(let i=0;i<remainingPeriods1;i++){const x=b1sim*r;intAfter1+=x;b1sim=b1sim+x-newPayment1}
+    const totalIntPmt=intBefore+intAfter1;
+    const refundPmt=useDed?Math.min(totalIntPmt,3_000_000)*0.13:0;
+    const totalPaidPmt=payment*epP+epA+newPayment1*remainingPeriods1;
+    const costPmt=totalPaidPmt-refundPmt-propRefund;
+    
+    // Сравнение: ОФЗ vs лучшая досрочка
+    const bestDosroch=Math.min(costTerm,costPmt);
+    const bestName=costTerm<costPmt?'↓ срок':'↓ платёж';
+    const savingB=bestDosroch-cost3; // положительное → ОФЗ выгоднее
     
     let warn='';
     if(bondRedeemedEarly){
-      // считаем сколько лет между погашением ОФЗ и окончанием ипотеки
       const mortgageEndDate=new Date(today.getTime()+n*(86400000*365.25/12));
       const yearsDiff=((mortgageEndDate-bondMat)/(86400000*365.25)).toFixed(1);
-      warn='<div class="warn-box">⚠ ОФЗ гасится '+fmDate(bond.matDate)+' — это на ~'+yearsDiff+' лет раньше окончания ипотеки. Номинал ('+fm(bondRedemption)+') поступит на счёт и будет лежать без процента до конца срока, после чего войдёт в итог.</div>';
+      warn='<div class="warn-box">⚠ ОФЗ гасится '+fmDate(bond.matDate)+' — на ~'+yearsDiff+' лет раньше окончания ипотеки. Номинал ('+fm(bondRedemption)+') придёт раньше и будет лежать без процента до конца срока.</div>';
     }
     
     const winning=savingB>0;
     let html='<h3>Купить ОФЗ '+(winning?'✓':'')+'</h3>';
-    html+='<div class="col-sub">Деньги в ОФЗ, купоны идут на платёж банку</div>';
+    html+='<div class="col-sub">Деньги в ОФЗ, купоны идут на платёж банку, в конце возврат номинала</div>';
     html+='<div class="item"><span class="lbl">Бумага</span><span class="val">'+bond.shortname+'</span></div>';
     html+='<div class="item"><span class="lbl">Куплено</span><span class="val">'+bondsNeeded.toLocaleString('ru-RU')+' шт</span></div>';
+    html+='<div class="scenario-section">Кошелёк за весь срок</div>';
     html+='<div class="item"><span class="lbl">Вложено в ОФЗ</span><span class="val">'+fm(investment)+'</span></div>';
     html+='<div class="item"><span class="lbl">Доплата из зарплаты</span><span class="val">'+fm(userOutOfPocket)+'</span></div>';
-    html+='<div class="item"><span class="lbl">Возврат номинала ОФЗ</span><span class="val" style="color:var(--green)">+'+fm(bondRedemption)+'</span></div>';
-    if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">+'+fm(finalAccum)+'</span></div>';
-    if(useDed)html+='<div class="item"><span class="lbl">Вычет за %%</span><span class="val" style="color:var(--green)">+'+fm(refund)+'</span></div>';
-    html+='<div class="item"><span class="lbl">Чистая переплата</span><span class="val" style="color:'+(netCostB<netCostA?'var(--green)':'var(--red)')+'">'+fm(netCostB)+'</span></div>';
-    if(winning){
-      html+='<div class="item"><span class="lbl">Выгоднее «↓ срок» на</span><span class="val" style="color:var(--green)">+'+fm(savingB)+'</span></div>';
+    if(cashRemainder>0)html+='<div class="item"><span class="lbl">Остаток наличными</span><span class="val" style="color:var(--green)">−'+fm(cashRemainder)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Возврат номинала ОФЗ</span><span class="val" style="color:var(--green)">−'+fm(bondRedemption)+'</span></div>';
+    if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">−'+fm(finalAccum)+'</span></div>';
+    if(useDed)html+='<div class="item"><span class="lbl">Вычет за %</span><span class="val" style="color:var(--green)">−'+fm(refund)+'</span></div>';
+    if(usePropDed)html+='<div class="item"><span class="lbl">Вычет за покупку</span><span class="val" style="color:var(--green)">−'+fm(propRefund)+'</span></div>';
+    html+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost3)+'</span></div>';
+    if(savingB>0){
+      html+='<div class="item" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px"><span class="lbl">Дешевле «'+bestName+'» на</span><span class="val" style="color:var(--green)">'+fm(savingB)+'</span></div>';
     }else{
-      html+='<div class="item"><span class="lbl">Проиграно «↓ срок»</span><span class="val" style="color:var(--red)">−'+fm(Math.abs(savingB))+'</span></div>';
+      html+='<div class="item" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px"><span class="lbl">Дороже «'+bestName+'» на</span><span class="val" style="color:var(--red)">'+fm(Math.abs(savingB))+'</span></div>';
     }
     html+=warn;
     
