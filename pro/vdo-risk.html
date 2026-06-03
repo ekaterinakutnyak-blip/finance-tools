@@ -124,31 +124,32 @@ input[type=range]{flex:1;accent-color:var(--accent)}
   <div class="results-grid" id="summaryGrid"></div>
 </div>
 
-<!-- THE QUESTION -->
+<!-- THE QUESTION: задаём сумму потери → вероятность + доходность при ней -->
 <div class="card hidden" id="askCard">
-  <div class="card-title">Какова вероятность потерять…</div>
+  <div class="card-title">Сценарий потери</div>
   <div class="toggle-mode" id="askToggle">
-    <button class="active" onclick="setAskMode('rub')">сумму, ₽</button>
+    <button class="active" onclick="setAskMode('rub')">сумма, ₽</button>
     <button onclick="setAskMode('pct')">% капитала</button>
   </div>
   <div class="lookup-row">
     <div class="field">
-      <label id="askLabel">Потерять не меньше, ₽</label>
+      <label id="askLabel">Если потерять, ₽</label>
       <input type="text" id="askInput" inputmode="numeric" value="100000" oninput="onAsk()">
     </div>
   </div>
   <div class="answer">
     <div class="big" id="askAnswer">—</div>
-    <div class="cap" id="askCap">за год, по рыночной оценке риска (implied PD из спреда)</div>
+    <div class="cap" id="askCap"></div>
   </div>
+  <div class="scenario-box" id="scenarioBox" style="margin-top:1rem"></div>
 </div>
 
 <!-- LADDER TABLE -->
 <div class="card hidden" id="ladderCard">
-  <div class="card-title">Профиль риска — вероятность потерять «столько или больше» за год</div>
+  <div class="card-title">Профиль риска — вероятность потери за год</div>
   <div class="table-wrap">
     <table id="ladderTable">
-      <thead><tr><th>Потеря</th><th>% капитала</th><th>P(потерять ≥)</th><th>Раз в N лет</th></tr></thead>
+      <thead><tr><th>Потеря</th><th>% капитала</th><th>Вероятность за год</th><th>Раз в N лет</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -159,22 +160,8 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 
 <!-- RISK CURVE -->
 <div class="card hidden" id="curveCard">
-  <div class="card-title">Кривая риска — P(потеря ≥ X)</div>
+  <div class="card-title">Кривая риска — вероятность потери за год</div>
   <div class="chart-container"><canvas id="curveChart"></canvas></div>
-</div>
-
-<!-- YIELD UNDER SCENARIO -->
-<div class="card hidden" id="scenarioCard">
-  <div class="card-title">Доходность портфеля под сценарий</div>
-  <div class="field">
-    <label>Берём «плохой год» с вероятностью не выше…</label>
-    <div class="slider-row">
-      <input type="range" id="probSlider" min="1" max="50" step="1" value="10" oninput="onScenario()">
-      <span class="slider-val" id="probVal">10%</span>
-    </div>
-    <span class="hint">Хвостовой сценарий: год, хуже которого бывает лишь с этой вероятностью. Калькулятор находит потерю на этом пороге (VaR) и показывает, во что превращается доходность портфеля.</span>
-  </div>
-  <div class="scenario-box" id="scenarioBox"></div>
 </div>
 
 <p class="footer-note">
@@ -689,12 +676,10 @@ function recompute(){
   document.getElementById('askCard').classList.remove('hidden');
   document.getElementById('ladderCard').classList.remove('hidden');
   document.getElementById('curveCard').classList.remove('hidden');
-  document.getElementById('scenarioCard').classList.remove('hidden');
 
   buildLadder(D,total);
   drawCurve(D,total);
   onAsk();
-  onScenario();
 
   // предупреждение про флоатеры
   if(floats>0){
@@ -723,46 +708,38 @@ function buildLadder(D,total){
   });
 }
 
-// ---- ask question ----
+// ---- ask: сумма потери → вероятность этой потери + доходность при ней ----
 let askMode='rub';
 function setAskMode(m){
   askMode=m;
   document.querySelectorAll('#askToggle button').forEach((b,i)=>b.classList.toggle('active',(i===0)===(m==='rub')));
-  document.getElementById('askLabel').textContent=(m==='rub')?'Потерять не меньше, ₽':'Потерять не меньше, % капитала';
+  document.getElementById('askLabel').textContent=(m==='rub')?'Если потерять, ₽':'Если потерять, % капитала';
   document.getElementById('askInput').value=(m==='rub')?'100000':'20';
   onAsk();
 }
 function onAsk(){
   const D=window._D;if(!D)return;
-  const total=_lastTotal;
+  const total=_lastTotal, wYTM=window._wYTM, coupon=window._annualCoupon;
   let raw=parseFloat(document.getElementById('askInput').value.replace(/\s/g,'').replace(',','.'))||0;
   let rub=(askMode==='rub')?raw:(total*raw/100);
-  const p=pLoseAtLeast(D,rub);
-  document.getElementById('askAnswer').textContent=(p*100).toFixed(p<0.01?2:1)+'%';
+  if(rub<0)rub=0;
+  const p=pLoseAtLeast(D,rub);          // вероятность потерять эту сумму (или больше)
   const pctCap=(rub/total*100).toFixed(1);
-  document.getElementById('askCap').textContent='потерять '+fmt(Math.round(rub))+' ₽ ('+pctCap+'% капитала) или больше за год · implied PD из спредов';
-}
 
-// ---- scenario yield ----
-function onScenario(){
-  const D=window._D;if(!D)return;
-  const prob=parseInt(document.getElementById('probSlider').value)/100;
-  document.getElementById('probVal').textContent=Math.round(prob*100)+'%';
-  const total=_lastTotal, wYTM=window._wYTM, coupon=window._annualCoupon;
-  const tailLoss=lossAtTailProb(D,prob);
-  // доходность портфеля за год:
-  //  база (никто не дефолтит) ≈ wYTM
-  //  в хвостовом сценарии: годовой результат ≈ купоны − потеря тела, в % к капиталу
-  const baseRub=total*wYTM/100;
-  const scenarioRub=coupon - tailLoss;     // грубо: купонный доход минус хвостовая потеря тела
+  // главный ответ: «с вероятностью N% вы потеряете X»
+  document.getElementById('askAnswer').textContent='с вероятностью '+(p*100).toFixed(p<0.01?2:1)+'%';
+  document.getElementById('askCap').textContent='вы потеряете '+fmt(Math.round(rub))+' ₽ ('+pctCap+'% капитала) за год · оценка по implied PD из спредов';
+
+  // доходность портфеля, если эта потеря реализуется: купоны − потеря тела, в % к капиталу
+  const scenarioRub=coupon - rub;
   const scenarioPct=scenarioRub/total*100;
   const box=document.getElementById('scenarioBox');
   const col=scenarioPct<0?'var(--red)':(scenarioPct<wYTM?'var(--amber)':'var(--green)');
   box.innerHTML=
     '<div class="scenario-line"><span>Обещанная доходность (без дефолтов)</span><span class="v" style="color:var(--green)">+'+wYTM.toFixed(2)+'%</span></div>'+
     '<div class="scenario-line"><span>Купонный доход за год</span><span class="v">'+fmt(Math.round(coupon))+' ₽</span></div>'+
-    '<div class="scenario-line"><span>Потеря тела в этом сценарии (порог хвоста)</span><span class="v" style="color:var(--red)">−'+fmt(Math.round(tailLoss))+' ₽</span></div>'+
-    '<div class="scenario-line"><span><strong>Итог года с вероятностью ~'+Math.round(prob*100)+'% хуже</strong></span><span class="v" style="color:'+col+';font-size:1.05rem">'+(scenarioPct>=0?'+':'')+scenarioPct.toFixed(2)+'%</span></div>';
+    '<div class="scenario-line"><span>Потеря тела в этом сценарии</span><span class="v" style="color:var(--red)">−'+fmt(Math.round(rub))+' ₽</span></div>'+
+    '<div class="scenario-line"><span><strong>Доходность портфеля, если потеря реализуется</strong></span><span class="v" style="color:'+col+';font-size:1.05rem">'+(scenarioPct>=0?'+':'')+scenarioPct.toFixed(2)+'%</span></div>';
 }
 
 // ---- risk curve ----
@@ -778,7 +755,7 @@ function drawCurve(D,total){
   const ctx=document.getElementById('curveChart');
   _curveChart=new Chart(ctx,{
     type:'line',
-    data:{datasets:[{label:'P(потеря ≥ X)',data:pts,borderColor:'#B44040',backgroundColor:'rgba(180,64,64,0.08)',fill:true,tension:0.25,pointRadius:0,borderWidth:2}]},
+    data:{datasets:[{label:'Вероятность потери за год',data:pts,borderColor:'#B44040',backgroundColor:'rgba(180,64,64,0.08)',fill:true,tension:0.25,pointRadius:0,borderWidth:2}]},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{
         x:{type:'linear',title:{display:true,text:'Потеря, % капитала'},ticks:{callback:v=>v+'%'}},
