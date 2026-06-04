@@ -3,7 +3,9 @@
   var KEY = 'pro_access_token';
   var EXPIRY_KEY = 'pro_access_expiry';
   var TYPE_KEY = 'pro_access_type';
+  var CHECK_KEY = 'pro_access_lastcheck';
   var API_URL = 'https://investtools.pro/api/check';
+  var RECHECK_MS = 60 * 60 * 1000; // токен перепроверяется на сервере не чаще раза в час
 
   function sha256(str) {
     return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(buf) {
@@ -11,13 +13,51 @@
     });
   }
 
-  function checkAccessLocal() {
+  function localStillValid() {
     var token = localStorage.getItem(KEY);
     var expiry = localStorage.getItem(EXPIRY_KEY);
-    if (token && expiry && new Date(expiry) > new Date()) {
-      return true;
+    return !!(token && expiry && new Date(expiry) > new Date());
+  }
+
+  function clearAccess() {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(EXPIRY_KEY);
+    localStorage.removeItem(TYPE_KEY);
+    localStorage.removeItem(CHECK_KEY);
+  }
+
+  // Возвращает Promise<boolean>. Пароль — чисто локально (ключ Екатерины).
+  // Токен — перепроверяется на сервере не чаще раза в час; если сервер сказал «истёк/нет» — доступ снимается.
+  function checkAccess() {
+    if (!localStillValid()) return Promise.resolve(false);
+
+    var type = localStorage.getItem(TYPE_KEY);
+    if (type !== 'token') {
+      // пароль или старые записи без типа — оставляем локальную логику
+      return Promise.resolve(true);
     }
-    return false;
+
+    var last = parseInt(localStorage.getItem(CHECK_KEY) || '0', 10);
+    if (Date.now() - last < RECHECK_MS) {
+      // недавно проверяли — пускаем без обращения к серверу
+      return Promise.resolve(true);
+    }
+
+    // пора перепроверить токен на сервере
+    var token = localStorage.getItem(KEY);
+    return verifyToken(token).then(function(res) {
+      if (res.valid) {
+        localStorage.setItem(EXPIRY_KEY, res.expires_at);
+        localStorage.setItem(CHECK_KEY, String(Date.now()));
+        return true;
+      }
+      // токен истёк или отозван на сервере — снимаем доступ
+      clearAccess();
+      return false;
+    }).catch(function() {
+      // сервер недоступен — не выкидываем человека, доверяем локальному сроку
+      return true;
+    });
   }
 
   function verifyToken(token) {
@@ -80,6 +120,7 @@
           localStorage.setItem(KEY, token);
           localStorage.setItem(TYPE_KEY, 'token');
           localStorage.setItem(EXPIRY_KEY, res.expires_at);
+          localStorage.setItem(CHECK_KEY, String(Date.now()));
           unlock();
         } else {
           document.getElementById('proErr').textContent = res.reason === 'expired' ? 'Срок действия истёк' : 'Неверный токен или пароль';
@@ -90,13 +131,30 @@
     });
   }
 
-  if (checkAccessLocal()) {
-    return;
+  function hideBody() {
+    if (document.body) {
+      document.body.style.display = 'none';
+    } else {
+      document.addEventListener('DOMContentLoaded', function(){ document.body.style.display = 'none'; });
+    }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showGate);
-  } else {
-    showGate();
+  function revealBody() {
+    if (document.body) document.body.style.display = '';
+    else document.addEventListener('DOMContentLoaded', function(){ document.body.style.display = ''; });
   }
+
+  function boot() {
+    hideBody(); // прячем контент сразу, пока идёт проверка — чтобы PRO не мелькнул
+    checkAccess().then(function(ok) {
+      if (ok) { revealBody(); return; }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showGate);
+      } else {
+        showGate();
+      }
+    });
+  }
+
+  boot();
 })();
