@@ -425,8 +425,28 @@ async function loadBond(isin){
       if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))futureKnown++;
       else futureUnknown++;
     });
-    if(futureUnknown>0)couponType='float';
-    else if(futureKnown===0 && couponRate===0)couponType='float'; // нет данных и текущая ставка пустая → флоатер
+    // Есть ли будущая оферта? Тогда неизвестные купоны ПОСЛЕ неё — это норма (ставка ещё не назначена),
+    // а не признак флоатера. Считаем такую бумагу как фикс с горизонтом до оферты.
+    const hasFutureOffer = offerDate && new Date(offerDate) > today;
+    // Неизвестные купоны ДО оферты — вот это уже подозрительно (настоящий флоатер).
+    let unknownBeforeOffer = 0;
+    if (hasFutureOffer) {
+      const offD = new Date(offerDate);
+      cRows.forEach(row=>{
+        const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+        const cd=obj.coupondate?new Date(obj.coupondate):null;
+        if(!cd||cd<today||cd>offD)return; // только купоны в окне сейчас→оферта
+        const v=parseFloat(obj.value), vp=parseFloat(obj.valueprc);
+        if(!((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0)))unknownBeforeOffer++;
+      });
+    }
+    if(hasFutureOffer){
+      // фикс с офертой: флоатером считаем только если купоны неизвестны даже ДО оферты
+      if(unknownBeforeOffer>0)couponType='float';
+    } else {
+      if(futureUnknown>0)couponType='float';
+      else if(futureKnown===0 && couponRate===0)couponType='float'; // нет данных и текущая ставка пустая → флоатер
+    }
   }catch(e){
     // Фоллбэк: если bondization недоступен — по COUPONPERCENT.
     if(couponRate===0 && couponVal===0)couponType='float';
@@ -682,7 +702,10 @@ function recompute(){
     if(!tag)return;
     if(b.isFloat){tag.textContent='флоатер · PD н/д';tag.style.color='var(--amber)';}
     else if(b.isFx){tag.textContent='валютная · PD н/д';tag.style.color='var(--amber)';}
-    else if(b.cm&&b.cm.pdAnnual!=null){tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год';tag.style.color='var(--text3)';}
+    else if(b.cm&&b.cm.pdAnnual!=null){
+      var offerHint=(b.offerDate&&new Date(b.offerDate)>new Date())?' · до оферты':'';
+      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год'+offerHint;tag.style.color='var(--text3)';
+    }
     else {tag.textContent='PD не посчитан';tag.style.color='var(--amber)';}
   });
 
