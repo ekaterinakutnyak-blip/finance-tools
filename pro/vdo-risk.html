@@ -110,6 +110,11 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       </div>
       <span class="hint">Доля номинала, которую удаётся вернуть при дефолте. Потеря при дефолте = вложено × (1 − Recovery). По умолчанию 20% — как в портфельном калькуляторе.</span>
     </div>
+    <div class="field" style="margin-top:1rem">
+      <label>Ключевая ставка ЦБ, % — для флоатеров</label>
+      <input type="text" id="keyRate" inputmode="decimal" value="14.5" style="font-family:var(--mono);font-size:0.9rem;padding:0.45rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:120px" oninput="onKeyRate()">
+      <span class="hint">Нужна только если в портфеле есть флоатеры. Их кредитный риск считается через спред к ключевой ставке. Впишите текущую ставку ЦБ.</span>
+    </div>
   </div>
 
   <div class="btn-row" style="margin-top:1rem">
@@ -549,6 +554,42 @@ function onRR(){
   document.getElementById('rrVal').textContent=Math.round(RR_user*100)+'%';
   if(_lastBonds)recompute(); // пересчёт без повторной загрузки с MOEX
 }
+function getKeyRate(){
+  var v=parseFloat((document.getElementById('keyRate').value||'').replace(',','.'));
+  return (isFinite(v)&&v>0)?v:14.5;
+}
+function onKeyRate(){ if(_lastBonds)recompute(); }
+
+function computeFloaterMetrics(b, dirtyPriceAbs, keyRatePct){
+  const today=new Date();
+  const mat=b.matDate?new Date(b.matDate):null;
+  let horizon=mat;
+  if(b.offerDate){const od=new Date(b.offerDate);if(od>today)horizon=od;}
+  if(!horizon||horizon<=today)return null;
+  const T=(horizon-today)/(365.25*24*3600*1000);
+  if(T<=0.02)return null;
+  const curCouponPct = b.couponRate || (b.annualCoupon/(b.faceValue)*100) || 0;
+  let qm = (b.qmOverride!=null) ? b.qmOverride : (curCouponPct - keyRatePct);
+  if(!isFinite(qm)) qm=0;
+  b.qmUsed=qm;
+  const couponPctFlat = keyRatePct + qm;
+  const perYear = b.couponsPerYear||4;
+  const couponAbs = b.faceValue*(couponPctFlat/100)/perYear;
+  const nPer = Math.max(1, Math.round(T*perYear));
+  function pv(dm){
+    const rPer=(keyRatePct+dm)/100/perYear; let s=0;
+    for(let k=1;k<=nPer;k++) s+=couponAbs/Math.pow(1+rPer,k);
+    s+=b.faceValue/Math.pow(1+rPer,nPer); return s;
+  }
+  let lo=-20, hi=100;
+  if(pv(lo)<dirtyPriceAbs) return {dm:null,pdAnnual:null,T,horizonDate:horizon};
+  for(let it=0;it<80;it++){const mid=(lo+hi)/2; if(pv(mid)>dirtyPriceAbs) lo=mid; else hi=mid;}
+  const dm=(lo+hi)/2;
+  const RR=0.20;
+  const lambda=(dm/100)/(1-RR);
+  const pdAnnual=lambda>0?(1-Math.exp(-lambda)):0;
+  return {dm, qm, pdAnnual:(pdAnnual>0?pdAnnual:0), T, horizonDate:horizon, couponPctFlat};
+}
 
 // ======================================================================
 // ДВИЖОК: распределение суммарной потери по портфелю (свёртка по ₽)
@@ -622,9 +663,14 @@ async function run(){
       b.positionValue=b.dirtyPerBond*b.qty;               // вложено в позицию, ₽
       b.isFloat=(b.couponType==='float');
       b.isFx=!b.isRub;
-      // implied PD через Z-spread (та же логика, что в bond-portfolio)
+      // implied PD: фикс — через Z-spread; флоатер — через discount margin к ключевой
       let cm=null;
-      if(!b.isFloat){
+      if(b.isFx){
+        cm=null;
+      } else if(b.isFloat){
+        try{cm=computeFloaterMetrics(b, b.dirtyPerBond, getKeyRate());}catch(e){cm=null;}
+        if(cm)cm.isFloater=true;
+      } else {
         try{cm=await computeCreditMetrics(b, b.dirtyPerBond);}catch(e){cm=null;}
       }
       b.cm=cm;
@@ -684,7 +730,10 @@ function recompute(){
   bonds.forEach((b,i)=>{
     const tag=port_rowTag(i);
     if(!tag)return;
-    if(b.isFloat){tag.textContent='флоатер · PD н/д';tag.style.color='var(--amber)';}
+    if(b.isFloat && b.cm && b.cm.pdAnnual!=null){
+      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год · флоатер (DM к ключевой)';tag.style.color='var(--text3)';
+    }
+    else if(b.isFloat){tag.textContent='флоатер · PD н/д';tag.style.color='var(--amber)';}
     else if(b.isFx){tag.textContent='валютная · PD н/д';tag.style.color='var(--amber)';}
     else if(b.cm&&b.cm.pdAnnual!=null){
       var offerHint=(b.offerDate&&new Date(b.offerDate)>new Date())?' · до оферты':'';
@@ -702,11 +751,13 @@ function recompute(){
   drawCurve(D,total);
   onAsk();
 
-  // предупреждение про флоатеры
-  if(floats>0){
+  const uncomputed=bonds.filter(b=>!(b.cm&&b.cm.pdAnnual!=null));
+  if(uncomputed.length>0){
     let warn=document.getElementById('floatWarn');
     if(!warn){warn=document.createElement('div');warn.id='floatWarn';warn.className='warn-note';document.getElementById('summaryCard').appendChild(warn);}
-    warn.textContent='В портфеле '+floats+' бумаг(и) — флоатеры или валютные. Для них спред к ОФЗ не отражает кредитный риск, поэтому PD по ним не считается и в распределение потерь они входят как «не дефолтящие». Риск-профиль ниже относится к фиксированным рублёвым бумагам портфеля.';
+    warn.textContent='Для '+uncomputed.length+' бумаг(и) PD не посчитан (валютные или флоатеры без рыночных данных) — в распределение потерь они входят как «не дефолтящие». Риск-профиль относится к остальным бумагам портфеля.';
+  } else {
+    const warn=document.getElementById('floatWarn'); if(warn)warn.remove();
   }
 }
 function port_rowTag(i){
