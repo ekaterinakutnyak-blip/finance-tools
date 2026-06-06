@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Риск портфеля ВДО · вероятность потерь · MOEX</title>
@@ -110,9 +123,14 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       <span class="hint">Доля номинала, которую удаётся вернуть при дефолте. Потеря при дефолте = вложено × (1 − Recovery). По умолчанию 20% — как в портфельном калькуляторе.</span>
     </div>
     <div class="field" style="margin-top:1rem">
-      <label>Ключевая ставка ЦБ, % — для флоатеров</label>
-      <input type="text" id="keyRate" inputmode="decimal" value="14.5" style="font-family:var(--mono);font-size:0.9rem;padding:0.45rem 0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:120px" oninput="onKeyRate()">
-      <span class="hint">Нужна только если в портфеле есть флоатеры. Их кредитный риск считается через спред к ключевой ставке. Впишите текущую ставку ЦБ.</span>
+      <label>Базовые ставки для флоатеров, %</label>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:6px"><span style="font-size:0.78rem;color:var(--text2)">Ключевая ЦБ</span>
+          <input type="text" id="keyRate" inputmode="decimal" value="14.5" style="font-family:var(--mono);font-size:0.9rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:80px" oninput="onKeyRate()"></span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="font-size:0.78rem;color:var(--text2)">RUONIA</span>
+          <input type="text" id="ruonia" inputmode="decimal" value="14.17" style="font-family:var(--mono);font-size:0.9rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);outline:none;width:80px" oninput="onKeyRate()"></span>
+      </div>
+      <span class="hint">Нужны, только если есть флоатеры. В строке каждого флоатера выберите базу (ключевая или RUONIA) и впишите надбавку из условий выпуска (ΣКС + 6% → база «ключевая», надбавка 6).</span>
     </div>
   </div>
 
@@ -525,6 +543,13 @@ function addRow(isin,qty){
     '<input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A...">'+
     '<input type="text" class="qty" value="'+(qty||'')+'" placeholder="шт" inputmode="numeric">'+
     '<span class="name"></span>'+
+    '<span class="floatctl" style="display:none;align-items:center;gap:6px">'+
+      '<select class="fbase" onchange="onFloatCtl()" style="font-family:var(--mono);font-size:0.72rem;padding:0.25rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">'+
+        '<option value="key">ключевая</option><option value="ruonia">RUONIA</option>'+
+      '</select>'+
+      '<span style="font-size:0.72rem;color:var(--text2)">+</span>'+
+      '<input type="text" class="fmargin" placeholder="надб.%" inputmode="decimal" oninput="onFloatCtl()" style="width:60px;font-family:var(--mono);font-size:0.72rem;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);text-align:right">'+
+    '</span>'+
     '<span class="pdtag"></span>'+
     '<button class="remove" onclick="removeRow(this)">×</button>';
   rowsContainer.appendChild(div);
@@ -567,7 +592,12 @@ function getKeyRate(){
   var v=parseFloat((document.getElementById('keyRate').value||'').replace(',','.'));
   return (isFinite(v)&&v>0)?v:14.5;
 }
+function getRuonia(){
+  var v=parseFloat((document.getElementById('ruonia').value||'').replace(',','.'));
+  return (isFinite(v)&&v>0)?v:14.17;
+}
 function onKeyRate(){ if(_lastBonds)recompute(); }
+function onFloatCtl(){ if(_lastBonds)recompute(); }
 
 // ======================================================================
 // PD флоатера через discount margin (спред над ключевой ставкой)
@@ -575,51 +605,35 @@ function onKeyRate(){ if(_lastBonds)recompute(); }
 // чтобы PV купонов+номинала = грязной цене. Из DM → PD (та же hazard-rate,
 // что у фикса). База берётся флэт = текущая ключевая ставка.
 // ======================================================================
-function computeFloaterMetrics(b, dirtyPriceAbs, keyRatePct){
+function computeFloaterMetrics(b, dirtyPriceAbs, baseRatePct, marginPct){
   const today=new Date();
   const mat=b.matDate?new Date(b.matDate):null;
-  // горизонт: до оферты если есть будущая, иначе до погашения
   let horizon=mat;
   if(b.offerDate){const od=new Date(b.offerDate);if(od>today)horizon=od;}
   if(!horizon||horizon<=today)return null;
-  const T=(horizon-today)/(365.25*24*3600*1000); // лет до горизонта
+  const T=(horizon-today)/(365.25*24*3600*1000);
   if(T<=0.02)return null;
-
-  // надбавка (quoted margin): текущий купон − ключевая. Можно переопределить вручную (b.qmOverride).
-  const curCouponPct = b.couponRate || (b.annualCoupon/(b.faceValue)*100) || 0;
-  let qm = (b.qmOverride!=null) ? b.qmOverride : (curCouponPct - keyRatePct);
-  if(!isFinite(qm)) qm=0;
-  b.qmUsed=qm;
-
-  // годовой купон при флэт-базе = ключевая + надбавка
-  const couponPctFlat = keyRatePct + qm;
+  if(!isFinite(marginPct))return {dm:null,pdAnnual:null,T,horizonDate:horizon,needMargin:true}; // надбавка не введена
+  const couponPctFlat = baseRatePct + marginPct;   // купон при флэт-базе
   const perYear = b.couponsPerYear||4;
-  const couponAbs = b.faceValue*(couponPctFlat/100)/perYear; // купон за период, ₽
+  const couponAbs = b.faceValue*(couponPctFlat/100)/perYear;
   const nPer = Math.max(1, Math.round(T*perYear));
-
-  // PV при заданном DM: дисконт = (ключевая + DM) годовых
+  // DM ищем поверх КУПОННОЙ ставки: у номинала DM=0, ниже номинала DM>0 (риск вырос).
   function pv(dm){
-    const rPer = (keyRatePct+dm)/100/perYear;
-    let s=0;
-    for(let k=1;k<=nPer;k++){
-      s += couponAbs/Math.pow(1+rPer,k);
-    }
-    s += b.faceValue/Math.pow(1+rPer,nPer); // номинал в конце горизонта
-    return s;
+    const rPer=(couponPctFlat+dm)/100/perYear; let s=0;
+    for(let k=1;k<=nPer;k++) s+=couponAbs/Math.pow(1+rPer,k);
+    s+=b.faceValue/Math.pow(1+rPer,nPer); return s;
   }
-  // бисекция по DM, чтобы pv(DM)=dirtyPriceAbs
-  let lo=-20, hi=100; // DM в процентах годовых
+  let lo=-30, hi=100;
   if(pv(lo)<dirtyPriceAbs) return {dm:null,pdAnnual:null,T,horizonDate:horizon};
-  for(let it=0;it<80;it++){
-    const mid=(lo+hi)/2;
-    if(pv(mid)>dirtyPriceAbs) lo=mid; else hi=mid;
-  }
+  for(let it=0;it<80;it++){const mid=(lo+hi)/2; if(pv(mid)>dirtyPriceAbs) lo=mid; else hi=mid;}
   const dm=(lo+hi)/2;
-  // PD из DM (hazard-rate, как у фикса)
-  const RR=0.20; // базовый для метрики; в распределении потерь LGD берётся из ползунка отдельно
-  const lambda=(dm/100)/(1-RR);
+  // полный кредитный спред над базой = надбавка + DM (премия за риск целиком)
+  const fullSpread = marginPct + dm;
+  const RR=0.20;
+  const lambda=(fullSpread/100)/(1-RR);
   const pdAnnual=lambda>0?(1-Math.exp(-lambda)):0;
-  return {dm, qm, pdAnnual:(pdAnnual>0?pdAnnual:0), T, horizonDate:horizon, couponPctFlat};
+  return {dm, fullSpread, margin:marginPct, pdAnnual:(pdAnnual>0?pdAnnual:0), T, horizonDate:horizon, couponPctFlat};
 }
 
 
@@ -702,17 +716,15 @@ async function run(){
       b.positionValue=b.dirtyPerBond*b.qty;               // вложено в позицию, ₽
       b.isFloat=(b.couponType==='float');
       b.isFx=!b.isRub;
-      // implied PD: фикс — через Z-spread (как в bond-portfolio); флоатер — через discount margin к ключевой
+      // фикс — PD через Z-spread сразу; флоатер — PD в recompute по введённой надбавке
       let cm=null;
-      if(b.isFx){
-        cm=null; // валютные не считаем (спред к ОФЗ/ключевой не отражает их риск)
-      } else if(b.isFloat){
-        try{cm=computeFloaterMetrics(b, b.dirtyPerBond, getKeyRate());}catch(e){cm=null;}
-        if(cm)cm.isFloater=true;
-      } else {
+      if(!b.isFloat && !b.isFx){
         try{cm=await computeCreditMetrics(b, b.dirtyPerBond);}catch(e){cm=null;}
       }
       b.cm=cm;
+      const fctl=port[i].row.querySelector('.floatctl');
+      if(fctl)fctl.style.display=b.isFloat?'inline-flex':'none';
+      b.row=port[i].row; // сохраняем ссылку на строку для чтения базы/надбавки в recompute
       port[i].row.querySelector('.name').textContent=b.shortname||'';
       bonds.push(b);
     }
@@ -730,7 +742,24 @@ function recompute(){
   _lastTotal=total;
   bonds.forEach(b=>b.weight=b.positionValue/total);
 
-  // PD каждой бумаги (годовая). Если флоатер/нет cm — помечаем, PD=0 (не вносит в риск, но честно подписываем).
+  // Флоатеры: PD по ключевой ставке (база) и введённой надбавке (из строки)
+  bonds.forEach(b=>{
+    if(!b.isFloat){return;}
+    const row=b.row;
+    let baseRate=getKeyRate(), marginPct=NaN;
+    if(row){
+      const baseSel=row.querySelector('.fbase');
+      const marginInp=row.querySelector('.fmargin');
+      if(baseSel&&baseSel.value==='ruonia')baseRate=getRuonia();
+      if(marginInp){const m=parseFloat((marginInp.value||'').replace(',','.')); if(isFinite(m))marginPct=m;}
+    }
+    let cm=null;
+    try{cm=computeFloaterMetrics(b, b.dirtyPerBond, baseRate, marginPct);}catch(e){cm=null;}
+    if(cm)cm.isFloater=true;
+    b.cm=cm;
+  });
+
+  // PD каждой бумаги (годовая). Если нет cm — PD=0 (не вносит в риск, честно подписываем).
   const positions=[];
   bonds.forEach(b=>{
     let pd=(b.cm&&b.cm.pdAnnual!=null&&isFinite(b.cm.pdAnnual))?b.cm.pdAnnual:0;
@@ -770,9 +799,9 @@ function recompute(){
     const tag=port_rowTag(i);
     if(!tag)return;
     if(b.isFloat && b.cm && b.cm.pdAnnual!=null){
-      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год · флоатер (DM к ключевой)';tag.style.color='var(--text3)';
+      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год · флоатер (DM)';tag.style.color='var(--text3)';
     }
-    else if(b.isFloat){tag.textContent='флоатер · PD н/д';tag.style.color='var(--amber)';}
+    else if(b.isFloat){tag.textContent='флоатер — впишите надбавку →';tag.style.color='var(--amber)';}
     else if(b.isFx){tag.textContent='валютная · PD н/д';tag.style.color='var(--amber)';}
     else if(b.cm&&b.cm.pdAnnual!=null){
       var offerHint=(b.offerDate&&new Date(b.offerDate)>new Date())?' · до оферты':'';
