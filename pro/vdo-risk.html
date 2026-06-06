@@ -113,6 +113,13 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     <button class="btn-sm" onclick="loadExample()">Пример</button>
     <span class="weight-total" id="weightTotal"></span>
   </div>
+  <div class="btn-row" id="pfBar" style="margin-top:0.4rem">
+    <span style="font-size:0.78rem;color:var(--text2)">Портфели:</span>
+    <select id="pfSelect" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);max-width:220px"></select>
+    <button class="btn-sm" onclick="pfLoad()">Загрузить</button>
+    <button class="btn-sm" onclick="pfSave()">Сохранить текущий</button>
+    <button class="btn-sm" onclick="pfDelete()">Удалить</button>
+  </div>
 
   <div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem">
     <div class="field">
@@ -555,6 +562,57 @@ function addRow(isin,qty){
 }
 function removeRow(btn){btn.closest('.bond-row').remove();renumber();}
 function renumber(){let i=1;rowsContainer.querySelectorAll('.bond-row').forEach(r=>{r.querySelector('.num').textContent=i++})}
+
+// ======================================================================
+// Мои портфели: общее хранилище для всех калькуляторов investtools.pro
+// localStorage: invest_portfolios = [{name, items:[{isin,qty}], updated}]
+// Портфель, сохранённый в одном калькуляторе, открывается в другом.
+// ======================================================================
+const PF_KEY='invest_portfolios';
+function pfAll(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
+function pfStore(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+function pfRefresh(){
+  const sel=document.getElementById('pfSelect');if(!sel)return;
+  const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
+  sel.innerHTML='<option value="">— выберите —</option>'+list.map(p=>'<option value="'+String(p.name).replace(/"/g,'&quot;')+'">'+p.name+' ('+p.items.length+' бум.)</option>').join('');
+}
+function pfSave(){
+  const items=[];
+  rowsContainer.querySelectorAll('.bond-row').forEach(r=>{
+    const isin=r.querySelector('.isin').value.trim().toUpperCase();
+    const qty=r.querySelector('.qty').value.trim();
+    if(isin)items.push({isin:isin,qty:qty});
+  });
+  if(items.length===0){alert('Портфель пуст — нечего сохранять.');return;}
+  let name=prompt('Название портфеля:','Мой портфель');
+  if(name==null)return;
+  name=name.trim();
+  if(!name)return;
+  const list=pfAll();
+  const i=list.findIndex(p=>p.name===name);
+  const rec={name:name,items:items,updated:new Date().toISOString()};
+  if(i>=0){if(!confirm('Портфель «'+name+'» уже существует. Перезаписать?'))return;list[i]=rec;}
+  else list.push(rec);
+  pfStore(list);pfRefresh();
+  const sel=document.getElementById('pfSelect');if(sel)sel.value=name;
+}
+function pfLoad(){
+  const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
+  const p=pfAll().find(x=>x.name===sel.value);if(!p)return;
+  rowsContainer.innerHTML='';rowCount=0;
+  p.items.forEach(it=>addRow(it.isin,it.qty));
+  addRow(); // пустая строка про запас
+  renumber();
+  const st=document.getElementById('status');
+  if(st){st.className='status';st.textContent='Портфель «'+p.name+'» загружен — нажмите «Рассчитать».';}
+}
+function pfDelete(){
+  const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
+  if(!confirm('Удалить портфель «'+sel.value+'»?'))return;
+  pfStore(pfAll().filter(p=>p.name!==sel.value));pfRefresh();
+}
+pfRefresh();
+
 function getPortfolio(){
   const items=[];
   rowsContainer.querySelectorAll('.bond-row').forEach(r=>{
@@ -759,7 +817,7 @@ function recompute(){
   [
     {l:'Капитал портфеля',v:fmt(total)+' ₽',s:bonds.length+' бумаг, по грязной цене',c:'hl'},
     {l:'Доходность (YTM)',v:wYTM.toFixed(2)+'%',s:'средневзвешенная, до потерь',c:'hl'},
-    {l:'Ожидаемая потеря/год',v:fmt(Math.round(EL))+' ₽',s:(EL/total*100).toFixed(2)+'% капитала',c:'warn'}
+    {l:'Ожидаемая потеря/год',v:fmt(Math.round(EL))+' ₽',s:(EL/total*100).toFixed(2)+'% капитала · среднее по всем сценариям, не прогноз конкретной суммы',c:'warn'}
   ].forEach(m=>{
     const el=document.createElement('div');el.className='metric '+(m.c||'');
     el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
@@ -842,7 +900,15 @@ function onAsk(){
 
   // главный ответ: «с вероятностью N% вы потеряете X»
   document.getElementById('askAnswer').textContent='с вероятностью '+(p*100).toFixed(p<0.01?2:1)+'%';
-  document.getElementById('askCap').textContent='вы потеряете '+fmt(Math.round(rub))+' ₽ ('+pctCap+'% капитала) за год · оценка по implied PD из спредов';
+  // человеческая интерпретация частоты
+  let freq='';
+  if(p>=0.999)freq='практически наверняка';
+  else if(p>=0.6)freq='в большинстве лет потеря будет не меньше этой суммы';
+  else if(p>=0.4)freq='примерно каждый второй год потеря будет не меньше этой суммы';
+  else if(p>=0.005){const yrs=Math.round(1/p);freq='примерно раз в '+yrs+' '+(yrs%10===1&&yrs%100!==11?'год':(yrs%10>=2&&yrs%10<=4&&(yrs%100<10||yrs%100>=20)?'года':'лет'));}
+  else if(p>0)freq='реже раза в 200 лет — практически исключено';
+  else freq='при текущих PD такая потеря недостижима';
+  document.getElementById('askCap').textContent='вы потеряете '+fmt(Math.round(rub))+' ₽ ('+pctCap+'% капитала) за год · '+freq+' · оценка по implied PD из спредов';
 
   // доходность портфеля, если эта потеря реализуется: купоны − потеря тела, в % к капиталу
   const scenarioRub=coupon - rub;
