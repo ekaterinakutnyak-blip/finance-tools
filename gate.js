@@ -1,5 +1,5 @@
 (function(){
-  var PASS_HASH = 'a571463a3aeaddb2d45bde4c97ceaad80e8a2454a6fc1462a99e31c3343a9dfe';
+  var PASS_HASH = 'cadfe76d8624764d43fde9e741030aedb945ed221a928854dc4babda1c6eea89';
   var KEY = 'pro_access_token';
   var EXPIRY_KEY = 'pro_access_expiry';
   var TYPE_KEY = 'pro_access_type';
@@ -33,7 +33,12 @@
 
     var type = localStorage.getItem(TYPE_KEY);
     if (type !== 'token') {
-      // пароль или старые записи без типа — оставляем локальную логику
+      // парольная сессия живёт, только пока её хеш совпадает с текущим паролем;
+      // после смены пароля все старые парольные входы аннулируются мгновенно
+      if (localStorage.getItem(KEY) !== PASS_HASH) {
+        clearAccess();
+        return Promise.resolve(false);
+      }
       return Promise.resolve(true);
     }
 
