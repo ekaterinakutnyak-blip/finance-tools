@@ -110,6 +110,8 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 .footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
 .loader{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.print-btn{position:fixed;bottom:20px;right:20px;z-index:100}
+@media print{.print-btn,.btn,.btn-sm,.remove,input[type=range],#pfBar{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}}
 </style>
 </head>
 <body>
@@ -157,6 +159,13 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
     <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
     <button class="btn" id="calcBtn" onclick="run()">Оптимизировать</button>
     <span class="weight-total" id="myWeightStatus" style="font-family:var(--mono);font-size:0.78rem;margin-left:auto"></span>
+  </div>
+  <div class="btn-row" id="pfBar" style="margin-top:0.4rem">
+    <span style="font-size:0.78rem;color:var(--text2)">Портфели:</span>
+    <select id="pfSelect" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);max-width:220px"></select>
+    <button class="btn-sm" onclick="pfLoad()">Загрузить</button>
+    <button class="btn-sm" onclick="pfSave()">Сохранить текущий</button>
+    <button class="btn-sm" onclick="pfDelete()">Удалить</button>
   </div>
   <div class="status" id="status"></div>
 </div>
@@ -282,6 +291,57 @@ function addRow(ticker,shares,weight){
 }
 function removeRow(btn){btn.closest('.row-line').remove();renumber();updateMyTotal();}
 function renumber(){let i=1;rowsEl.querySelectorAll('.row-line').forEach(r=>{r.querySelector('.num').textContent=i++;});rowCount=rowsEl.querySelectorAll('.row-line').length;}
+
+// ======================================================================
+// Мои портфели (localStorage): [{name, items:[{ticker,shares,weight}], updated}]
+// ======================================================================
+const PF_KEY='invest_portfolios_mkw_ru';
+function pfAll(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
+function pfStore(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+function pfRefresh(){
+  const sel=document.getElementById('pfSelect');if(!sel)return;
+  const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
+  sel.innerHTML='<option value="">— выберите —</option>'+list.map(p=>'<option value="'+String(p.name).replace(/"/g,'&quot;')+'">'+p.name+' ('+p.items.length+' поз.)</option>').join('');
+}
+function pfSave(){
+  const items=[];
+  rowsEl.querySelectorAll('.row-line').forEach(r=>{
+    const t=r.querySelector('.ticker').value.trim().toUpperCase();
+    const s=r.querySelector('.myshares').value.trim();
+    const w=r.querySelector('.myweight').value.trim();
+    if(t)items.push({ticker:t,shares:s,weight:w});
+  });
+  if(items.length===0){alert('Портфель пуст — нечего сохранять.');return;}
+  let name=prompt('Название портфеля:','Мой портфель');
+  if(name==null)return;
+  name=name.trim();
+  if(!name)return;
+  const list=pfAll();
+  const i=list.findIndex(p=>p.name===name);
+  const rec={name:name,items:items,updated:new Date().toISOString()};
+  if(i>=0){if(!confirm('Портфель «'+name+'» уже существует. Перезаписать?'))return;list[i]=rec;}
+  else list.push(rec);
+  pfStore(list);pfRefresh();
+  const sel=document.getElementById('pfSelect');if(sel)sel.value=name;
+}
+function pfLoad(){
+  const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
+  const p=pfAll().find(x=>x.name===sel.value);if(!p)return;
+  rowsEl.innerHTML='';rowCount=0;
+  p.items.forEach(it=>addRow(it.ticker,it.shares,it.weight));
+  addRow();
+  renumber();
+  if(typeof updateMyTotal==='function')updateMyTotal();
+  const st=document.getElementById('status');
+  if(st){st.className='status';st.textContent='Портфель «'+p.name+'» загружен — нажмите «Оптимизировать».';}
+}
+function pfDelete(){
+  const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
+  if(!confirm('Удалить портфель «'+sel.value+'»?'))return;
+  pfStore(pfAll().filter(p=>p.name!==sel.value));pfRefresh();
+}
+pfRefresh();
+
 function getTickers(){
   const arr=[];rowsEl.querySelectorAll('.row-line .ticker').forEach(el=>{const t=el.value.trim().toUpperCase();if(t)arr.push(t);});
   return [...new Set(arr)];
@@ -1145,5 +1205,6 @@ async function run(){
   }finally{btn.disabled=false;}
 }
 </script>
+<button class="btn print-btn" onclick="window.print()">Скачать PDF</button>
 </body>
 </html>
