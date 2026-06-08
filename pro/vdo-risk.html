@@ -430,6 +430,8 @@ async function loadBond(isin){
   const matDate=sec.MATDATE||'';
   const offerDate=sec.OFFERDATE||sec.BUYBACKDATE||'';
   const nextCoupon=sec.NEXTCOUPON||'';
+  // Дисконтная (бескупонная): купонов нет по конструкции — COUPONPERIOD=0, нет даты следующего купона, купон нулевой
+  const isDiscountSig=(parseInt(sec.COUPONPERIOD)===0)&&(!sec.NEXTCOUPON||sec.NEXTCOUPON==='0000-00-00')&&couponVal===0&&couponRate===0;
   const lotSize=parseInt(sec.LOTSIZE||'1');
 
   // Валюта номинала: SUR/RUB → рубль, остальное → валютная
@@ -470,7 +472,9 @@ async function loadBond(isin){
         if(!((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0)))unknownBeforeOffer++;
       });
     }
-    if(hasFutureOffer){
+    if(isDiscountSig && futureKnown===0 && futureUnknown===0){
+      couponType='discount'; // бескупонная дисконтная: один поток (номинал в погашение), считается как фикс
+    } else if(hasFutureOffer){
       if(unknownBeforeOffer>0)couponType='float';
     } else {
       if(futureUnknown>0)couponType='float';
@@ -478,7 +482,8 @@ async function loadBond(isin){
     }
   }catch(e){
     // Фоллбэк: если bondization недоступен — по COUPONPERCENT.
-    if(couponRate===0 && couponVal===0)couponType='float';
+    if(isDiscountSig)couponType='discount';
+    else if(couponRate===0 && couponVal===0)couponType='float';
   }
 
   // Duration in years
@@ -837,7 +842,8 @@ function recompute(){
     else if(b.isFx){tag.textContent='валютная · PD н/д';tag.style.color='var(--amber)';}
     else if(b.cm&&b.cm.pdAnnual!=null){
       var offerHint=(b.offerDate&&new Date(b.offerDate)>new Date())?' · до оферты':'';
-      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год'+offerHint;tag.style.color='var(--text3)';
+      var discHint=(b.couponType==='discount')?' · дисконт':'';
+      tag.textContent='PD '+(b.cm.pdAnnual*100).toFixed(1)+'%/год'+offerHint+discHint;tag.style.color='var(--text3)';
     }
     else {tag.textContent='PD не посчитан';tag.style.color='var(--amber)';}
   });
