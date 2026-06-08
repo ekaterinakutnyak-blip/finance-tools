@@ -84,6 +84,8 @@ canvas{width:100%!important;height:100%!important}
 .tag-float{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:#FDF7ED;color:#A67A2E}
 .tag-rub{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--surface2);color:var(--text2)}
 .tag-fx{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--accent2-light);color:var(--accent2)}
+.print-btn{position:fixed;bottom:20px;right:20px;z-index:100}
+@media print{.print-btn,.btn,.btn-sm,.remove,input[type=range],#pfBar{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}}
 </style>
 </head>
 <body>
@@ -170,8 +172,10 @@ canvas{width:100%!important;height:100%!important}
 </div>
 
 <div class="card hidden" id="couponCard">
-  <div class="card-title">Купонный поток (ближайшие 12 месяцев)</div>
+  <div class="card-title">Купонный календарь (ближайшие 12 месяцев)</div>
+  <div id="couponTotal" style="font-family:var(--mono);font-size:0.95rem;color:var(--accent);margin-bottom:0.6rem"></div>
   <div class="chart-container"><canvas id="couponChart"></canvas></div>
+  <div style="font-size:0.7rem;color:var(--text3);margin-top:0.5rem">По графику выплат с Мосбиржи: точные даты и суммы каждого купона. Зелёное — зафиксированные купоны; жёлтое — флоатеры по текущей ставке (оценка, ставка ещё не назначена). Валютные купоны пересчитаны в ₽ по текущему курсу. Погашения и амортизации в календарь не входят — только купонный доход.</div>
 </div>
 
 <p class="footer-note">
@@ -193,6 +197,32 @@ function moexFetch(url){
     window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
     document.body.appendChild(s);
   }));
+}
+
+// Кеш bondization: график купонов/амортизаций тянем один раз на бумагу,
+// используют и кредитные метрики, и купонный календарь.
+const _bondizationCache={};
+async function getBondization(secid){
+  if(_bondizationCache[secid])return _bondizationCache[secid];
+  const url='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.meta=off&limit=unlimited';
+  const d=await moexFetch(url);
+  const out={coupons:[],amorts:[]};
+  if(d.coupons){
+    const cCols=d.coupons.columns;
+    d.coupons.data.forEach(row=>{
+      const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
+      out.coupons.push({coupondate:obj.coupondate,value:parseFloat(obj.value)||null,valueprc:parseFloat(obj.valueprc)||null});
+    });
+  }
+  if(d.amortizations){
+    const aCols=d.amortizations.columns;
+    d.amortizations.data.forEach(row=>{
+      const obj={};aCols.forEach((c,i)=>obj[c]=row[i]);
+      out.amorts.push({amortdate:obj.amortdate,value:parseFloat(obj.value)||null});
+    });
+  }
+  _bondizationCache[secid]=out;
+  return out;
 }
 
 async function loadFxRates(){
@@ -281,22 +311,8 @@ async function computeCreditMetrics(b, dirtyPriceAbs){
   // 1. Подгружаем bondization (купоны + амортизации)
   let bondCoupons=[],bondAmorts=[];
   try{
-    const url='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+b.secid+'.json?iss.meta=off&limit=unlimited';
-    const d=await moexFetch(url);
-    if(d.coupons){
-      const cCols=d.coupons.columns;
-      d.coupons.data.forEach(row=>{
-        const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
-        bondCoupons.push({coupondate:obj.coupondate,value:parseFloat(obj.value)||null,valueprc:parseFloat(obj.valueprc)||null});
-      });
-    }
-    if(d.amortizations){
-      const aCols=d.amortizations.columns;
-      d.amortizations.data.forEach(row=>{
-        const obj={};aCols.forEach((c,i)=>obj[c]=row[i]);
-        bondAmorts.push({amortdate:obj.amortdate,value:parseFloat(obj.value)||null});
-      });
-    }
+    const bz=await getBondization(b.secid);
+    bondCoupons=bz.coupons;bondAmorts=bz.amorts;
   }catch(e){return null;}
 
   const today=new Date();today.setHours(0,0,0,0);
@@ -857,43 +873,53 @@ async function run(){
       sg2.appendChild(el);
     });
 
-    // Coupon flow chart (next 12 months) in rubles
+    // ===== Купонный календарь: реальный график выплат из bondization =====
     document.getElementById('couponCard').classList.remove('hidden');
-    const today=new Date();
-    const months={};
+    const today=new Date();today.setHours(0,0,0,0);
+    const calEnd=new Date(today);calEnd.setFullYear(calEnd.getFullYear()+1);
+    const monthsFix={},monthsEst={};
     for(let m=0;m<12;m++){
       const d=new Date(today.getFullYear(),today.getMonth()+m,1);
       const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-      months[key]=0;
+      monthsFix[key]=0;monthsEst[key]=0;
     }
-
-    bonds.forEach(b=>{
-      if(!b.nextCoupon||!b.couponVal||!b.couponPeriod)return;
-      let nc=new Date(b.nextCoupon);
-      const endDate=new Date(today);endDate.setFullYear(endDate.getFullYear()+1);
-      while(nc<=endDate){
-        const key=nc.getFullYear()+'-'+String(nc.getMonth()+1).padStart(2,'0');
-        if(months.hasOwnProperty(key)){
-          months[key]+=b.couponVal*b.qty;
+    for(const b of bonds){
+      let sched=null;
+      try{sched=await getBondization(b.secid);}catch(e){continue;}
+      sched.coupons.forEach(c=>{
+        const d=new Date(c.coupondate);
+        if(d<=today||d>calEnd)return;
+        const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+        if(!monthsFix.hasOwnProperty(key))return;
+        if(c.value!==null&&c.value>0){
+          monthsFix[key]+=c.value*b.qty*b.fxRate; // зафиксированный купон
+        } else if(b.couponVal>0){
+          monthsEst[key]+=b.couponVal*b.qty*b.fxRate; // флоатер: оценка по текущему купону
         }
-        nc=new Date(nc.getTime()+b.couponPeriod*24*60*60*1000);
-      }
-    });
-
-    const labels=Object.keys(months).map(k=>{const[y,m]=k.split('-');return['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][parseInt(m)-1]+' '+y.slice(2)});
-    const values=Object.values(months);
+      });
+    }
+    const monthKeys=Object.keys(monthsFix);
+    const labels=monthKeys.map(k=>{const[y,m]=k.split('-');return['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][parseInt(m)-1]+' '+y.slice(2)});
+    const fixVals=monthKeys.map(k=>monthsFix[k]);
+    const estVals=monthKeys.map(k=>monthsEst[k]);
+    const totalFix=fixVals.reduce((a,v)=>a+v,0);
+    const totalEst=estVals.reduce((a,v)=>a+v,0);
+    const totalAll=totalFix+totalEst;
+    let totalText='Купонов за 12 месяцев: '+Math.round(totalAll).toLocaleString('ru-RU')+' ₽ ('+(totalAll/totalValue*100).toFixed(1)+'% от стоимости портфеля)';
+    if(totalEst>0)totalText+=' · из них '+Math.round(totalEst).toLocaleString('ru-RU')+' ₽ — флоатеры по текущей ставке';
+    document.getElementById('couponTotal').textContent=totalText;
 
     const ctx=document.getElementById('couponChart').getContext('2d');
     if(couponChart)couponChart.destroy();
-    couponChart=new Chart(ctx,{type:'bar',data:{
-      labels,
-      datasets:[{label:'Купон, ₽',data:values,backgroundColor:'rgba(45,90,61,0.3)',borderColor:'#2D5A3D',borderWidth:1}]
-    },options:{
+    const dsets=[{label:'Зафиксированные купоны, ₽',data:fixVals,backgroundColor:'rgba(45,90,61,0.35)',borderColor:'#2D5A3D',borderWidth:1}];
+    if(totalEst>0)dsets.push({label:'Флоатеры (оценка по текущей ставке), ₽',data:estVals,backgroundColor:'rgba(194,90,30,0.25)',borderColor:'#C25A1E',borderWidth:1});
+    couponChart=new Chart(ctx,{type:'bar',data:{labels,datasets:dsets},options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:totalEst>0,labels:{font:{size:10}}},
+        tooltip:{callbacks:{label:c=>c.dataset.label.split(',')[0]+': '+Math.round(c.parsed.y).toLocaleString('ru-RU')+' ₽'}}},
       scales:{
-        x:{ticks:{font:{size:10}},grid:{display:false}},
-        y:{ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>Math.round(v).toLocaleString('ru-RU')+' ₽'},grid:{color:'rgba(0,0,0,0.04)'}}
+        x:{stacked:true,ticks:{font:{size:10}},grid:{display:false}},
+        y:{stacked:true,ticks:{font:{size:10,family:'JetBrains Mono'},callback:v=>Math.round(v).toLocaleString('ru-RU')+' ₽'},grid:{color:'rgba(0,0,0,0.04)'}}
       }
     }});
 
@@ -905,5 +931,6 @@ async function run(){
   btn.disabled=false;
 }
 </script>
+<button class="btn print-btn" onclick="window.print()">Скачать PDF</button>
 </body>
 </html>
