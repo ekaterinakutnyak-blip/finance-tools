@@ -58,6 +58,9 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .bond-card .row.highlight{background:transparent;padding-top:10px;padding-bottom:10px;margin:6px 0;border-top:2px solid var(--text);border-bottom:2px solid var(--text)}
 .bond-card .row.highlight .lbl{font-weight:600;color:var(--text)}
 .bond-card .row.highlight .val{font-size:1rem;font-weight:700;color:var(--accent)}
+.bond-card .row.highlight2{background:transparent;padding-top:6px;padding-bottom:6px}
+.bond-card .row.highlight2 .lbl{font-weight:600;color:var(--accent2,#1E4A6B);font-size:0.78rem}
+.bond-card .row.highlight2 .val{font-size:0.95rem;font-weight:700;color:var(--accent2,#1E4A6B)}
 .bond-card .row.profit .val{color:var(--green)}
 .bond-card .row.negative .val{color:var(--red)}
 .footer{margin-top:2rem;font-size:0.72rem;color:var(--text3);text-align:center}
@@ -168,6 +171,11 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
     <label style="font-size:0.82rem;color:var(--text2)">Сумма вложений, ₽:</label>
     <input type="text" id="investAmount" value="100000" inputmode="numeric" style="width:150px;padding:0.7rem 0.9rem;font-family:var(--mono);font-size:0.95rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
     <button type="button" class="btn" onclick="run()">Сравнить</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:0.7rem;flex-wrap:wrap">
+    <label style="font-size:0.82rem;color:var(--text2)">Инфляция для дисконта, % годовых:</label>
+    <input type="text" id="inflRate" value="" inputmode="decimal" placeholder="авто" style="width:90px;padding:0.6rem 0.9rem;font-family:var(--mono);font-size:0.95rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+    <span id="inflHint" style="font-size:0.72rem;color:var(--text3)"></span>
   </div>
   <div class="status" id="status"></div>
 </div>
@@ -328,6 +336,44 @@ async function loadBond(isin){
   return {secid,shortname,isin,faceValue,price,nkd,matDate,offerDate,coupons,amorts};
 }
 
+// Историческая инфляция РФ по годам 2003–2025 (Росстат), для дисконтирования потоков
+const INFL_SERIES=[12.0,11.7,10.9,9.0,11.9,13.3,8.8,8.8,6.1,6.6,6.5,11.4,12.9,5.4,2.5,4.3,3.0,4.9,8.4,11.9,7.4,9.5,6.1];
+// Средняя инфляция по скользящим окнам длиной = срок бумаги (в годах).
+// Бумага на N лет → нарезаем историю на N-летние отрезки (шаг 1 год), среднее по их средним.
+// Внутри окна — геометрическое среднее (инфляция накапливается перемножением, не сложением).
+function inflationForTerm(years){
+  const w=Math.max(1,Math.round(years));
+  const s=INFL_SERIES;
+  const geoMean=arr=>{let p=1;arr.forEach(v=>p*=(1+v/100));return(Math.pow(p,1/arr.length)-1)*100;};
+  if(w>=s.length)return geoMean(s);
+  const wm=[];
+  for(let i=0;i+w<=s.length;i++){
+    wm.push(geoMean(s.slice(i,i+w)));
+  }
+  // среднее по окнам — арифметическое (это уже усреднение готовых ставок, не накопление)
+  return wm.reduce((a,v)=>a+v,0)/wm.length;
+}
+// Приведённая к сегодня стоимость ВСЕХ выплат бумаги (купоны + номинал), дисконтированных на инфляцию.
+function realPresentValue(b,inflPct){
+  const today=new Date();today.setHours(0,0,0,0);
+  const infl=inflPct/100;
+  const matDate=new Date(b.matDate);
+  let nominalSum=0, realSum=0;
+  b.coupons.forEach(c=>{
+    const d=new Date(c.date);
+    if(d<=today||isNaN(c.value)||c.value<=0)return;
+    const yrs=(d-today)/(365.25*86400000);
+    nominalSum+=c.value;
+    realSum+=c.value/Math.pow(1+infl,yrs);
+  });
+  const yrsM=(matDate-today)/(365.25*86400000);
+  if(yrsM>0){
+    nominalSum+=b.faceValue;
+    realSum+=b.faceValue/Math.pow(1+infl,yrsM);
+  }
+  return {nominalSum,realSum,yearsToMat:yrsM};
+}
+
 function computeProfit(b){
   const today=new Date();today.setHours(0,0,0,0);
   const matDate=new Date(b.matDate);
@@ -441,6 +487,17 @@ async function run(){
       if(!r.error){
         const inv=applyInvestAmount(r,investAmount);
         Object.assign(r,inv);
+        // Реальная (с поправкой на инфляцию) стоимость всех выплат
+        const userInfl=parseFloat((document.getElementById('inflRate').value||'').replace(',','.'));
+        const autoInfl=inflationForTerm(r.daysToHorizon/365);
+        const inflUsed=(!isNaN(userInfl)&&userInfl>0)?userInfl:autoInfl;
+        const pv=realPresentValue(b,inflUsed);
+        r.inflUsed=inflUsed;
+        r.inflAuto=autoInfl;
+        r.realPV1=pv.realSum;
+        r.nominalPV1=pv.nominalSum;
+        r.realPVtotal=pv.realSum*r.numBonds;
+        r.nominalPVtotal=pv.nominalSum*r.numBonds;
       }
       results.push(r);
       const row=rowsEl.querySelectorAll('.input-row')[i];
@@ -492,12 +549,26 @@ async function run(){
       '<div class="row highlight"><span class="lbl">₽ в день</span><span class="val">'+r.perDay.toFixed(2)+' ₽</span></div>'+
       '<div class="row"><span class="lbl">₽ в год</span><span class="val">'+fmtRub(r.perYear)+' ₽</span></div>'+
       '<div class="row"><span class="lbl">Доходность на всю сумму</span><span class="val">'+r.annualOnTotal.toFixed(2)+'% год.</span></div>'+
-      '<div class="row" style="opacity:0.6"><span class="lbl" style="font-size:0.72rem">справочно: доходность бумаги</span><span class="val" style="font-size:0.72rem">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>';
+      '<div class="row" style="opacity:0.6"><span class="lbl" style="font-size:0.72rem">справочно: доходность бумаги</span><span class="val" style="font-size:0.72rem">'+r.simpleAnnual.toFixed(2)+'% год.</span></div>'+
+      '<div class="row" style="border-top:2px dashed var(--border);margin-top:8px;padding-top:8px"><span class="lbl">Все выплаты, номинал</span><span class="val">'+fmtRub(r.nominalPVtotal)+' ₽</span></div>'+
+      '<div class="row highlight2"><span class="lbl">Все выплаты сегодня (инфл. '+r.inflUsed.toFixed(1)+'%)</span><span class="val">'+fmtRub(r.realPVtotal)+' ₽</span></div>';
     html+='</div>';
     grid.insertAdjacentHTML('beforeend',html);
   });
 
   document.getElementById('resultsCard').classList.remove('hidden');
+
+  // Подсказка про авто-инфляцию
+  const inflHint=document.getElementById('inflHint');
+  const anyReal=successful.find(r=>r.inflAuto!=null);
+  if(inflHint&&anyReal){
+    const userInfl=parseFloat((document.getElementById('inflRate').value||'').replace(',','.'));
+    if(!isNaN(userInfl)&&userInfl>0){
+      inflHint.textContent='задано вручную: '+userInfl.toFixed(1)+'%';
+    }else{
+      inflHint.textContent='авто: средняя за период = сроку бумаги (история РФ 2003–2025). Можно задать своё.';
+    }
+  }
 
   if(successful.length===results.length){
     st.className='status ok';st.textContent='Готово · '+successful.length+' бумаг · сумма вложений '+fmtRub(investAmount)+' ₽';
