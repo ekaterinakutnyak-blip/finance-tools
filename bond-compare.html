@@ -252,7 +252,7 @@ function addRow(isin){
   const div=document.createElement('div');
   div.className='input-row';
   div.innerHTML='<span class="num">'+idx+'</span>'+
-    '<input type="text" class="isin" placeholder="ISIN или тикер" value="'+(isin||'')+'">'+
+    '<input type="text" class="isin" name="isin-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="ISIN или тикер" value="'+(isin||'')+'">'+
     '<span class="nm"></span>'+
     '<button type="button" class="rm" onclick="removeRow(this)">×</button>';
   rowsEl.appendChild(div);
