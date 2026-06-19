@@ -104,6 +104,9 @@ canvas{width:100%!important;height:100%!important}
   <div id="bondRows"></div>
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить облигацию</button>
+    <button class="btn-sm" onclick="document.getElementById('xlsImport').click()">📥 Загрузить из файла</button>
+    <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
+    <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
     <span class="weight-total" id="weightTotal">Итого: 0%</span>
   </div>
@@ -185,6 +188,7 @@ canvas{width:100%!important;height:100%!important}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 let _jp=0;
 function moexFetch(url){
@@ -578,6 +582,76 @@ function addRow(isin,qty){
 
 function removeRow(btn){btn.closest('.bond-row').remove();renumber();}
 function renumber(){let i=1;rowsContainer.querySelectorAll('.bond-row').forEach(r=>{r.querySelector('.num').textContent=i++})}
+
+// ====================================================================
+// Загрузка портфеля из Excel/CSV. Строгий формат: колонка ISIN + Количество.
+// Всё в браузере (SheetJS), файл никуда не уходит.
+// ====================================================================
+function downloadTemplate(){
+  // шаблон .xlsx с двумя колонками и примером
+  const data=[['ISIN','Количество'],['RU000A105VU7','100'],['RU000A10ARZ9','50']];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:18},{wch:14}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Портфель');
+  XLSX.writeFile(wb,'shablon-portfelya.xlsx');
+}
+
+function importPortfolioFile(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false});
+      parseImportedRows(rows);
+    }catch(err){
+      alert('Не удалось прочитать файл. Проверьте, что это Excel (.xlsx) или CSV с двумя колонками: ISIN и Количество.');
+    }
+    input.value=''; // сброс, чтобы можно было загрузить тот же файл повторно
+  };
+  reader.onerror=function(){alert('Ошибка чтения файла.');input.value='';};
+  reader.readAsArrayBuffer(file);
+}
+
+function parseImportedRows(rows){
+  const isinRe=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/; // ISIN: 2 буквы страны + 9 + контрольная
+  const items=[];
+  const bad=[];
+  rows.forEach((row,idx)=>{
+    if(!row||row.length===0)return;
+    let isin=String(row[0]==null?'':row[0]).trim().toUpperCase().replace(/\s/g,'');
+    let qtyRaw=row[1]==null?'':String(row[1]).trim().replace(/\s/g,'').replace(',','.');
+    // пропускаем строку-заголовок
+    if(isin==='ISIN'||isin==='АЙСИН'||/^ISIN/i.test(isin))return;
+    if(!isin)return;
+    if(!isinRe.test(isin)){bad.push((idx+1)+': «'+isin+'»');return;}
+    const qty=parseInt(qtyRaw,10);
+    if(!qty||qty<=0){bad.push((idx+1)+': «'+isin+'» — кол-во не задано');return;}
+    items.push({isin:isin,qty:String(qty)});
+  });
+  if(items.length===0){
+    alert('В файле не нашлось ни одной корректной строки.\nНужны две колонки: ISIN (например RU000A105VU7) и Количество.\nСкачайте шаблон, чтобы увидеть формат.');
+    return;
+  }
+  if(items.length>100){
+    alert('В файле больше 100 бумаг — загружаю первые 100.');
+    items.length=100;
+  }
+  // замена с подтверждением, если уже есть заполненные строки
+  const hasData=Array.from(rowsContainer.querySelectorAll('.bond-row .isin')).some(i=>i.value.trim());
+  if(hasData && !confirm('Заменить текущий портфель данными из файла? ('+items.length+' бум.)'))return;
+  rowsContainer.innerHTML='';rowCount=0;
+  items.forEach(it=>addRow(it.isin,it.qty));
+  addRow(); // пустая строка про запас
+  renumber();
+  const st=document.getElementById('status');
+  let msg='Загружено из файла: '+items.length+' бум. Нажмите «Рассчитать».';
+  if(bad.length)msg+=' Пропущено строк: '+bad.length+' (некорректный ISIN или количество).';
+  if(st){st.className='status';st.textContent=msg;}
+}
 
 // ======================================================================
 // Мои портфели: общее хранилище для всех калькуляторов investtools.pro
