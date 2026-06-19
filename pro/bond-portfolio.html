@@ -876,17 +876,17 @@ async function run(){
     // Holdings table
     document.getElementById('holdingsCard').classList.remove('hidden');
     const ht=document.getElementById('holdingsTable');
-    let html='<thead><tr><th>Бумага</th><th>Вал.</th><th>Купон</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
+    let html='<thead><tr><th>Бумага</th><th>Вал.</th><th>Купон</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Выпукл.</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
     bonds.forEach(b=>{
       const curTag=b.isRub?'<span class="tag-rub">'+b.currencyLabel+'</span>':'<span class="tag-fx">'+b.currencyLabel+'</span>';
       const cTag=b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>';
       const valueCell=b.isRub
         ? Math.round(b.marketValue).toLocaleString('ru-RU')
         : Math.round(b.marketValue).toLocaleString('ru-RU')+'<br><span style="font-size:0.65rem;color:var(--text3)">'+Math.round(b.marketValueLocal).toLocaleString('ru-RU')+' '+b.currencyLabel+'</span>';
-      html+='<tr><td>'+b.shortname+'</td><td>'+curTag+'</td><td>'+cTag+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+valueCell+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
+      html+='<tr><td>'+b.shortname+'</td><td>'+curTag+'</td><td>'+cTag+'</td><td style="font-family:var(--mono)">'+b.qty+'</td><td>'+(b.weight*100).toFixed(1)+'%</td><td style="font-family:var(--mono)">'+valueCell+'</td><td>'+b.ytm.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(b.annualCouponRub).toLocaleString('ru-RU')+'</td><td>'+b.duration.toFixed(2)+'</td><td>'+(b.convexity>0?b.convexity.toFixed(1):'—')+'</td><td>'+b.price.toFixed(2)+'%</td><td>'+b.matDate+'</td></tr>';
     });
     // Total row
-    html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td></td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td></td><td></td></tr>';
+    html+='<tr style="font-weight:600;border-top:2px solid var(--border)"><td>ИТОГО</td><td></td><td></td><td></td><td>100%</td><td style="font-family:var(--mono)">'+Math.round(totalValue).toLocaleString('ru-RU')+'</td><td>'+wYTM.toFixed(2)+'%</td><td style="font-family:var(--mono)">'+Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+'</td><td>'+wDuration.toFixed(2)+'</td><td>'+wConvexity.toFixed(1)+'</td><td></td><td></td></tr>';
     html+='</tbody>';ht.innerHTML=html;
 
     // Stress test
