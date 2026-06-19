@@ -183,7 +183,7 @@ canvas{width:100%!important;height:100%!important}
 
 <p class="footer-note">
   Данные: MOEX ISS API (доски TQCB/TQOB). Дюрация и доходность — с биржи.<br>
-  Средневзвешенные показатели по долям в портфеле. Стресс-тест через дюрацию (линейное приближение).
+  Средневзвешенные показатели по долям в портфеле. Стресс-тест через дюрацию и выпуклость (приближение 2-го порядка).
 </p>
 </div>
 
@@ -230,28 +230,34 @@ async function getBondization(secid){
 }
 
 async function loadFxRates(){
-  // Загружаем курсы основных валют с CETS. RUB всегда 1.
-  // Используем PREVPRICE как фоллбэк если LAST пустой (выходные/нерабочие дни).
+  // Курсы валют к рублю. Спот CETS (USD/EUR) после санкций не торгуется —
+  // берём из вечных фьючерсов (доска RFUD), привязанных к TOM-споту.
+  // LAST → SETTLEPRICE → LASTSETTLEPRICE (подстраховка для выходных/нерабочих часов).
   const map={RUB:1,SUR:1};
-  const tickers={USD:'USD000UTSTOM',CNY:'CNYRUB_TOM',EUR:'EUR_RUB__TOM'};
+  const tickers={USD:'USDRUBF',EUR:'EURRUBF',CNY:'CNYRUBF'};
   for(const [cur,tk] of Object.entries(tickers)){
     try{
-      const url='https://iss.moex.com/iss/engines/currency/markets/selt/boards/CETS/securities/'+tk+'.json?iss.meta=off';
+      const url='https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/'+tk+'.json?iss.meta=off';
       const d=await moexFetch(url);
-      const mCols=d.marketdata.columns;const mRows=d.marketdata.data;
-      const sCols=d.securities.columns;const sRows=d.securities.data;
       let rate=0;
+      const mRows=d.marketdata.data;
       if(mRows.length){
-        const md={};mCols.forEach((c,i)=>md[c]=mRows[0][i]);
-        rate=parseFloat(md.LAST||md.LCURRENTPRICE||md.MARKETPRICE||0);
+        const md={};d.marketdata.columns.forEach((c,i)=>md[c]=mRows[0][i]);
+        rate=parseFloat(md.LAST||md.SETTLEPRICE||0);
       }
-      if(!rate && sRows.length){
-        const s={};sCols.forEach((c,i)=>s[c]=sRows[0][i]);
-        rate=parseFloat(s.PREVPRICE||s.PREVADMITTEDQUOTE||0);
+      if(!rate && d.securities.data.length){
+        const s={};d.securities.columns.forEach((c,i)=>s[c]=d.securities.data[0][i]);
+        rate=parseFloat(s.LASTSETTLEPRICE||s.PREVSETTLEPRICE||0);
       }
       if(rate>0)map[cur]=rate;
     }catch(e){}
   }
+  // Ручные курсы для валют без фьючерса (GBP и пр.) — из полей ввода, если заполнены
+  document.querySelectorAll('[data-fxmanual]').forEach(inp=>{
+    const cur=inp.getAttribute('data-fxmanual');
+    const v=parseFloat((inp.value||'').replace(',','.'));
+    if(v>0)map[cur]=v;
+  });
   return map;
 }
 
@@ -754,6 +760,7 @@ async function run(){
       b.qty=port[i].qty;
       // Курс к рублю для валюты номинала. Для RUB/SUR = 1.
       b.fxRate=fxRates[b.faceUnit]||1;
+      b.fxMissing=(!b.isRub && !(fxRates[b.faceUnit]>0)); // валютная без курса (напр. GBP до ручного ввода)
       // Стоимость в валюте номинала
       b.marketValueLocal=b.price/100*b.faceValue*b.qty;
       // Стоимость в рублях (для рублёвых это та же сумма, для валютных — пересчёт по курсу)
@@ -808,8 +815,22 @@ async function run(){
     const usedCurrencies=[...new Set(bonds.filter(b=>!b.isRub).map(b=>b.faceUnit))];
     const fxInfoEl=document.getElementById('fxRatesInfo');
     if(usedCurrencies.length){
-      const parts=usedCurrencies.map(c=>c+' = '+(fxRates[c]||0).toFixed(2)+' ₽');
-      fxInfoEl.innerHTML='<strong style="color:var(--text2)">Курсы для пересчёта в ₽:</strong> '+parts.join(' · ')+' (с MOEX, доска CETS)';
+      const parts=usedCurrencies.map(c=>{
+        const r=fxRates[c]||0;
+        if(r>0)return c+' = '+r.toFixed(2)+' ₽';
+        return '<span style="color:#C25A1E">'+c+' — курс не найден</span>';
+      });
+      let html='<strong style="color:var(--text2)">Курсы для пересчёта в ₽:</strong> '+parts.join(' · ')+' (по фьючерсам MOEX, доска RFUD)';
+      // для валют без автокурса (нет фьючерса, напр. GBP) — поле ручного ввода
+      const missing=usedCurrencies.filter(c=>!(fxRates[c]>0));
+      if(missing.length){
+        html+='<div style="margin-top:0.5rem;font-size:0.78rem;color:#C25A1E">Для '+missing.join(', ')+' нет биржевого курса (фьючерс не торгуется). Впишите курс вручную и пересчитайте:</div><div style="margin-top:0.3rem;display:flex;gap:8px;flex-wrap:wrap">';
+        missing.forEach(c=>{
+          html+='<label style="font-size:0.78rem">'+c+' = <input type="text" data-fxmanual="'+c+'" inputmode="decimal" style="width:70px;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;font-family:var(--mono)"> ₽</label>';
+        });
+        html+='<button class="btn-sm" onclick="run()">Пересчитать</button></div>';
+      }
+      fxInfoEl.innerHTML=html;
     }else{
       fxInfoEl.innerHTML='';
     }
