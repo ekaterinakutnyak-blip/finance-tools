@@ -157,6 +157,9 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
+    <button class="btn-sm" onclick="document.getElementById('xlsImport').click()">📥 Загрузить из файла</button>
+    <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
+    <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Оптимизировать</button>
     <span class="weight-total" id="myWeightStatus" style="font-family:var(--mono);font-size:0.78rem;margin-left:auto"></span>
   </div>
@@ -233,6 +236,7 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // === API US ===
 // Эндпоинт /api/us/candles на investtools.pro
@@ -278,6 +282,56 @@ function addRow(ticker,shares,weight){
 }
 function removeRow(btn){btn.closest('.row-line').remove();renumber();updateMyTotal();}
 function renumber(){let i=1;rowsEl.querySelectorAll('.row-line').forEach(r=>{r.querySelector('.num').textContent=i++;});rowCount=rowsEl.querySelectorAll('.row-line').length;}
+
+// ===== Импорт из Excel/CSV: Тикер + Количество + Доля% (US-акции) =====
+function downloadTemplate(){
+  const data=[['Ticker','Количество','Доля %'],['AAPL','10',''],['MSFT','','25'],['NVDA','5','']];
+  const ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:12},{wch:14},{wch:10}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Portfolio');
+  XLSX.writeFile(wb,'portfolio-template-us.xlsx');
+}
+function importPortfolioFile(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false});
+      parseImportedRows(rows);
+    }catch(err){alert('Не удалось прочитать файл. Нужен Excel (.xlsx) или CSV: Ticker, Количество, Доля %.');}
+    input.value='';
+  };
+  reader.onerror=function(){alert('Ошибка чтения файла.');input.value='';};
+  reader.readAsArrayBuffer(file);
+}
+function parseImportedRows(rows){
+  const tickerRe=/^[A-Z][A-Z0-9.\-]{0,9}$/;
+  const items=[],bad=[];
+  rows.forEach((row,idx)=>{
+    if(!row||row.length===0)return;
+    let tk=String(row[0]==null?'':row[0]).trim().toUpperCase().replace(/\s/g,'');
+    if(tk==='TICKER'||tk==='ТИКЕР'||/^ТИКЕР/i.test(tk))return;
+    if(!tk)return;
+    if(!tickerRe.test(tk)){bad.push((idx+1)+': «'+tk+'»');return;}
+    let sharesRaw=row[1]==null?'':String(row[1]).trim().replace(/\s/g,'').replace(',','.');
+    let weightRaw=row[2]==null?'':String(row[2]).trim().replace(/\s/g,'').replace(',','.');
+    const shares=sharesRaw?parseFloat(sharesRaw):'';
+    const weight=weightRaw?parseFloat(weightRaw):'';
+    items.push({ticker:tk,shares:(shares&&shares>0)?String(shares):'',weight:(weight&&weight>0)?String(weight):''});
+  });
+  if(items.length===0){alert('Не нашлось корректных тикеров.\nКолонки: Ticker, Количество, Доля %. Скачайте шаблон.');return;}
+  if(items.length>50){alert('Больше 50 тикеров — загружаю первые 50.');items.length=50;}
+  const hasData=Array.from(rowsEl.querySelectorAll('.row-line .ticker')).some(i=>i.value.trim());
+  if(hasData && !confirm('Заменить текущий портфель данными из файла? ('+items.length+' тик.)'))return;
+  rowsEl.innerHTML='';rowCount=0;
+  items.forEach(it=>addRow(it.ticker,it.shares,it.weight));
+  addRow();renumber();updateMyTotal();
+  const st=document.getElementById('status');
+  let msg='Загружено: '+items.length+' тик.';
+  if(bad.length)msg+=' Пропущено: '+bad.length+'.';
+  if(st){st.className='status';st.textContent=msg;}
+}
 
 // ======================================================================
 // Мои портфели (localStorage): [{name, items:[{ticker,shares,weight}], updated}]
