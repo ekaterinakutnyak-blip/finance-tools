@@ -987,8 +987,12 @@ function analyticMaxSharpe(cov,mu,rf,tickers){
     const excess=active.map(i=>mu[i]-rf);
     const x=matVec(inv,excess);
     const s=x.reduce((a,b)=>a+b,0);
-    if(Math.abs(s)<1e-12){
-      return analyticMinVol(cov,tickers);
+    if(s<1e-12){
+      // s<=0: long-only касательного портфеля нет (рынок ниже rf, премия за риск отрицательна).
+      // Деление на отрицательное s перевернуло бы знаки и загрузило в худшую бумагу. Честный ответ — min vol.
+      const wOut=analyticMinVol(cov,tickers);
+      wOut.noTangency=true;
+      return wOut;
     }
     const w=x.map(v=>v/s);
     const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
@@ -1139,7 +1143,7 @@ async function run(){
     const minvolDD=maxDrawdown(minvolDailyExact);
     const minvolS=minvolV>0?(minvolR-rf)/minvolV:0;
 
-    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD};
+    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD,noTangency:!!wSharpe.noTangency};
     let bestVol={v:minvolV,w:wMinVol,r:minvolR,s:minvolS,d:minvolDD};
 
     // Equal weight metrics
@@ -1236,7 +1240,7 @@ async function run(){
     const og=document.getElementById('optGrid');og.innerHTML='';
     og.classList.toggle('has-user',!!userPort);
     const cards=[
-      {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe'},
+      {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe',note:bestSharpe.noTangency?'Касательный портфель не существует: рынок ниже r<sub>f</sub>, премии за риск нет. Показан минимальный риск (Min Vol).':''},
       {cls:'minvol',title:'Min Volatility',data:bestVol,extraLabel:'Sharpe'},
       {cls:'mindd',title:'Min Drawdown',data:bestDD,extraLabel:'Sharpe'},
       {cls:'equal',title:'Equal Weight',data:{r:eqR,v:eqV,d:eqDD,s:eqS,w:eqW},extraLabel:'Sharpe'}
@@ -1277,6 +1281,7 @@ async function run(){
       el.innerHTML='<div class="opt-card-title">'+c.title+'</div>'+
         extraInfo+
         '<div class="opt-card-stats">Доходность <strong>'+(c.data.r*100).toFixed(1)+'%</strong> · σ <strong>'+(c.data.v*100).toFixed(1)+'%</strong><br>Просадка <strong>−'+(c.data.d*100).toFixed(1)+'%</strong> · '+c.extraLabel+' <strong>'+c.data.s.toFixed(2)+'</strong></div>'+
+        (c.note?'<div style="font-size:0.68rem;color:var(--red);margin-top:5px;line-height:1.35">'+c.note+'</div>':'')+
         betaBlock+
         '<div class="opt-weights">'+weightsHtml+'</div>';
       og.appendChild(el);
