@@ -112,6 +112,15 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 @keyframes spin{to{transform:rotate(360deg)}}
 .print-btn{position:fixed;bottom:20px;right:20px;z-index:100}
 @media print{.print-btn,.btn,.btn-sm,.remove,input[type=range],#pfBar{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}}
+.cmp-head,.cmp-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:6px 4px}
+.cmp-head{border-bottom:2px solid var(--border);font-weight:600;font-size:0.78rem;color:var(--text2)}
+.cmp-row{border-bottom:1px solid var(--border)}
+.cmp-row .cmp-lbl{font-size:0.82rem;color:var(--text2)}
+.cmp-row .cmp-val{font-family:var(--mono);font-size:0.88rem;text-align:right}
+.cmp-name{font-weight:600;font-size:0.8rem}
+.cmp-good{color:#2E7D32;font-weight:700}
+.cmp-bad{color:#C62828;font-weight:700}
+@media print{body.printing-compare .container>*{display:none!important}body.printing-compare #cmpCard{display:block!important}body.printing-compare #cmpCard>div:first-child,body.printing-compare #cmpStatus,body.printing-compare #cmpBtn,body.printing-compare #cmpSelA,body.printing-compare #cmpSelB,body.printing-compare #cmpPdfBtn{display:none!important}body.printing-compare #cmpResultCard{display:block!important}body.printing-compare #cmpPrintHead{display:block!important;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a1a2e}}
 </style>
 </head>
 <body>
@@ -171,6 +180,26 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
     <button class="btn-sm" onclick="pfDelete()">Удалить</button>
   </div>
   <div class="status" id="status"></div>
+<div class="card" id="cmpCard" style="margin-top:0.6rem">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:0.82rem;color:var(--text2);font-weight:600">Сравнить два портфеля:</span>
+    <select id="cmpSelA" onfocus="cmpRefresh()" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;max-width:200px"></select>
+    <span style="color:var(--text3)">vs</span>
+    <select id="cmpSelB" onfocus="cmpRefresh()" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;max-width:200px"></select>
+    <button class="btn-sm" id="cmpBtn" onclick="runCompare()">Сравнить →</button>
+  </div>
+  <div class="status" id="cmpStatus"></div>
+  <div id="cmpResultCard" class="hidden" style="margin-top:0.8rem">
+    <div class="cmp-print-head" id="cmpPrintHead" style="display:none">
+      <div style="font-size:1.1rem;font-weight:600">Сравнение портфелей акций (US)</div>
+      <div id="cmpPrintNames" style="font-size:0.85rem;color:var(--text2);margin-top:4px"></div>
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:6px">investtools.pro · методология Екатерины Кутняк · <span id="cmpPrintDate"></span></div>
+    </div>
+    <div id="cmpResult"></div>
+    <div style="font-size:0.7rem;color:var(--text3);margin-top:10px">Зелёным — где портфель Б лучше А (доходность и Sharpe выше, волатильность и просадка ниже). Бета и R² (к SPY) не оцениваются «лучше-хуже» — зависят от стратегии.</div>
+    <button class="btn-sm" id="cmpPdfBtn" style="margin-top:10px;display:none" onclick="printCompare()">📄 Скачать PDF сравнения</button>
+  </div>
+</div>
 </div>
 
 <div class="card hidden" id="frontierCard">
@@ -381,6 +410,129 @@ function pfDelete(){
   if(!confirm('Удалить портфель «'+sel.value+'»?'))return;
   pfStore(pfAll().filter(p=>p.name!==sel.value));pfRefresh();
 }
+const BENCH_SECID="SPY";const BENCH_FETCH=fetchCandles;
+
+// ===== СРАВНЕНИЕ ПОРТФЕЛЕЙ АКЦИЙ =====
+function cmpRefresh(){
+  const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
+  ['cmpSelA','cmpSelB'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;
+    sel.innerHTML='<option value="">— выберите —</option>'+list.map(p=>'<option value="'+String(p.name).replace(/"/g,'&quot;')+'">'+p.name+' ('+p.items.length+')</option>').join('');
+    if(cur)sel.value=cur;
+  });
+}
+function weightsFromItems(items,lastPx){
+  // приоритет: штуки → доли. Возвращает {tickers, weights} нормированные к 1
+  const tk=items.map(i=>i.ticker);
+  let raw=[];
+  const hasShares=items.some(i=>i.shares&&parseFloat(i.shares)>0);
+  if(hasShares){
+    raw=items.map(i=>{const s=parseFloat(i.shares)||0;const p=lastPx[i.ticker]||0;return s*p;});
+  }else{
+    raw=items.map(i=>parseFloat(i.weight)||0);
+  }
+  const sum=raw.reduce((a,b)=>a+b,0);
+  const w=sum>0?raw.map(x=>x/sum):raw.map(()=>1/raw.length);
+  return {tickers:tk,weights:w};
+}
+async function computeStockStats(items,years,rf,progressCb){
+  const tickers=items.map(i=>i.ticker);
+  if(tickers.length<1)return null;
+  const today=new Date();const past=new Date(today);past.setFullYear(past.getFullYear()-years);
+  const fromStr=past.toISOString().slice(0,10);const tillStr=today.toISOString().slice(0,10);
+  const allCandles={};
+  for(let i=0;i<tickers.length;i++){
+    if(progressCb)progressCb('Загрузка '+tickers[i]+' ('+(i+1)+'/'+tickers.length+')...');
+    allCandles[tickers[i]]=await fetchCandles(tickers[i],fromStr,tillStr);
+    if(allCandles[tickers[i]].length<10)throw new Error(tickers[i]+': мало данных');
+  }
+  const dateSets=Object.values(allCandles).map(c=>new Set(c.map(x=>x.date)));
+  let common=[...dateSets[0]];dateSets.slice(1).forEach(ds=>{common=common.filter(d=>ds.has(d))});
+  common.sort();
+  if(common.length<60)throw new Error('Мало общих дней: '+common.length);
+  const closeMap={},retMap={},lastPx={};
+  tickers.forEach(t=>{
+    const m={};allCandles[t].forEach(c=>m[c.date]=c.close);
+    const aligned=common.map(d=>({date:d,close:m[d]}));
+    closeMap[t]=aligned;retMap[t]=logReturns(aligned.map(x=>x.close));
+    lastPx[t]=aligned[aligned.length-1].close;
+  });
+  const yearsActual=common.length/252;
+  const {weights}=weightsFromItems(items,lastPx);
+  const daily=dailyValues(weights,closeMap,tickers,common);
+  const annR=annReturn(daily,yearsActual);
+  const annV=annVolFromReturns(portReturns(weights,retMap,tickers));
+  const dd=maxDrawdown(daily);
+  const sharpe=annV>0?(annR-rf)/annV:NaN;
+  // бета и R² к бенчмарку
+  let beta=NaN,r2=NaN;
+  try{
+    if(progressCb)progressCb('Загрузка бенчмарка...');
+    const candB=await BENCH_FETCH(BENCH_SECID,fromStr,tillStr);
+    const mapB={};candB.forEach(c=>mapB[c.date]=c.close);
+    const benchCommon=common.filter(d=>mapB[d]!=null);
+    if(benchCommon.length>=60){
+      const retBench=logReturns(benchCommon.map(d=>mapB[d]));
+      const retMapB={};
+      tickers.forEach(t=>{const m={};allCandles[t].forEach(c=>m[c.date]=c.close);retMapB[t]=logReturns(benchCommon.map(d=>m[d]));});
+      const portRetB=portReturns(weights,retMapB,tickers);
+      const br=betaR2(portRetB,retBench);beta=br.beta;r2=br.r2;
+    }
+  }catch(e){}
+  return {count:tickers.length,annReturn:annR*100,annVol:annV*100,maxDD:dd*100,sharpe,beta,r2};
+}
+async function runCompare(){
+  const nameA=document.getElementById('cmpSelA').value, nameB=document.getElementById('cmpSelB').value;
+  if(!nameA||!nameB){alert('Выберите два портфеля.');return;}
+  if(nameA===nameB){alert('Выберите два разных портфеля.');return;}
+  const pA=pfAll().find(p=>p.name===nameA), pB=pfAll().find(p=>p.name===nameB);
+  if(!pA||!pB)return;
+  const years=parseFloat(document.getElementById('period').value);
+  const rf=parseFloat(document.getElementById('rf').value.replace(',','.'))/100;
+  const st=document.getElementById('cmpStatus'), btn=document.getElementById('cmpBtn');btn.disabled=true;
+  try{
+    const A=await computeStockStats(pA.items,years,rf,t=>{st.className='status';st.innerHTML='<span class="loader"></span>А · '+t;});
+    const B=await computeStockStats(pB.items,years,rf,t=>{st.className='status';st.innerHTML='<span class="loader"></span>Б · '+t;});
+    renderCompare(nameA,A,nameB,B);st.className='status';st.textContent='';
+  }catch(e){st.className='status err';st.textContent='Ошибка: '+e.message;}
+  btn.disabled=false;
+}
+function renderCompare(nameA,A,nameB,B){
+  const fmt=(v,d)=>isNaN(v)?'—':v.toFixed(d);
+  const rows=[
+    ['Ожид. доходность, %',fmt(A.annReturn,2),fmt(B.annReturn,2),B.annReturn-A.annReturn,'hi'],
+    ['Волатильность, %',fmt(A.annVol,2),fmt(B.annVol,2),B.annVol-A.annVol,'lo'],
+    ['Макс. просадка, %',fmt(A.maxDD,1),fmt(B.maxDD,1),B.maxDD-A.maxDD,'lo'],
+    ['Sharpe',fmt(A.sharpe,2),fmt(B.sharpe,2),B.sharpe-A.sharpe,'hi'],
+    ['Бета',fmt(A.beta,2),fmt(B.beta,2),B.beta-A.beta,''],
+    ['R² (к бенчмарку)',fmt(A.r2,2),fmt(B.r2,2),B.r2-A.r2,''],
+  ];
+  let html='<div class="cmp-head"><div class="cmp-lbl"></div><div class="cmp-val cmp-name">'+nameA+'</div><div class="cmp-val cmp-name">'+nameB+'</div><div class="cmp-val">Δ</div></div>';
+  rows.forEach(([label,a,b,delta,mode])=>{
+    let dStr='—',dCls='';
+    if(!isNaN(delta)&&Math.abs(delta)>1e-9){
+      dStr=(delta>0?'+':'')+delta.toFixed(2);
+      // maxDD хранится как отрицательное (просадка), "ближе к 0 лучше" → mode hilo: delta>0 = лучше
+      if(mode==='hi')dCls=delta>0?'cmp-good':'cmp-bad';
+      else if(mode==='lo')dCls=delta<0?'cmp-good':'cmp-bad';
+      else if(mode==='hilo')dCls=delta>0?'cmp-good':'cmp-bad';
+    }
+    html+='<div class="cmp-row"><div class="cmp-lbl">'+label+'</div><div class="cmp-val">'+a+'</div><div class="cmp-val">'+b+'</div><div class="cmp-val '+dCls+'">'+dStr+'</div></div>';
+  });
+  document.getElementById('cmpResult').innerHTML=html;
+  document.getElementById('cmpResultCard').classList.remove('hidden');
+  document.getElementById('cmpPrintNames').textContent='А: '+nameA+'   ·   Б: '+nameB;
+  document.getElementById('cmpPdfBtn').style.display='inline-block';
+}
+function printCompare(){
+  document.getElementById('cmpPrintDate').textContent=new Date().toLocaleDateString('ru-RU');
+  document.getElementById('cmpPrintHead').style.display='block';
+  document.body.classList.add('printing-compare');
+  window.print();
+  setTimeout(()=>{document.body.classList.remove('printing-compare');document.getElementById('cmpPrintHead').style.display='none';},300);
+}
+cmpRefresh();
+
 pfRefresh();
 
 function getTickers(){
