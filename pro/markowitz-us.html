@@ -994,11 +994,9 @@ function analyticMaxSharpe(cov,mu,rf,tickers){
     const x=matVec(inv,excess); // Σ⁻¹·(μ−rf)
     const s=x.reduce((a,b)=>a+b,0);
     if(s<1e-12){
-      // s<=0: long-only касательного портфеля нет (рынок ниже rf, премия за риск отрицательна).
-      // Деление на отрицательное s перевернуло бы знаки и загрузило в худшую бумагу. Честный ответ — min vol.
-      const wOut=analyticMinVol(cov,tickers);
-      wOut.noTangency=true;
-      return wOut;
+      // s<=0: long-only касательного портфеля нет. Возвращаем min vol как стартовый кандидат —
+      // окончательный лучший Шарп добирается численно (MC + hill-climb) выше по коду.
+      return analyticMinVol(cov,tickers);
     }
     const w=x.map(v=>v/s);
     const negIdx=w.map((v,i)=>v<-1e-9?i:-1).filter(i=>i>=0);
@@ -1108,6 +1106,7 @@ async function run(){
 
     const cloud=[];
     let bestDD={d:Infinity,w:null,r:0,v:0,s:0};
+    let bestSharpeMC={s:-Infinity,w:null,r:0,v:0,d:0};
 
     for(let k=0;k<nsim;k++){
       const w=randomWeights(N);
@@ -1120,6 +1119,39 @@ async function run(){
 
       // Min DD остаётся через Monte Carlo — для просадки нет закрытой формы
       if(md<bestDD.d){bestDD={d:md,w:w.slice(),r:ar,v:av,s:sh};}
+      // Лучший РЕАЛИЗОВАННЫЙ Шарп среди случайных портфелей (работает при любом знаке премии)
+      if(sh>bestSharpeMC.s){bestSharpeMC={s:sh,w:w.slice(),r:ar,v:av,d:md};}
+    }
+
+    // Локальное доуточнение лучшего по Шарпу портфеля (hill-climb с уменьшающимся шагом)
+    if(bestSharpeMC.w){
+      let cw=bestSharpeMC.w.slice();
+      const evalSharpe=(w)=>{
+        const dl=dailyValues(w,closeMap,tickers,common);
+        const ar=annReturn(dl,yearsActual);
+        const av=annVolFromReturns(portReturns(w,retMap,tickers));
+        const md=maxDrawdown(dl);
+        return {s:av>0?(ar-rf)/av:-Infinity,r:ar,v:av,d:md};
+      };
+      let cur=evalSharpe(cw);
+      for(let step=0.08;step>0.004;step*=0.5){
+        let improved=true;
+        while(improved){
+          improved=false;
+          for(let i=0;i<N;i++){
+            for(const dir of [1,-1]){
+              const trial=cw.slice();
+              trial[i]=Math.max(0,trial[i]+dir*step);
+              const sm=trial.reduce((a,b)=>a+b,0);
+              if(sm<=0)continue;
+              for(let j=0;j<N;j++)trial[j]/=sm;
+              const e=evalSharpe(trial);
+              if(e.s>cur.s+1e-9){cw=trial;cur=e;improved=true;}
+            }
+          }
+        }
+      }
+      bestSharpeMC={s:cur.s,w:cw,r:cur.r,v:cur.v,d:cur.d};
     }
 
     // ===== Аналитика: Max Sharpe и Min Volatility =====
@@ -1148,7 +1180,14 @@ async function run(){
     const minvolDD=maxDrawdown(minvolDailyExact);
     const minvolS=minvolV>0?(minvolR-rf)/minvolV:0;
 
-    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD,noTangency:!!wSharpe.noTangency};
+    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD,noTangency:false};
+    // Колонка Max Sharpe обязана давать ЛУЧШИЙ достижимый Шарп. Аналитика ломается при отрицательной премии —
+    // поэтому сравниваем её с численным оптимумом (MC + hill-climb) и берём максимум по реализованному Шарпу.
+    if(bestSharpeMC.w && bestSharpeMC.s>bestSharpe.s){
+      bestSharpe={s:bestSharpeMC.s,w:bestSharpeMC.w,r:bestSharpeMC.r,v:bestSharpeMC.v,d:bestSharpeMC.d,noTangency:false};
+    }
+    // Пометка, если рынок ниже rf (премия за риск отрицательна — лучший Шарп всё равно отрицателен)
+    if(bestSharpe.s<0){bestSharpe.noTangency=true;}
     let bestVol={v:minvolV,w:wMinVol,r:minvolR,s:minvolS,d:minvolDD};
 
     // Equal weight metrics
@@ -1245,7 +1284,7 @@ async function run(){
     const og=document.getElementById('optGrid');og.innerHTML='';
     og.classList.toggle('has-user',!!userPort);
     const cards=[
-      {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe',note:bestSharpe.noTangency?'Касательный портфель не существует: рынок ниже r<sub>f</sub>, премии за риск нет. Показан минимальный риск (Min Vol).':''},
+      {cls:'sharpe',title:'Max Sharpe',data:bestSharpe,extraLabel:'Sharpe',note:bestSharpe.noTangency?'Рынок за период ниже r<sub>f</sub>: премии за риск нет, поэтому лучший достижимый Sharpe отрицателен. Это наименее плохое соотношение доходность/риск среди возможных портфелей.':''},
       {cls:'minvol',title:'Min Volatility',data:bestVol,extraLabel:'Sharpe'},
       {cls:'mindd',title:'Min Drawdown',data:bestDD,extraLabel:'Sharpe'},
       {cls:'equal',title:'Equal Weight',data:{r:eqR,v:eqV,d:eqDD,s:eqS,w:eqW},extraLabel:'Sharpe'}
