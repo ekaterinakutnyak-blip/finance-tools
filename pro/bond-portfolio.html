@@ -95,7 +95,14 @@ canvas{width:100%!important;height:100%!important}
 .tag-rub{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--surface2);color:var(--text2)}
 .tag-fx{display:inline-block;font-size:0.62rem;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:var(--accent2-light);color:var(--accent2)}
 .print-btn{position:fixed;bottom:20px;right:20px;z-index:100}
-@media print{.print-btn,.btn,.btn-sm,.remove,input[type=range],#pfBar{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}}
+@media print{.print-btn,.btn,.btn-sm,.remove,input[type=range],#pfBar{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}
+/* режим печати только блока сравнения */
+body.printing-compare .container>*{display:none!important}
+body.printing-compare #cmpResultCard{display:block!important}
+body.printing-compare #cmpResultCard .card-title{display:none}
+body.printing-compare #cmpPrintHead{display:block!important;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #1a1a2e}
+body.printing-compare #cmpPdfBtn{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -139,9 +146,15 @@ canvas{width:100%!important;height:100%!important}
 </div>
 
 <div class="card hidden" id="cmpResultCard">
+  <div class="cmp-print-head" id="cmpPrintHead" style="display:none">
+    <div style="font-size:1.1rem;font-weight:600;color:var(--text)">Сравнение портфелей</div>
+    <div id="cmpPrintNames" style="font-size:0.85rem;color:var(--text2);margin-top:4px"></div>
+    <div style="font-size:0.72rem;color:var(--text3);margin-top:6px">investtools.pro · методология Екатерины Кутняк · <span id="cmpPrintDate"></span></div>
+  </div>
   <div class="card-title">Сравнение портфелей</div>
   <div id="cmpResult"></div>
   <div style="font-size:0.7rem;color:var(--text3);margin-top:10px">Зелёным выделено, где портфель Б лучше портфеля А (доходность выше / кредитный риск ниже). Дюрация и выпуклость не оцениваются «лучше-хуже» — они зависят от цели. Кредитный риск — по рублёвой фикс-части каждого портфеля.</div>
+  <button class="btn-sm" id="cmpPdfBtn" style="margin-top:12px;display:none" onclick="printCompare()">📄 Скачать PDF сравнения</button>
 </div>
 
 <div class="card hidden" id="summaryCard">
@@ -852,6 +865,22 @@ function renderCompare(nameA,A,nameB,B){
   });
   card.innerHTML=html;
   document.getElementById('cmpResultCard').classList.remove('hidden');
+  // данные для PDF-шапки
+  document.getElementById('cmpPrintNames').textContent='А: '+nameA+'   ·   Б: '+nameB;
+  document.getElementById('cmpPdfBtn').style.display='inline-block';
+}
+
+// Печать только блока сравнения (отдельный PDF для клиента)
+function printCompare(){
+  const d=new Date();
+  document.getElementById('cmpPrintDate').textContent=d.toLocaleDateString('ru-RU');
+  document.getElementById('cmpPrintHead').style.display='block';
+  document.body.classList.add('printing-compare');
+  window.print();
+  setTimeout(()=>{
+    document.body.classList.remove('printing-compare');
+    document.getElementById('cmpPrintHead').style.display='none';
+  },300);
 }
 cmpRefresh();
 
