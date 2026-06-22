@@ -86,6 +86,9 @@ canvas{width:100%!important;height:100%!important}
 .opt-weights .w-row{display:flex;justify-content:space-between;padding:1px 0}
 .opt-weights .w-row.zero{color:var(--text3);opacity:0.5}
 .matrix-wrap{overflow-x:auto;margin-top:0.75rem}
+/* Заякоренный левый столбец тикеров в матрице корреляций */
+#corrTable td.tk,#corrTable thead th:first-child{position:sticky;left:0;z-index:2;background:var(--surface2)}
+#corrTable thead th:first-child{z-index:3}
 table.weights{border-collapse:collapse;font-size:0.78rem;width:100%;margin-top:0.5rem}
 table.weights th,table.weights td{padding:6px 8px;text-align:right;border:1px solid var(--surface2)}
 table.weights th{background:var(--surface2);font-weight:500;color:var(--text2);font-size:0.72rem;text-align:center}
