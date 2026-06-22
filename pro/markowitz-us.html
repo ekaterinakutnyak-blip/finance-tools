@@ -164,6 +164,22 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
     <strong style="color:var(--text2)">r<sub>f</sub>:</strong> используется в формуле Sharpe = (доходность − r<sub>f</sub>) / σ. По умолчанию — 10-летние US Treasuries. Если r<sub>f</sub> близка к ожидаемой доходности рынка или выше — Max Sharpe становится неустойчив. Для устойчивых результатов попробуйте r<sub>f</sub> = 0–4.5%.
   </div>
 
+  <div style="margin-top:10px;padding:10px 12px;background:var(--accent-light);border-radius:8px">
+    <label style="display:flex;align-items:center;gap:8px;font-size:0.82rem;cursor:pointer;font-weight:500">
+      <input type="checkbox" id="useGlobalLimit" onchange="toggleGlobalLimit()" style="width:16px;height:16px;cursor:pointer">
+      Общий лимит доли на бумагу
+    </label>
+    <div id="globalLimitFields" class="hidden" style="display:flex;gap:14px;margin-top:8px;align-items:flex-end;flex-wrap:wrap">
+      <label style="font-size:0.74rem;color:var(--text2)">мин. доля, %
+        <input type="text" id="globalMin" value="0" inputmode="decimal" style="width:70px;display:block;margin-top:3px">
+      </label>
+      <label style="font-size:0.74rem;color:var(--text2)">макс. доля, %
+        <input type="text" id="globalMax" value="100" inputmode="decimal" style="width:70px;display:block;margin-top:3px">
+      </label>
+      <span style="font-size:0.7rem;color:var(--text3);max-width:340px;line-height:1.4">Каждая бумага в портфеле — либо 0, либо в коридоре [мин; макс]. Применяется ко всем расчётным портфелям. Индивидуальные лимиты по бумагам (если заданы) перебивают общий.</span>
+    </div>
+  </div>
+
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить тикер</button>
     <button class="btn-sm" onclick="document.getElementById('xlsImport').click()">📥 Загрузить из файла</button>
@@ -645,6 +661,85 @@ function randomWeights(n){
   const s=u.reduce((a,b)=>a+b,0);return u.map(x=>x/s);
 }
 
+function toggleGlobalLimit(){
+  const on=document.getElementById('useGlobalLimit').checked;
+  document.getElementById('globalLimitFields').classList.toggle('hidden',!on);
+}
+
+function getLimits(N){
+  const lo=new Array(N).fill(0), hi=new Array(N).fill(1);
+  const useGlobal=document.getElementById('useGlobalLimit') && document.getElementById('useGlobalLimit').checked;
+  if(useGlobal){
+    let gMin=parseFloat((document.getElementById('globalMin').value||'0').replace(',','.'))/100;
+    let gMax=parseFloat((document.getElementById('globalMax').value||'100').replace(',','.'))/100;
+    if(!isFinite(gMin)||gMin<0)gMin=0;
+    if(!isFinite(gMax)||gMax<=0)gMax=1;
+    if(gMax>1)gMax=1;
+    for(let i=0;i<N;i++){lo[i]=gMin;hi[i]=Math.min(gMax,1);}
+  }
+  return {lo,hi};
+}
+
+function validateLimits(lo,hi,N){
+  for(let i=0;i<N;i++){
+    if(lo[i]>hi[i]+1e-9)return 'Минимальная доля больше максимальной.';
+  }
+  const sumHi=hi.reduce((a,b)=>a+b,0);
+  if(sumHi<1-1e-9)return 'Слишком жёсткий максимум: даже по всем бумагам сумма долей не достигает 100% (макс. сумма '+(sumHi*100).toFixed(0)+'%). Увеличьте макс. долю или добавьте бумаги.';
+  const minLo=Math.min(...lo);
+  if(minLo>0){
+    const maxHiVal=Math.max(...hi);
+    const kNeed=Math.ceil(1/maxHiVal-1e-9);
+    if(kNeed*minLo>1+1e-9)return 'Слишком жёсткий минимум: чтобы собрать 100%, нужно минимум '+kNeed+' бумаг, но их минимальные доли в сумме превышают 100%. Уменьшите мин. долю.';
+  }
+  return null;
+}
+
+function sampleConstrained(N,lo,hi){
+  const idx=[...Array(N).keys()];
+  for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  const maxHiVal=Math.max(...hi);
+  const kMin=Math.max(1,Math.ceil(1/maxHiVal-1e-9));
+  let chosen=null;
+  for(let attempt=0;attempt<12;attempt++){
+    const k=kMin+Math.floor(Math.random()*(N-kMin+1));
+    const cand=idx.slice(0,k);
+    const sHi=cand.reduce((a,i)=>a+hi[i],0);
+    const sLo=cand.reduce((a,i)=>a+lo[i],0);
+    if(sHi>=1-1e-9 && sLo<=1+1e-9){chosen=cand;break;}
+  }
+  if(!chosen)return null;
+  const w=new Array(N).fill(0);
+  let remain=1-chosen.reduce((a,i)=>a+lo[i],0);
+  const caps=chosen.map(i=>hi[i]-lo[i]);
+  if(remain<-1e-9)return null;
+  for(let pass=0;pass<6 && remain>1e-9;pass++){
+    const live=caps.map((c,t)=>c>1e-9?t:-1).filter(t=>t>=0);
+    if(!live.length)break;
+    const rnd=live.map(()=>Math.random());const sr=rnd.reduce((a,b)=>a+b,0)||1;
+    let added=0;
+    for(let q=0;q<live.length;q++){
+      const t=live[q];let give=remain*(rnd[q]/sr);give=Math.min(give,caps[t]);caps[t]-=give;added+=give;
+    }
+    remain-=added;
+  }
+  if(remain>1e-6){for(let t=0;t<caps.length && remain>1e-9;t++){const g=Math.min(remain,caps[t]);caps[t]-=g;remain-=g;}}
+  chosen.forEach((origI,t)=>{w[origI]=lo[origI]+((hi[origI]-lo[origI])-caps[t]);});
+  const s=w.reduce((a,b)=>a+b,0);
+  return s>0?w.map(v=>v/s):null;
+}
+
+function projectToLimits(w,lo,hi){
+  const N=w.length;let v=w.map((x,i)=>Math.min(Math.max(x,lo[i]),hi[i]));
+  for(let it=0;it<50;it++){
+    const s=v.reduce((a,b)=>a+b,0);const diff=1-s;
+    if(Math.abs(diff)<1e-9)break;
+    if(diff>0){const room=v.map((x,i)=>hi[i]-x);const tot=room.reduce((a,b)=>a+b,0);if(tot<1e-12)break;v=v.map((x,i)=>x+diff*room[i]/tot);}
+    else{const room=v.map((x,i)=>x-lo[i]);const tot=room.reduce((a,b)=>a+b,0);if(tot<1e-12)break;v=v.map((x,i)=>x+diff*room[i]/tot);}
+  }
+  return v;
+}
+
 function dailyValues(weights,closeMap,tickers,common){
   const arr=new Array(common.length);
   for(let di=0;di<common.length;di++){
@@ -1100,16 +1195,30 @@ async function run(){
     const N=tickers.length;
     const eqW=new Array(N).fill(1/N);
 
-    // Run Monte Carlo
+    // ===== Лимиты на доли (semi-continuous): общий + (далее) индивидуальные =====
+    const {lo:limLo,hi:limHi}=getLimits(N);
+    const limitErr=validateLimits(limLo,limHi,N);
+    if(limitErr){btn.disabled=false;st.className='status err';st.textContent=limitErr;return;}
+    const limited=document.getElementById('useGlobalLimit') && document.getElementById('useGlobalLimit').checked;
+
+    // Run Monte Carlo (с учётом лимитов)
     st.innerHTML='<span class="loader"></span>Симуляция '+nsim.toLocaleString('ru')+' портфелей...';
     await new Promise(r=>setTimeout(r,30)); // let UI breathe
+
+    const genW=()=>{
+      if(!limited)return randomWeights(N);
+      for(let tries=0;tries<25;tries++){const w=sampleConstrained(N,limLo,limHi);if(w)return w;}
+      return null;
+    };
 
     const cloud=[];
     let bestDD={d:Infinity,w:null,r:0,v:0,s:0};
     let bestSharpeMC={s:-Infinity,w:null,r:0,v:0,d:0};
+    let bestVolMC={v:Infinity,w:null,r:0,s:0,d:0};
 
     for(let k=0;k<nsim;k++){
-      const w=randomWeights(N);
+      const w=genW();
+      if(!w)continue;
       const daily=dailyValues(w,closeMap,tickers,common);
       const ar=annReturn(daily,yearsActual);
       const av=annVolFromReturns(portReturns(w,retMap,tickers));
@@ -1117,78 +1226,59 @@ async function run(){
       const sh=av>0?(ar-rf)/av:0;
       cloud.push({r:ar,v:av,d:md,s:sh});
 
-      // Min DD остаётся через Monte Carlo — для просадки нет закрытой формы
       if(md<bestDD.d){bestDD={d:md,w:w.slice(),r:ar,v:av,s:sh};}
-      // Лучший РЕАЛИЗОВАННЫЙ Шарп среди случайных портфелей (работает при любом знаке премии)
       if(sh>bestSharpeMC.s){bestSharpeMC={s:sh,w:w.slice(),r:ar,v:av,d:md};}
+      if(av<bestVolMC.v){bestVolMC={v:av,w:w.slice(),r:ar,s:sh,d:md};}
+    }
+    if(!bestSharpeMC.w||!bestVolMC.w||!bestDD.w){
+      btn.disabled=false;st.className='status err';st.textContent='Не удалось собрать портфели под заданными лимитами. Ослабьте ограничения.';return;
     }
 
-    // Локальное доуточнение лучшего по Шарпу портфеля (hill-climb с уменьшающимся шагом)
-    if(bestSharpeMC.w){
-      let cw=bestSharpeMC.w.slice();
-      const evalSharpe=(w)=>{
+    const climb=(startW,score)=>{
+      let cw=limited?projectToLimits(startW,limLo,limHi):startW.slice();
+      const ev=(w)=>{
         const dl=dailyValues(w,closeMap,tickers,common);
         const ar=annReturn(dl,yearsActual);
         const av=annVolFromReturns(portReturns(w,retMap,tickers));
         const md=maxDrawdown(dl);
-        return {s:av>0?(ar-rf)/av:-Infinity,r:ar,v:av,d:md};
+        return {r:ar,v:av,d:md,s:av>0?(ar-rf)/av:-Infinity};
       };
-      let cur=evalSharpe(cw);
+      let cur=ev(cw);
       for(let step=0.08;step>0.004;step*=0.5){
         let improved=true;
         while(improved){
           improved=false;
           for(let i=0;i<N;i++){
             for(const dir of [1,-1]){
-              const trial=cw.slice();
+              let trial=cw.slice();
               trial[i]=Math.max(0,trial[i]+dir*step);
               const sm=trial.reduce((a,b)=>a+b,0);
               if(sm<=0)continue;
               for(let j=0;j<N;j++)trial[j]/=sm;
-              const e=evalSharpe(trial);
-              if(e.s>cur.s+1e-9){cw=trial;cur=e;improved=true;}
+              if(limited)trial=projectToLimits(trial,limLo,limHi);
+              const e=ev(trial);
+              if(score(e)>score(cur)+1e-9){cw=trial;cur=e;improved=true;}
             }
           }
         }
       }
-      bestSharpeMC={s:cur.s,w:cw,r:cur.r,v:cur.v,d:cur.d};
-    }
+      return {w:cw,...cur};
+    };
 
-    // ===== Аналитика: Max Sharpe и Min Volatility =====
-    // Считаем ковариационную матрицу и средние дневных лог-доходностей
-    const {cov:covDaily,means:meanDaily}=buildCovAndMean(tickers,retMap);
-    // Годовой ожидаемый return для каждого актива (annualized geometric ≈ mean*252 для log-returns)
-    const muAnnual=meanDaily.map(m=>m*252);
-    // Аннуализированная ковариация (для расчёта годовой волатильности и Sharpe)
-    const covAnnual=covDaily.map(row=>row.map(c=>c*252));
+    // Max Sharpe — численно
+    const sh1=climb(bestSharpeMC.w,e=>e.s);
+    let bestSharpe={s:sh1.s,w:sh1.w,r:sh1.r,v:sh1.v,d:sh1.d,noTangency:false};
+    if(bestSharpeMC.s>bestSharpe.s)bestSharpe={s:bestSharpeMC.s,w:bestSharpeMC.w,r:bestSharpeMC.r,v:bestSharpeMC.v,d:bestSharpeMC.d,noTangency:false};
+    if(bestSharpe.s<0)bestSharpe.noTangency=true;
 
-    // Аналитические веса
-    const wSharpe=analyticMaxSharpe(covAnnual,muAnnual,rf,tickers);
-    const wMinVol=analyticMinVol(covAnnual,tickers);
+    // Min Volatility — численно
+    const mv=climb(bestVolMC.w,e=>-e.v);
+    let bestVol={v:mv.v,w:mv.w,r:mv.r,s:mv.s,d:mv.d};
+    if(bestVolMC.v<bestVol.v)bestVol={v:bestVolMC.v,w:bestVolMC.w,r:bestVolMC.r,s:bestVolMC.s,d:bestVolMC.d};
 
-    // Пересчёт метрик для аналитических портфелей через ТЕ ЖЕ функции что и для MC,
-    // чтобы числа были консистентны
-    const sharpeDailyExact=dailyValues(wSharpe,closeMap,tickers,common);
-    const sharpeR=annReturn(sharpeDailyExact,yearsActual);
-    const sharpeV=annVolFromReturns(portReturns(wSharpe,retMap,tickers));
-    const sharpeDD=maxDrawdown(sharpeDailyExact);
-    const sharpeS=sharpeV>0?(sharpeR-rf)/sharpeV:0;
-
-    const minvolDailyExact=dailyValues(wMinVol,closeMap,tickers,common);
-    const minvolR=annReturn(minvolDailyExact,yearsActual);
-    const minvolV=annVolFromReturns(portReturns(wMinVol,retMap,tickers));
-    const minvolDD=maxDrawdown(minvolDailyExact);
-    const minvolS=minvolV>0?(minvolR-rf)/minvolV:0;
-
-    let bestSharpe={s:sharpeS,w:wSharpe,r:sharpeR,v:sharpeV,d:sharpeDD,noTangency:false};
-    // Колонка Max Sharpe обязана давать ЛУЧШИЙ достижимый Шарп. Аналитика ломается при отрицательной премии —
-    // поэтому сравниваем её с численным оптимумом (MC + hill-climb) и берём максимум по реализованному Шарпу.
-    if(bestSharpeMC.w && bestSharpeMC.s>bestSharpe.s){
-      bestSharpe={s:bestSharpeMC.s,w:bestSharpeMC.w,r:bestSharpeMC.r,v:bestSharpeMC.v,d:bestSharpeMC.d,noTangency:false};
-    }
-    // Пометка, если рынок ниже rf (премия за риск отрицательна — лучший Шарп всё равно отрицателен)
-    if(bestSharpe.s<0){bestSharpe.noTangency=true;}
-    let bestVol={v:minvolV,w:wMinVol,r:minvolR,s:minvolS,d:minvolDD};
+    // Min Drawdown — доуточняем лучший из облака
+    const dd=climb(bestDD.w,e=>-e.d);
+    if(dd.d<bestDD.d)bestDD={d:dd.d,w:dd.w,r:dd.r,v:dd.v,s:dd.s};
 
     // Equal weight metrics
     const eqDaily=dailyValues(eqW,closeMap,tickers,common);
