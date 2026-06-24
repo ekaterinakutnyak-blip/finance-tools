@@ -1470,7 +1470,7 @@ function runOptimizer(){
       rows+='<tr><td>'+x.b.shortname+'</td><td style="text-align:right;font-family:var(--mono)">'+(x.w*100).toFixed(1)+'%</td><td style="text-align:right;font-family:var(--mono)">'+x.b.ytm.toFixed(2)+'%</td><td style="text-align:right;font-family:var(--mono)">'+x.b.duration.toFixed(2)+'</td><td style="text-align:right;font-family:var(--mono)">'+(sp!=null?sp+' бп':'—')+'</td></tr>';
     });
     out.innerHTML=
-      '<div class="status ok" style="margin-bottom:0.6rem">Оптимум найден · YTM '+(r.ytm*100).toFixed(2)+'% · дюрация '+r.dur.toFixed(2)+' лет'+(avgSpread!=null?' · ср. спред '+Math.round(avgSpread)+' бп':'')+' · макс. эмитент '+(maxIss*100).toFixed(0)+'%</div>'+
+      '<div class="status ok" style="margin-bottom:0.6rem">Оптимум найден · YTM '+r.ytm.toFixed(2)+'% · дюрация '+r.dur.toFixed(2)+' лет'+(avgSpread!=null?' · ср. спред '+Math.round(avgSpread)+' бп':'')+' · макс. эмитент '+(maxIss*100).toFixed(0)+'%</div>'+
       '<table class="weights" style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr><th style="text-align:left">Бумага</th><th style="text-align:right">Доля</th><th style="text-align:right">YTM</th><th style="text-align:right">Дюрация</th><th style="text-align:right">Спред</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div style="font-size:0.68rem;color:var(--text3);margin-top:0.5rem">Максимум YTM при дюрации '+Dtgt.toFixed(2)+'±'+tol.toFixed(2)+'. Спред портфеля — по бумагам, у которых он рассчитан (фиксы: Z-spread к ОФЗ; флоатеры: надбавка + дисконт-маржа из цены). Бумаги без спреда в ограничение по спреду не входят.</div>';
   },30);
