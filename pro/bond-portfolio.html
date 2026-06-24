@@ -125,6 +125,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
     <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
     <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
+    <button class="btn-sm" onclick="window.print()">📄 Скачать PDF</button>
     <span class="weight-total" id="weightTotal">Итого: 0%</span>
   </div>
   <div class="btn-row" id="floatBaseBar" style="margin-top:0.5rem;align-items:center;gap:12px;flex-wrap:wrap">
@@ -967,6 +968,8 @@ function getPortfolio(){
 
 let couponChart=null;
 let _optBonds=null;
+let _optTotalValue=0;
+let _optLastResult=null;
 let _portModDur=0, _portValue=0, _portConvexity=0;
 
 document.getElementById('customShift').addEventListener('input',function(){
@@ -1319,6 +1322,7 @@ async function run(){
 
     // ===== Сохраняем готовый портфель для оптимизатора =====
     _optBonds=bonds;
+    _optTotalValue=totalValue;
     const oc=document.getElementById('optimizerCard');
     if(oc){
       oc.classList.remove('hidden');
@@ -1434,6 +1438,34 @@ function _optimizeCore(bonds,Dtgt,tol,lo,hi,issuerCap,spreadCapBps,nsim){
   return best;
 }
 
+function saveOptimum(){
+  if(!_optLastResult||!_optBonds){alert('Сначала выполните оптимизацию.');return;}
+  const bonds=_optBonds, w=_optLastResult.w, total=_optTotalValue;
+  if(!(total>0)){alert('Не удалось определить стоимость портфеля для пересчёта в штуки.');return;}
+  // доля → деньги → штуки (по грязной цене бумаги)
+  const items=[];
+  for(let i=0;i<bonds.length;i++){
+    if(w[i]<=0.0005)continue;
+    const b=bonds[i];
+    const money=w[i]*total;                                  // рублей на бумагу
+    const pricePerUnit=(b.price/100*b.faceValue+ (b.nkd||0))*(b.fxRate||1); // грязная цена 1 шт в рублях
+    if(!(pricePerUnit>0))continue;
+    const qty=Math.max(1, Math.round(money/pricePerUnit));
+    items.push({isin:b.secid, qty:String(qty)});
+  }
+  if(items.length===0){alert('Оптимальный портфель пуст.');return;}
+  let name=prompt('Название оптимизированного портфеля:','Оптимум D='+_optLastResult.Dtgt.toFixed(2));
+  if(name==null)return; name=name.trim(); if(!name)return;
+  const list=pfAll();
+  const idx=list.findIndex(p=>p.name===name);
+  const rec={name:name,items:items,updated:new Date().toISOString()};
+  if(idx>=0){if(!confirm('Портфель «'+name+'» уже существует. Перезаписать?'))return;list[idx]=rec;}
+  else list.push(rec);
+  pfStore(list);pfRefresh();
+  const sel=document.getElementById('pfSelect');if(sel)sel.value=name;
+  alert('Оптимизированный портфель «'+name+'» сохранён ('+items.length+' бумаг).\nДоли пересчитаны в штуки под текущую стоимость портфеля '+Math.round(total).toLocaleString('ru-RU')+' ₽.\nЗагрузите его через список портфелей и нажмите «Рассчитать».');
+}
+
 function runOptimizer(){
   const bonds=_optBonds;
   const out=document.getElementById('optResult');
@@ -1463,6 +1495,7 @@ function runOptimizer(){
     }
     const avgSpread=_optAvgSpread(r.w,bonds);
     const maxIss=_optMaxIssuer(r.w,bonds);
+    _optLastResult={w:r.w.slice(),ytm:r.ytm,dur:r.dur,Dtgt:Dtgt,tol:tol};
     // таблица весов (только ненулевые)
     let rows='';
     bonds.map((b,i)=>({b,w:r.w[i]})).filter(x=>x.w>0.001).sort((a,c)=>c.w-a.w).forEach(x=>{
@@ -1472,7 +1505,8 @@ function runOptimizer(){
     out.innerHTML=
       '<div class="status ok" style="margin-bottom:0.6rem">Оптимум найден · YTM '+r.ytm.toFixed(2)+'% · дюрация '+r.dur.toFixed(2)+' лет'+(avgSpread!=null?' · ср. спред '+Math.round(avgSpread)+' бп':'')+' · макс. эмитент '+(maxIss*100).toFixed(0)+'%</div>'+
       '<table class="weights" style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr><th style="text-align:left">Бумага</th><th style="text-align:right">Доля</th><th style="text-align:right">YTM</th><th style="text-align:right">Дюрация</th><th style="text-align:right">Спред</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div style="font-size:0.68rem;color:var(--text3);margin-top:0.5rem">Максимум YTM при дюрации '+Dtgt.toFixed(2)+'±'+tol.toFixed(2)+'. Спред портфеля — по бумагам, у которых он рассчитан (фиксы: Z-spread к ОФЗ; флоатеры: надбавка + дисконт-маржа из цены). Бумаги без спреда в ограничение по спреду не входят.</div>';
+      '<div style="font-size:0.68rem;color:var(--text3);margin-top:0.5rem">Максимум YTM при дюрации '+Dtgt.toFixed(2)+'±'+tol.toFixed(2)+'. Спред портфеля — по бумагам, у которых он рассчитан (фиксы: Z-spread к ОФЗ; флоатеры: надбавка + дисконт-маржа из цены). Бумаги без спреда в ограничение по спреду не входят.</div>'+
+      '<div class="btn-row" style="margin-top:0.7rem"><button class="btn-sm" onclick="saveOptimum()">💾 Сохранить оптимум как портфель</button></div>';
   },30);
 }
 </script>
@@ -1502,6 +1536,5 @@ function runOptimizer(){
   </div>
   <div id="optResult"></div>
 </div>
-<button class="btn print-btn" onclick="window.print()">Скачать PDF</button>
 </body>
 </html>
