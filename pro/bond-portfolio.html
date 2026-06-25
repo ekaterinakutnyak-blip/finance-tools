@@ -200,12 +200,12 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   <div class="card-title">Кредитный риск · рублёвые бумаги со спредом</div>
   <div id="creditInfo" style="font-size:0.78rem;color:var(--text2);margin-bottom:1rem"></div>
   <div class="results-grid" id="creditSummary" style="margin-bottom:1.25rem"></div>
-  <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">Распределение фикс-части по зонам кредитного качества (по Z-spread)</div>
+  <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">Распределение по зонам кредитного качества (по Z-spread)</div>
   <div id="creditZones" class="struct-rows" style="margin-bottom:1.25rem"></div>
   <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">По каждой бумаге</div>
   <div class="matrix-wrap"><table class="weights" id="creditTable"></table></div>
   <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.7rem;color:var(--text3)">
-    Z-spread — параллельный сдвиг кривой КБД ОФЗ, при котором приведённая стоимость денежных потоков равна грязной цене. Для бумаг с офертой и для бумаг со скрытой офертой (фиксированы только ближайшие купоны) расчёт идёт к дате оферты/последнего фикс. купона. PD — risk-neutral вероятность дефолта из Z-spread при Recovery Rate 20%. Метрики не учитывают валютные облигации и флоатеры/линкеры.
+    Z-spread — параллельный сдвиг кривой КБД ОФЗ, при котором приведённая стоимость денежных потоков равна грязной цене. Для бумаг с офертой и для бумаг со скрытой офертой (фиксированы только ближайшие купоны) расчёт идёт к дате оферты/последнего фикс. купона. PD — risk-neutral вероятность дефолта из Z-spread при Recovery Rate 20%. Флоатеры с указанной надбавкой включены в анализ: их спред = надбавка + дисконт-маржа из цены. Валютные облигации и флоатеры без указанной надбавки в анализ не входят.
   </div>
 </div>
 
@@ -684,15 +684,16 @@ async function loadBond(isin){
 const rowsContainer=document.getElementById('bondRows');
 let rowCount=0;
 
-function addRow(isin,qty){
+function addRow(isin,qty,fbase,fmargin){
   rowCount++;
   const div=document.createElement('div');div.className='bond-row';
+  const showFloat=(fmargin!==undefined && fmargin!==null && String(fmargin).trim()!=='');
   div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A..."><input type="text" class="qty" value="'+(qty||'')+'" placeholder="шт" inputmode="numeric"><span class="name"></span>'+
-    '<span class="floatctl" style="display:none;align-items:center;gap:5px">'+
+    '<span class="floatctl" style="display:'+(showFloat?'inline-flex':'none')+';align-items:center;gap:5px">'+
       '<select class="fbase" style="font-family:var(--mono);font-size:0.72rem;padding:0.25rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">'+
-        '<option value="key">КС</option><option value="ruonia">RUONIA</option>'+
+        '<option value="key"'+(fbase==='key'||!fbase?' selected':'')+'>КС</option><option value="ruonia"'+(fbase==='ruonia'?' selected':'')+'>RUONIA</option>'+
       '</select>'+
-      '<input type="text" class="fmargin" placeholder="надб.%" inputmode="decimal" style="width:62px;font-family:var(--mono);font-size:0.72rem;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:right">'+
+      '<input type="text" class="fmargin" placeholder="надб.%" inputmode="decimal" value="'+(showFloat?String(fmargin):'')+'" style="width:62px;font-family:var(--mono);font-size:0.72rem;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:right">'+
     '</span>'+
     '<button class="remove" onclick="removeRow(this)">×</button>';
   rowsContainer.appendChild(div);
@@ -789,7 +790,13 @@ function pfSave(){
   rowsContainer.querySelectorAll('.bond-row').forEach(r=>{
     const isin=r.querySelector('.isin').value.trim().toUpperCase();
     const qty=r.querySelector('.qty').value.trim();
-    if(isin)items.push({isin:isin,qty:qty});
+    if(isin){
+      const it={isin:isin,qty:qty};
+      // если у строки заполнены контролы флоатера — сохраняем базу и надбавку
+      const fb=r.querySelector('.fbase'), fm=r.querySelector('.fmargin');
+      if(fm && fm.value.trim()!==''){ it.fbase=(fb?fb.value:'key'); it.fmargin=fm.value.trim(); }
+      items.push(it);
+    }
   });
   if(items.length===0){alert('Портфель пуст — нечего сохранять.');return;}
   let name=prompt('Название портфеля:','Мой портфель');
@@ -808,7 +815,7 @@ function pfLoad(){
   const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
   const p=pfAll().find(x=>x.name===sel.value);if(!p)return;
   rowsContainer.innerHTML='';rowCount=0;
-  p.items.forEach(it=>addRow(it.isin,it.qty));
+  p.items.forEach(it=>addRow(it.isin,it.qty,it.fbase,it.fmargin));
   addRow(); // пустая строка про запас
   renumber();
   const st=document.getElementById('status');
