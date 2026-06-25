@@ -231,7 +231,8 @@ body.printing-compare #cmpPdfBtn{display:none!important}
 
 <p class="footer-note">
   Данные: MOEX ISS API (доски TQCB/TQOB). Дюрация и доходность — с биржи.<br>
-  Средневзвешенные показатели по долям в портфеле. Стресс-тест через дюрацию и выпуклость (приближение 2-го порядка).
+  Средневзвешенные показатели по долям в портфеле. Стресс-тест через дюрацию и выпуклость (приближение 2-го порядка).<br>
+  Выпуклость рассчитана без учёта call-опционов (право досрочного отзыва у эмитента). Для отзывных выпусков реальная выпуклость может быть ниже или отрицательной — такие бумаги требуют ручной проверки условий выпуска.
 </p>
 </div>
 
@@ -563,20 +564,25 @@ async function loadBond(isin){
   const isRub=(faceUnit==='SUR'||faceUnit==='RUB');
   const currencyLabel=isRub?'RUB':faceUnit;
 
-  // Определяем тип купона через bondization: смотрим ВСЕ будущие купоны.
-  // Если хотя бы у одного будущего купона value/valueprc отсутствует или 0 — флоатер.
-  // Если все будущие купоны заполнены — фикс. ОФЗ-ИН (линкеры) тоже относим к флоатерам (купоны не известны заранее).
+  // Определяем тип купона через bondization, но СМОТРИМ КУПОНЫ ТОЛЬКО ДО БЛИЖАЙШЕЙ ОФЕРТЫ.
+  // Причина: у фикса с put-офертой эмитент не проставляет купоны ПОСЛЕ оферты (объявит позже).
+  // Если смотреть до погашения — такой фикс ложно попадает во флоатеры. Доходность/риск всё равно
+  // считаются до оферты (BUYBACKDATE), поэтому и тип купона определяем на том же горизонте.
+  // Флоатер = купоны не известны заранее ДО оферты (или до погашения, если оферты нет).
   let couponType='fix'; // дефолт
   try{
     const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
     const bd=await moexFetch(bondUrl);
     const cCols=bd.coupons.columns;const cRows=bd.coupons.data;
     const today=new Date();
+    // горизонт классификации: ближайшая оферта, иначе погашение
+    const horizon=offerDate?new Date(offerDate):(matDate?new Date(matDate):null);
     let futureKnown=0,futureUnknown=0;
     cRows.forEach(row=>{
       const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
       const cd=obj.coupondate?new Date(obj.coupondate):null;
-      if(!cd||cd<today)return; // прошлые купоны игнорим
+      if(!cd||cd<today)return;                 // прошлые купоны игнорим
+      if(horizon&&cd>horizon)return;           // купоны ПОСЛЕ оферты/погашения не смотрим
       const v=parseFloat(obj.value);
       const vp=parseFloat(obj.valueprc);
       if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))futureKnown++;
