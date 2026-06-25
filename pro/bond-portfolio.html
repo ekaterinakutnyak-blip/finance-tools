@@ -187,7 +187,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   </div>
   <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
     <div id="fxRatesInfo" style="margin-bottom:0.4rem"></div>
-    Тип купона определяется по будущим купонам в графике облигации. Если хотя бы один будущий купон не зафиксирован — флоатер. Дальнейший анализ кредитного риска по спредам строится только на рублёвой фикс-части портфеля.
+    Тип купона определяется по будущим купонам в графике облигации — до ближайшей оферты (фикс с put-офертой не считается флоатером, даже если купоны после оферты ещё не объявлены). Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
   </div>
 </div>
 
@@ -197,7 +197,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
 </div>
 
 <div class="card hidden" id="creditCard">
-  <div class="card-title">Кредитный риск · рублёвая фикс-часть</div>
+  <div class="card-title">Кредитный риск · рублёвые бумаги со спредом</div>
   <div id="creditInfo" style="font-size:0.78rem;color:var(--text2);margin-bottom:1rem"></div>
   <div class="results-grid" id="creditSummary" style="margin-bottom:1.25rem"></div>
   <div style="font-size:0.72rem;color:var(--text2);font-weight:500;margin-bottom:0.5rem">Распределение фикс-части по зонам кредитного качества (по Z-spread)</div>
@@ -1135,21 +1135,24 @@ async function run(){
       }
     });
 
-    // ===== Credit metrics: рублёвые фиксы =====
+    // ===== Credit metrics: рублёвые бумаги со спредом (фиксы + флоатеры с надбавкой) =====
     const nowDate=new Date();nowDate.setHours(0,0,0,0);
-    const rubFix=bonds.filter(b=>b.isRub&&b.couponType==='fix');
-    if(rubFix.length>0 && gcurvePoints.length>0){
-      for(let i=0;i<rubFix.length;i++){
-        const b=rubFix[i];
-        st.className='status';st.innerHTML='<span class="loader"></span>Кредитный риск: '+b.shortname+' ('+(i+1)+'/'+rubFix.length+')...';
+    // фиксы: считаем Z-spread здесь; флоатеры: credit уже посчитан выше через computeFloaterMetrics
+    const rubFixOnly=bonds.filter(b=>b.isRub&&b.couponType==='fix');
+    if((rubFixOnly.length>0 || bonds.some(b=>b.isRub&&b.couponType==='float'&&b.credit&&b.credit.zSpread!==null)) && gcurvePoints.length>0){
+      for(let i=0;i<rubFixOnly.length;i++){
+        const b=rubFixOnly[i];
+        st.className='status';st.innerHTML='<span class="loader"></span>Кредитный риск: '+b.shortname+' ('+(i+1)+'/'+rubFixOnly.length+')...';
         const dirty=b.price/100*b.faceValue+b.nkd; // грязная цена в рублях за 1 бумагу
         const metrics=await computeCreditMetrics(b,dirty);
         b.credit=metrics;
       }
 
-      // Сумма рублёвых фиксов
+      // ВСЕ рублёвые бумаги, у которых спред посчитан (фиксы + флоатеры с надбавкой)
+      const rubFix=bonds.filter(b=>b.isRub && b.credit && b.credit.zSpread!==null && b.credit.zSpread!==undefined);
+      // Сумма рублёвых бумаг со спредом
       const rubFixValue=rubFix.reduce((s,b)=>s+b.marketValue,0);
-      // Взвешенные метрики (по рыночной стоимости в рубл. фикс-части)
+      // Взвешенные метрики (по рыночной стоимости)
       const valid=rubFix.filter(b=>b.credit&&b.credit.zSpread!==null);
       const validValue=valid.reduce((s,b)=>s+b.marketValue,0);
       const wZ=validValue>0?valid.reduce((s,b)=>s+b.marketValue*b.credit.zSpread,0)/validValue:0;
@@ -1169,7 +1172,7 @@ async function run(){
 
       // Рендер карточки кредитного риска
       document.getElementById('creditCard').classList.remove('hidden');
-      document.getElementById('creditInfo').textContent='Анализ проведён по '+valid.length+' из '+rubFix.length+' рублёвых фикс-бумаг (стоимость '+Math.round(rubFixValue).toLocaleString('ru-RU')+' ₽ = '+(rubFixValue/totalValue*100).toFixed(1)+'% портфеля).';
+      document.getElementById('creditInfo').textContent='Анализ проведён по '+valid.length+' рублёвым бумагам со спредом (стоимость '+Math.round(rubFixValue).toLocaleString('ru-RU')+' ₽ = '+(rubFixValue/totalValue*100).toFixed(1)+'% портфеля). Фиксы — Z-spread к ОФЗ; флоатеры с указанной надбавкой — надбавка + дисконт-маржа из цены.';
 
       // Summary metrics
       const csg=document.getElementById('creditSummary');csg.innerHTML='';
