@@ -773,13 +773,60 @@ function parseImportedRows(rows){
 }
 
 // ======================================================================
-// Мои портфели: общее хранилище для всех калькуляторов investtools.pro
-// localStorage: invest_portfolios = [{name, items:[{isin,qty}], updated}]
-// Портфель, сохранённый в одном калькуляторе, открывается в другом.
+// Мои портфели: серверное хранение (привязка к пользователю по токену),
+// с фоллбэком на localStorage. Вход по токену → сервер; вход по паролю → localStorage.
+// Формат портфеля: {name, items:[{isin,qty,fbase?,fmargin?}], updated}
 // ======================================================================
 const PF_KEY='invest_portfolios';
-function pfAll(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
-function pfStore(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+const PF_API='https://investtools.pro/api/portfolios';
+let _pfCache=[];          // кэш в памяти, синхронно отдаётся через pfAll()
+function _pfToken(){       // токен доступа, если вошли именно по токену (не по паролю)
+  try{ if(localStorage.getItem('pro_access_type')==='token') return localStorage.getItem('pro_access_token'); }catch(e){}
+  return null;
+}
+function _pfReadLocal(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
+function _pfWriteLocal(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+
+// серверный формат: [{name, data:JSON items, updated}] <-> локальный [{name, items, updated}]
+function _pfToServer(list){return list.map(p=>({name:p.name,data:JSON.stringify(p.items||[]),updated:p.updated||new Date().toISOString()}));}
+function _pfFromServer(arr){return (arr||[]).map(p=>{let items=[];try{items=JSON.parse(p.data)}catch(e){items=[]}return{name:p.name,items:Array.isArray(items)?items:[],updated:p.updated};});}
+
+function pfAll(){return _pfCache.slice();}
+
+// Полная запись набора: обновляет кэш, localStorage и (если есть токен) сервер.
+function pfStore(list){
+  _pfCache=list.slice();
+  _pfWriteLocal(_pfCache);
+  const tok=_pfToken();
+  if(tok){
+    fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:tok,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+  }
+}
+
+// Загрузка портфелей при старте: с сервера (если токен), иначе из localStorage.
+function pfInit(){
+  const tok=_pfToken();
+  if(!tok){ _pfCache=_pfReadLocal(); pfRefresh(); return; }
+  fetch(PF_API+'?token='+encodeURIComponent(tok))
+    .then(function(r){return r.json();})
+    .then(function(res){
+      const server=_pfFromServer(res.portfolios);
+      const local=_pfReadLocal();
+      // миграция: если на сервере пусто, а локально есть — заливаем старые на сервер
+      if(server.length===0 && local.length>0){
+        _pfCache=local;
+        fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({token:tok,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+      }else{
+        _pfCache=server;
+        _pfWriteLocal(_pfCache); // держим локальную копию как кэш
+      }
+      pfRefresh();
+    })
+    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); }); // сервер недоступен → локальный кэш
+}
+
 function pfRefresh(){
   const sel=document.getElementById('pfSelect');if(!sel)return;
   const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
@@ -826,7 +873,7 @@ function pfDelete(){
   if(!confirm('Удалить портфель «'+sel.value+'»?'))return;
   pfStore(pfAll().filter(p=>p.name!==sel.value));pfRefresh();
 }
-pfRefresh();
+pfInit();
 
 // ======================================================================
 // СРАВНЕНИЕ ПОРТФЕЛЕЙ. Автономный расчёт метрик (без рендера осн. калькулятора).
