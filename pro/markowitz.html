@@ -398,8 +398,47 @@ function parseImportedRows(rows){
 // Мои портфели (localStorage): [{name, items:[{ticker,shares,weight}], updated}]
 // ======================================================================
 const PF_KEY='invest_portfolios_mkw_ru';
-function pfAll(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
-function pfStore(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+const PF_SCOPE='mkw_ru';
+const PF_API='https://investtools.pro/api/portfolios';
+let _pfCache=[];
+function _pfToken(){
+  try{ if(localStorage.getItem('pro_access_type')==='token') return localStorage.getItem('pro_access_token'); }catch(e){}
+  return null;
+}
+function _pfReadLocal(){try{const v=JSON.parse(localStorage.getItem(PF_KEY));return Array.isArray(v)?v:[]}catch(e){return[]}}
+function _pfWriteLocal(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list))}catch(e){}}
+function _pfToServer(list){return list.map(p=>({name:p.name,data:JSON.stringify(p.items||[]),updated:p.updated||new Date().toISOString()}));}
+function _pfFromServer(arr){return (arr||[]).map(p=>{let items=[];try{items=JSON.parse(p.data)}catch(e){items=[]}return{name:p.name,items:Array.isArray(items)?items:[],updated:p.updated};});}
+function pfAll(){return _pfCache.slice();}
+function pfStore(list){
+  _pfCache=list.slice();
+  _pfWriteLocal(_pfCache);
+  const tok=_pfToken();
+  if(tok){
+    fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:tok,scope:PF_SCOPE,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+  }
+}
+function pfInit(){
+  const tok=_pfToken();
+  if(!tok){ _pfCache=_pfReadLocal(); pfRefresh(); return; }
+  fetch(PF_API+'?token='+encodeURIComponent(tok)+'&scope='+encodeURIComponent(PF_SCOPE))
+    .then(function(r){return r.json();})
+    .then(function(res){
+      const server=_pfFromServer(res.portfolios);
+      const local=_pfReadLocal();
+      if(server.length===0 && local.length>0){
+        _pfCache=local;
+        fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({token:tok,scope:PF_SCOPE,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+      }else{
+        _pfCache=server;
+        _pfWriteLocal(_pfCache);
+      }
+      pfRefresh();
+    })
+    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); });
+}
 function pfRefresh(){
   const sel=document.getElementById('pfSelect');if(!sel)return;
   const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
@@ -565,7 +604,7 @@ function printCompare(){
 }
 cmpRefresh();
 
-pfRefresh();
+pfInit();
 
 function getTickers(){
   const arr=[];rowsEl.querySelectorAll('.row-line .ticker').forEach(el=>{const t=el.value.trim().toUpperCase();if(t)arr.push(t);});

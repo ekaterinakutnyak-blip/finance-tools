@@ -779,6 +779,7 @@ function parseImportedRows(rows){
 // ======================================================================
 const PF_KEY='invest_portfolios';
 const PF_API='https://investtools.pro/api/portfolios';
+const PF_SCOPE='bonds';
 let _pfCache=[];          // кэш в памяти, синхронно отдаётся через pfAll()
 function _pfToken(){       // токен доступа, если вошли именно по токену (не по паролю)
   try{ if(localStorage.getItem('pro_access_type')==='token') return localStorage.getItem('pro_access_token'); }catch(e){}
@@ -800,7 +801,7 @@ function pfStore(list){
   const tok=_pfToken();
   if(tok){
     fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({token:tok,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+      body:JSON.stringify({token:tok,scope:PF_SCOPE,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
   }
 }
 
@@ -808,7 +809,7 @@ function pfStore(list){
 function pfInit(){
   const tok=_pfToken();
   if(!tok){ _pfCache=_pfReadLocal(); pfRefresh(); return; }
-  fetch(PF_API+'?token='+encodeURIComponent(tok))
+  fetch(PF_API+'?token='+encodeURIComponent(tok)+'&scope='+encodeURIComponent(PF_SCOPE))
     .then(function(r){return r.json();})
     .then(function(res){
       const server=_pfFromServer(res.portfolios);
@@ -817,7 +818,7 @@ function pfInit(){
       if(server.length===0 && local.length>0){
         _pfCache=local;
         fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({token:tok,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
+          body:JSON.stringify({token:tok,scope:PF_SCOPE,portfolios:_pfToServer(_pfCache)})}).catch(function(){});
       }else{
         _pfCache=server;
         _pfWriteLocal(_pfCache); // держим локальную копию как кэш
