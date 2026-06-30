@@ -822,6 +822,10 @@ function addRow(isin,qty,fbase,fmargin){
       '</select>'+
       '<input type="text" class="fmargin" placeholder="надб.%" inputmode="decimal" value="'+(showFloat?String(fmargin):'')+'" style="width:62px;font-family:var(--mono);font-size:0.72rem;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:right">'+
     '</span>'+
+    '<span class="limctl" style="display:inline-flex;align-items:center;gap:3px" title="Индивидуальные лимиты доли этой бумаги в оптимизации (пусто = общий лимит)">'+
+      '<input type="text" class="limmin" placeholder="min%" inputmode="decimal" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
+      '<input type="text" class="limmax" placeholder="max%" inputmode="decimal" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
+    '</span>'+
     '<button class="remove" onclick="removeRow(this)">×</button>';
   rowsContainer.appendChild(div);
 }
@@ -1631,7 +1635,7 @@ function _optimizeCore(bonds,Dtgt,tol,lo,hi,issuerCap,spreadCapBps,nsim){
 
 function saveOptimum(){
   if(!_optLastResult||!_optBonds){alert('Сначала выполните оптимизацию.');return;}
-  const bonds=_optBonds, w=_optLastResult.w, total=_optTotalValue;
+  const bonds=_optLastResult.bonds||_optBonds, w=_optLastResult.w, total=_optTotalValue;
   if(!(total>0)){alert('Не удалось определить стоимость портфеля для пересчёта в штуки.');return;}
   // доля → деньги → штуки (по грязной цене бумаги)
   const items=[];
@@ -1658,10 +1662,25 @@ function saveOptimum(){
 }
 
 function runOptimizer(){
-  const bonds=_optBonds;
+  const allBonds=_optBonds;
   const out=document.getElementById('optResult');
-  if(!bonds||bonds.length<2){out.innerHTML='<div class="status err">Сначала рассчитайте портфель (нужно ≥2 облигаций).</div>';return;}
+  if(!allBonds||allBonds.length<2){out.innerHTML='<div class="status err">Сначала рассчитайте портфель (нужно ≥2 облигаций).</div>';return;}
   const num=(id,def)=>{const v=parseFloat((document.getElementById(id).value||'').replace(',','.'));return isFinite(v)?v:def;};
+  // Отсев бумаг с близким погашением (раньше N дней) — не участвуют в оптимизации
+  const minDays=Math.max(0,num('optMinDays',10));
+  const nowMs=Date.now();
+  const excluded=[];
+  const bonds=allBonds.filter(b=>{
+    const horizon=b.offerDate?new Date(b.offerDate):(b.matDate?new Date(b.matDate):null);
+    if(horizon){
+      const days=(horizon.getTime()-nowMs)/(1000*3600*24);
+      if(days < minDays){ excluded.push({name:b.shortname,days:Math.max(0,Math.round(days))}); return false; }
+    }
+    return true;
+  });
+  if(bonds.length<2){
+    out.innerHTML='<div class="status err">После отсева по сроку погашения осталось меньше 2 бумаг. Уменьшите порог «исключить погашение раньше N дней».</div>';return;
+  }
   const Dtgt=num('optDurTarget',_optPortMetrics(bonds.map(()=>1/bonds.length),bonds).dur);
   const tol=Math.max(0.02,num('optTol',0.15));
   const hiPct=num('optMaxW',25)/100, loPct=num('optMinW',0)/100;
@@ -1670,9 +1689,21 @@ function runOptimizer(){
   const spreadCapBps=spreadCapRaw===''?null:parseFloat(spreadCapRaw.replace(',','.'));
   const N=bonds.length;
   const lo=new Array(N).fill(loPct), hi=new Array(N).fill(hiPct);
+  // Индивидуальные лимиты доли бумаги (из полей min%/max% в строке) переопределяют общие
+  let indivCount=0;
+  for(let i=0;i<N;i++){
+    const row=bonds[i].row;
+    if(!row)continue;
+    const lmin=row.querySelector('.limmin'), lmax=row.querySelector('.limmax');
+    if(lmin && lmin.value.trim()!==''){const v=parseFloat(lmin.value.replace(',','.'));if(isFinite(v)&&v>=0){lo[i]=v/100;indivCount++;}}
+    if(lmax && lmax.value.trim()!==''){const v=parseFloat(lmax.value.replace(',','.'));if(isFinite(v)&&v>=0){hi[i]=v/100;indivCount++;}}
+    if(lo[i]>hi[i]){const t=lo[i];lo[i]=hi[i];hi[i]=t;} // защита от перепутанных мин/макс
+  }
 
-  // валидация
-  if(hiPct*N<1-1e-9){out.innerHTML='<div class="status err">Слишком жёсткий максимум доли ('+(hiPct*100).toFixed(0)+'%): по всем '+N+' бумагам не набрать 100%. Увеличьте макс. долю.</div>';return;}
+  // валидация: сумма максимумов должна дотягивать до 100%
+  const sumHi=hi.reduce((s,x)=>s+x,0), sumLo=lo.reduce((s,x)=>s+x,0);
+  if(sumHi<1-1e-9){out.innerHTML='<div class="status err">Сумма максимальных долей ('+(sumHi*100).toFixed(0)+'%) меньше 100%. Увеличьте макс. долю (общую или индивидуальную).</div>';return;}
+  if(sumLo>1+1e-9){out.innerHTML='<div class="status err">Сумма минимальных долей ('+(sumLo*100).toFixed(0)+'%) больше 100%. Уменьшите мин. доли.</div>';return;}
   const rng=_optDurRangeReachable(bonds,lo,hi);
   if(rng.min!=null && rng.max!=null && (Dtgt<rng.min-tol || Dtgt>rng.max+tol)){
     out.innerHTML='<div class="status err">Целевая дюрация '+Dtgt.toFixed(2)+' недостижима при лимите доли '+(hiPct*100).toFixed(0)+'%. Достижимый диапазон примерно от '+rng.min.toFixed(2)+' до '+rng.max.toFixed(2)+' лет. Измените цель или ослабьте лимит доли.</div>';return;
@@ -1686,7 +1717,7 @@ function runOptimizer(){
     }
     const avgSpread=_optAvgSpread(r.w,bonds);
     const maxIss=_optMaxIssuer(r.w,bonds);
-    _optLastResult={w:r.w.slice(),ytm:r.ytm,dur:r.dur,Dtgt:Dtgt,tol:tol};
+    _optLastResult={w:r.w.slice(),ytm:r.ytm,dur:r.dur,Dtgt:Dtgt,tol:tol,bonds:bonds};
     // таблица весов (только ненулевые)
     let rows='';
     bonds.map((b,i)=>({b,w:r.w[i]})).filter(x=>x.w>0.001).sort((a,c)=>c.w-a.w).forEach(x=>{
@@ -1697,6 +1728,7 @@ function runOptimizer(){
       '<div class="status ok" style="margin-bottom:0.6rem">Оптимум найден · YTM '+r.ytm.toFixed(2)+'% · дюрация '+r.dur.toFixed(2)+' лет'+(avgSpread!=null?' · ср. спред '+Math.round(avgSpread)+' бп':'')+' · макс. эмитент '+(maxIss*100).toFixed(0)+'%</div>'+
       '<table class="weights" style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr><th style="text-align:left">Бумага</th><th style="text-align:right">Доля</th><th style="text-align:right">YTM</th><th style="text-align:right">Дюрация</th><th style="text-align:right">Спред</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div style="font-size:0.68rem;color:var(--text3);margin-top:0.5rem">Максимум YTM при дюрации '+Dtgt.toFixed(2)+'±'+tol.toFixed(2)+'. Спред портфеля — по бумагам, у которых он рассчитан (фиксы: Z-spread к ОФЗ; флоатеры: надбавка + дисконт-маржа из цены). Бумаги без спреда в ограничение по спреду не входят.</div>'+
+      (excluded.length>0 ? '<div style="font-size:0.68rem;color:#C25A1E;margin-top:0.4rem">Исключены из оптимизации (погашение/оферта раньше '+minDays+' дн.): '+excluded.map(e=>e.name+' — через '+e.days+' дн.').join('; ')+'.</div>' : '')+
       '<div class="btn-row" style="margin-top:0.7rem"><button class="btn-sm" onclick="saveOptimum()">💾 Сохранить оптимум как портфель</button></div>';
   },30);
 }
@@ -1722,6 +1754,9 @@ function runOptimizer(){
     </label>
     <label style="font-size:0.74rem;color:var(--text2)">Макс. ср. спред, бп
       <input type="text" id="optMaxSpread" inputmode="decimal" placeholder="без огр." style="width:74px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.85rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
+    </label>
+    <label style="font-size:0.74rem;color:var(--text2)">Исключить погашение раньше, дней
+      <input type="text" id="optMinDays" inputmode="numeric" value="10" style="width:64px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.85rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
     </label>
     <button class="btn" onclick="runOptimizer()">Оптимизировать</button>
   </div>
