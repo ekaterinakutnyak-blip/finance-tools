@@ -121,12 +121,29 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   <div id="bondRows"></div>
   <div class="btn-row">
     <button class="btn-sm" onclick="addRow()">+ Добавить облигацию</button>
+    <button class="btn-sm" onclick="toggleManualPanel()">✏️ Добавить вручную</button>
     <button class="btn-sm" onclick="document.getElementById('xlsImport').click()">📥 Загрузить из файла</button>
     <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
     <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
     <button class="btn-sm" onclick="window.print()">📄 Скачать PDF</button>
     <span class="weight-total" id="weightTotal">Итого: 0%</span>
+  </div>
+  <div id="manualPanel" style="display:none;margin-top:0.6rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
+    <div style="font-size:0.78rem;color:var(--text2);font-weight:500;margin-bottom:0.7rem">Ручной ввод облигации <span style="color:var(--text3);font-weight:400">(для бумаг не с Мосбиржи — например, СПБ Биржа). Доходность и дюрацию посчитаем сами.</span></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <label style="font-size:0.72rem;color:var(--text2)">Название<input type="text" id="mName" placeholder="Моя облигация" style="width:150px;display:block;margin-top:3px;font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Валюта<select id="mCur" style="width:80px;display:block;margin-top:3px;font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"><option>RUB</option><option>USD</option><option>EUR</option><option>CNY</option></select></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Номинал<input type="text" id="mFace" inputmode="decimal" value="1000" style="width:80px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:right"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Цена, % номинала<input type="text" id="mPrice" inputmode="decimal" placeholder="98.5" style="width:90px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:right"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Кол-во, шт<input type="text" id="mQty" inputmode="numeric" placeholder="10" style="width:70px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:right"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Ставка купона, %<input type="text" id="mCoupon" inputmode="decimal" placeholder="12.5" style="width:90px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:right"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Купонов в год<select id="mFreq" style="width:75px;display:block;margin-top:3px;font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"><option value="2">2</option><option value="4" selected>4</option><option value="12">12</option><option value="1">1</option></select></label>
+      <label style="font-size:0.72rem;color:var(--text2)">Дата погашения<input type="date" id="mMat" style="display:block;margin-top:3px;font-size:0.82rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"></label>
+      <label style="font-size:0.72rem;color:var(--text2)">НКД <span style="color:var(--text3)">(необяз.)</span><input type="text" id="mNkd" inputmode="decimal" placeholder="авто" style="width:75px;display:block;margin-top:3px;font-family:var(--mono);font-size:0.82rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);text-align:right"></label>
+      <button class="btn" onclick="addManualBond()">Добавить в портфель</button>
+    </div>
+    <div id="mErr" style="font-size:0.74rem;color:var(--red);margin-top:0.5rem;min-height:1em"></div>
   </div>
   <div class="btn-row" id="floatBaseBar" style="margin-top:0.5rem;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-size:0.74rem;color:var(--text2)">Базовые ставки для флоатеров:</span>
@@ -369,10 +386,21 @@ async function loadGcurve(){
 async function computeCreditMetrics(b, dirtyPriceAbs){
   // 1. Подгружаем bondization (купоны + амортизации)
   let bondCoupons=[],bondAmorts=[];
-  try{
-    const bz=await getBondization(b.secid);
-    bondCoupons=bz.coupons;bondAmorts=bz.amorts;
-  }catch(e){return null;}
+  if(b.isManual){
+    // Ручная бумага: строим синтетический график купонов из её параметров
+    const mat=new Date(b.matDate); const freq=b.couponsPerYear||4;
+    const couponVal=b.faceValue*(b.couponRate/100)/freq;
+    const stepM=12/freq; let d=new Date(mat);
+    const today0=new Date();
+    while(d>today0){ bondCoupons.push({coupondate:new Date(d).toISOString().slice(0,10), value:couponVal}); d=new Date(d); d.setMonth(d.getMonth()-stepM); }
+    bondCoupons.reverse();
+    bondAmorts=[]; // амортизация в ручном вводе не поддерживается (только bullet)
+  }else{
+    try{
+      const bz=await getBondization(b.secid);
+      bondCoupons=bz.coupons;bondAmorts=bz.amorts;
+    }catch(e){return null;}
+  }
 
   const today=new Date();today.setHours(0,0,0,0);
   const today_ms=today.getTime();
@@ -504,6 +532,26 @@ function computeFloaterMetrics(b, dirtyPriceAbs, baseRatePct, marginPct){
 }
 
 async function loadBond(isin){
+  // Ручная бумага (не с Мосбиржи) — берём данные из _manualBonds, MOEX не дёргаем
+  if(isin && isin.indexOf('MANUAL-')===0){
+    const m=_manualBonds[isin];
+    if(!m) throw new Error('Ручная бумага не найдена: '+isin);
+    const c=m.calc;
+    const isRub=(m.cur==='RUB');
+    const couponVal=m.face*(m.coupon/100)/m.freq;
+    const currentYield=(c.annualCoupon/(m.price/100*m.face))*100;
+    return {
+      secid:isin, shortname:m.name+' (ручная)', isin:isin,
+      price:m.price, faceValue:m.face, nkd:m.nkd,
+      couponVal, couponRate:m.coupon, couponPeriod:Math.round(365/m.freq), couponsPerYear:m.freq,
+      annualCoupon:c.annualCoupon, currentYield,
+      ytm:c.ytm, duration:c.macaulay, modDuration:c.modDur, convexity:c.convexity,
+      matDate:m.matDate, offerDate:null, nextCoupon:c.nextCoupon,
+      faceUnit:m.cur, isRub:isRub, currencyLabel:isRub?'RUB':m.cur,
+      couponType:'fix', emitentId:'manual_'+isin, emitentTitle:m.name,
+      isManual:true
+    };
+  }
   // Search for bond
   const searchUrl='https://iss.moex.com/iss/securities.json?q='+encodeURIComponent(isin)+'&iss.meta=off&limit=10';
   const sd=await moexFetch(searchUrl);
@@ -683,6 +731,85 @@ async function loadBond(isin){
 // Bond rows
 const rowsContainer=document.getElementById('bondRows');
 let rowCount=0;
+
+// ===== Ручной ввод облигаций (для бумаг не с Мосбиржи, напр. СПБ) =====
+// Расчёт YTM/дюрации для bullet-облигации из введённых полей.
+function calcManualBond(opt){
+  const today = opt.today ? new Date(opt.today) : new Date();
+  const face = opt.face, pricePct = opt.pricePct;
+  const couponRate = opt.couponRate/100, freq = opt.freq;
+  const mat = new Date(opt.matDate);
+  const cleanPrice = pricePct/100*face;
+  const couponAmt = face*couponRate/freq;
+  const dates=[]; let d=new Date(mat); const stepMonths=12/freq;
+  while(d>today){ dates.push(new Date(d)); d=new Date(d); d.setMonth(d.getMonth()-stepMonths); }
+  dates.reverse();
+  if(dates.length===0) return null;
+  let nkd=(opt.nkd!=null && opt.nkd!=='') ? parseFloat(opt.nkd) : null;
+  if(nkd===null){
+    const fc=dates[0]; const pc=new Date(fc); pc.setMonth(pc.getMonth()-stepMonths);
+    const periodDays=(fc-pc)/(1000*3600*24), passedDays=(today-pc)/(1000*3600*24);
+    nkd=couponAmt*Math.max(0,Math.min(1,passedDays/periodDays));
+  }
+  const dirtyPrice=cleanPrice+nkd;
+  const flows=dates.map((dt,i)=>({t:(dt-today)/(365.25*24*3600*1000), cf:couponAmt+(i===dates.length-1?face:0)}));
+  function pv(y){return flows.reduce((s,f)=>s+f.cf/Math.pow(1+y,f.t),0);}
+  let lo=-0.99, hi=5.0;
+  if(pv(lo)<dirtyPrice) return null;
+  for(let k=0;k<200;k++){const mid=(lo+hi)/2; if(pv(mid)>dirtyPrice) lo=mid; else hi=mid;}
+  const ytm=(lo+hi)/2;
+  let pvTot=0,wT=0,conv=0;
+  flows.forEach(f=>{const pvf=f.cf/Math.pow(1+ytm,f.t); pvTot+=pvf; wT+=f.t*pvf; conv+=f.t*(f.t+1)*pvf;});
+  const macaulay=wT/pvTot, modDur=macaulay/(1+ytm), convexity=conv/(pvTot*Math.pow(1+ytm,2));
+  return {ytm:ytm*100, macaulay, modDur, convexity, dirtyPrice, cleanPrice, nkd,
+    annualCoupon:face*couponRate, numCoupons:dates.length, nextCoupon:dates[0]};
+}
+
+let _manualBonds={};
+let _manualCounter=0;
+function toggleManualPanel(){
+  const p=document.getElementById('manualPanel');
+  p.style.display = (p.style.display==='none'||!p.style.display) ? 'block' : 'none';
+}
+function addManualBond(){
+  const err=document.getElementById('mErr');err.textContent='';
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('mName')||'Ручная облигация';
+  const cur=g('mCur');
+  const face=parseFloat(g('mFace').replace(',','.'));
+  const price=parseFloat(g('mPrice').replace(',','.'));
+  const qty=parseInt(g('mQty').replace(/\s/g,''));
+  const coupon=parseFloat(g('mCoupon').replace(',','.'));
+  const freq=parseInt(g('mFreq'));
+  const mat=g('mMat');
+  const nkdRaw=g('mNkd');
+  // валидация
+  if(!(face>0)){err.textContent='Укажите номинал.';return;}
+  if(!(price>0)){err.textContent='Укажите цену (% от номинала).';return;}
+  if(!(qty>0)){err.textContent='Укажите количество.';return;}
+  if(!(coupon>=0)){err.textContent='Укажите ставку купона.';return;}
+  if(!mat){err.textContent='Укажите дату погашения.';return;}
+  if(new Date(mat)<=new Date()){err.textContent='Дата погашения должна быть в будущем.';return;}
+  // считаем метрики
+  const calc=calcManualBond({face,pricePct:price,couponRate:coupon,freq,matDate:mat,nkd:nkdRaw===''?null:parseFloat(nkdRaw.replace(',','.'))});
+  if(!calc){err.textContent='Не удалось рассчитать — проверьте данные.';return;}
+  // сохраняем ручную бумагу
+  _manualCounter++;
+  const pseudoIsin='MANUAL-'+_manualCounter;
+  _manualBonds[pseudoIsin]={
+    name, cur, face, price, coupon, freq, matDate:mat,
+    nkd: calc.nkd, calc
+  };
+  // добавляем строку в портфель (как обычную, с псевдо-ISIN)
+  addRow(pseudoIsin, qty);
+  // показываем имя сразу
+  const rows=rowsContainer.querySelectorAll('.bond-row');
+  const lastRow=rows[rows.length-1];
+  if(lastRow){const nm=lastRow.querySelector('.name');if(nm)nm.textContent=name+' (ручная)';}
+  // очищаем форму, сворачиваем
+  ['mName','mPrice','mQty','mCoupon','mNkd'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('manualPanel').style.display='none';
+}
 
 function addRow(isin,qty,fbase,fmargin){
   rowCount++;
