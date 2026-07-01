@@ -314,13 +314,19 @@ async function fetchCandles(ticker,from,till){
 const rowsEl=document.getElementById('rows');
 let rowCount=0;
 let lastPrices={}; // последние цены тикеров после загрузки
-function addRow(ticker,shares,weight){
+function addRow(ticker,shares,weight,lmin,lmax){
   rowCount++;
   const div=document.createElement('div');div.className='row-line';div.dataset.idx=rowCount;
+  const vLmin=(lmin!==undefined&&lmin!==null)?String(lmin):'';
+  const vLmax=(lmax!==undefined&&lmax!==null)?String(lmax):'';
   div.innerHTML='<span class="num">'+rowCount+'</span>'+
     '<input type="text" class="ticker" value="'+(ticker||'')+'" placeholder="AAPL">'+
     '<input type="text" class="myshares" value="'+(shares||'')+'" placeholder="—" inputmode="numeric">'+
     '<input type="text" class="myweight" value="'+(weight||'')+'" placeholder="—" inputmode="decimal">'+
+    '<span class="limctl" style="display:inline-flex;align-items:center;gap:3px" title="Индивидуальные лимиты доли этой бумаги (пусто = общий лимит)">'+
+      '<input type="text" class="limmin" value="'+vLmin+'" placeholder="min%" inputmode="decimal" style="width:50px;font-family:var(--mono);font-size:0.72rem;padding:0.35rem 0.4rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text3);text-align:right">'+
+      '<input type="text" class="limmax" value="'+vLmax+'" placeholder="max%" inputmode="decimal" style="width:50px;font-family:var(--mono);font-size:0.72rem;padding:0.35rem 0.4rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text3);text-align:right">'+
+    '</span>'+
     '<button class="remove" onclick="removeRow(this)" title="Удалить">×</button>'+
     '<div class="row-hint" style="flex-basis:100%;font-size:0.7rem;color:var(--text3);margin-left:28px;font-family:var(--mono);min-height:1em"></div>';
   rowsEl.appendChild(div);
@@ -437,7 +443,13 @@ function pfSave(){
     const t=r.querySelector('.ticker').value.trim().toUpperCase();
     const s=r.querySelector('.myshares').value.trim();
     const w=r.querySelector('.myweight').value.trim();
-    if(t)items.push({ticker:t,shares:s,weight:w});
+    if(t){
+      const it={ticker:t,shares:s,weight:w};
+      const lmin=r.querySelector('.limmin'), lmax=r.querySelector('.limmax');
+      if(lmin&&lmin.value.trim()!=='')it.lmin=lmin.value.trim();
+      if(lmax&&lmax.value.trim()!=='')it.lmax=lmax.value.trim();
+      items.push(it);
+    }
   });
   if(items.length===0){alert('Портфель пуст — нечего сохранять.');return;}
   let name=prompt('Название портфеля:','Мой портфель');
@@ -456,7 +468,7 @@ function pfLoad(){
   const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
   const p=pfAll().find(x=>x.name===sel.value);if(!p)return;
   rowsEl.innerHTML='';rowCount=0;
-  p.items.forEach(it=>addRow(it.ticker,it.shares,it.weight));
+  p.items.forEach(it=>addRow(it.ticker,it.shares,it.weight,it.lmin,it.lmax));
   addRow();
   renumber();
   if(typeof updateMyTotal==='function')updateMyTotal();
@@ -708,7 +720,7 @@ function toggleGlobalLimit(){
   document.getElementById('globalLimitFields').classList.toggle('hidden',!on);
 }
 
-function getLimits(N){
+function getLimits(N, tickers){
   const lo=new Array(N).fill(0), hi=new Array(N).fill(1);
   const useGlobal=document.getElementById('useGlobalLimit') && document.getElementById('useGlobalLimit').checked;
   if(useGlobal){
@@ -718,6 +730,21 @@ function getLimits(N){
     if(!isFinite(gMax)||gMax<=0)gMax=1;
     if(gMax>1)gMax=1;
     for(let i=0;i<N;i++){lo[i]=gMin;hi[i]=Math.min(gMax,1);}
+  }
+  if(tickers){
+    const rowMap={};
+    rowsEl.querySelectorAll('.row-line').forEach(r=>{
+      const tk=r.querySelector('.ticker'); if(!tk)return;
+      const t=tk.value.trim().toUpperCase(); if(!t||rowMap[t])return;
+      rowMap[t]=r;
+    });
+    for(let i=0;i<N;i++){
+      const r=rowMap[tickers[i]]; if(!r)continue;
+      const lmin=r.querySelector('.limmin'), lmax=r.querySelector('.limmax');
+      if(lmin&&lmin.value.trim()!==''){const v=parseFloat(lmin.value.replace(',','.'))/100;if(isFinite(v)&&v>=0)lo[i]=v;}
+      if(lmax&&lmax.value.trim()!==''){const v=parseFloat(lmax.value.replace(',','.'))/100;if(isFinite(v)&&v>=0)hi[i]=Math.min(v,1);}
+      if(lo[i]>hi[i]){const t=lo[i];lo[i]=hi[i];hi[i]=t;}
+    }
   }
   return {lo,hi};
 }
@@ -1238,10 +1265,11 @@ async function run(){
     const eqW=new Array(N).fill(1/N);
 
     // ===== Лимиты на доли (semi-continuous): общий + (далее) индивидуальные =====
-    const {lo:limLo,hi:limHi}=getLimits(N);
+    const {lo:limLo,hi:limHi}=getLimits(N, tickers);
     const limitErr=validateLimits(limLo,limHi,N);
     if(limitErr){btn.disabled=false;st.className='status err';st.textContent=limitErr;return;}
-    const limited=document.getElementById('useGlobalLimit') && document.getElementById('useGlobalLimit').checked;
+    const hasIndiv=limLo.some(x=>x>0)||limHi.some(x=>x<1);
+    const limited=(document.getElementById('useGlobalLimit') && document.getElementById('useGlobalLimit').checked) || hasIndiv;
 
     // Run Monte Carlo (с учётом лимитов)
     st.innerHTML='<span class="loader"></span>Симуляция '+nsim.toLocaleString('ru')+' портфелей...';
