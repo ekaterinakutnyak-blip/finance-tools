@@ -619,6 +619,34 @@ async function loadBond(isin){
   // Флоатер = купоны не известны заранее ДО оферты (или до погашения, если оферты нет).
   let couponType='fix'; // дефолт
   let isDiscount=false;  // дисконтная (бескупонная) бумага
+
+  // ОСНОВНОЙ признак типа — BOND_TYPE прямо из MOEX (description). Надёжнее самодельной логики.
+  // «Флоатер»/«переменн» → флоатер; «дисконт» → дисконтная (фикс, доход от дисконта);
+  // «фикс» → фикс. Если поле недоступно — падаем на фоллбэк по купонам ниже.
+  let bondTypeStr='';
+  try{
+    const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
+    const dd=await moexFetch(dUrl);
+    const dCols=dd.description.columns, dRows=dd.description.data;
+    const nameI=dCols.indexOf('name'), valI=dCols.indexOf('value');
+    let issueName='';
+    for(const r of dRows){
+      if(r[nameI]==='BOND_TYPE') bondTypeStr=String(r[valI]||'').toLowerCase();
+      if(r[nameI]==='ISSUENAME') issueName=String(r[valI]||'').toLowerCase();
+    }
+    // если BOND_TYPE пуст, но в названии выпуска есть «дисконтн» — это дисконтная
+    if(!bondTypeStr && issueName.indexOf('дисконтн')>=0) bondTypeStr='дисконт';
+  }catch(e){}
+
+  let classifiedByType=false;
+  if(bondTypeStr){
+    if(bondTypeStr.indexOf('дисконт')>=0){ couponType='fix'; isDiscount=true; classifiedByType=true; }
+    else if(bondTypeStr.indexOf('флоат')>=0 || bondTypeStr.indexOf('переменн')>=0 || bondTypeStr.indexOf('плавающ')>=0){ couponType='float'; classifiedByType=true; }
+    else if(bondTypeStr.indexOf('фикс')>=0){ couponType='fix'; classifiedByType=true; }
+  }
+
+  // Фоллбэк по купонам (если BOND_TYPE не отдан) — смотрим купоны ДО ближайшей оферты.
+  if(!classifiedByType)
   try{
     const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
     const bd=await moexFetch(bondUrl);
