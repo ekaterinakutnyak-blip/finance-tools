@@ -204,7 +204,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   </div>
   <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
     <div id="fxRatesInfo" style="margin-bottom:0.4rem"></div>
-    Тип купона определяется по будущим купонам в графике облигации — до ближайшей оферты (фикс с put-офертой не считается флоатером, даже если купоны после оферты ещё не объявлены). Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
+    Тип купона определяется по будущим купонам в графике облигации — до ближайшей оферты (фикс с put-офертой не считается флоатером, даже если купоны после оферты ещё не объявлены). Дисконтные (бескупонные) бумаги показаны отдельно — доход у них от разницы цены и номинала, а не от купонов; для анализа они считаются как фикс. Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
   </div>
 </div>
 
@@ -618,6 +618,7 @@ async function loadBond(isin){
   // считаются до оферты (BUYBACKDATE), поэтому и тип купона определяем на том же горизонте.
   // Флоатер = купоны не известны заранее ДО оферты (или до погашения, если оферты нет).
   let couponType='fix'; // дефолт
+  let isDiscount=false;  // дисконтная (бескупонная) бумага
   try{
     const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
     const bd=await moexFetch(bondUrl);
@@ -625,19 +626,29 @@ async function loadBond(isin){
     const today=new Date();
     // горизонт классификации: ближайшая оферта, иначе погашение
     const horizon=offerDate?new Date(offerDate):(matDate?new Date(matDate):null);
-    let futureKnown=0,futureUnknown=0;
+    let futureKnown=0,futureUnknown=0,anyCouponEver=0;
     cRows.forEach(row=>{
       const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
       const cd=obj.coupondate?new Date(obj.coupondate):null;
-      if(!cd||cd<today)return;                 // прошлые купоны игнорим
-      if(horizon&&cd>horizon)return;           // купоны ПОСЛЕ оферты/погашения не смотрим
       const v=parseFloat(obj.value);
       const vp=parseFloat(obj.valueprc);
+      // считаем, был ли КОГДА-ЛИБО ненулевой купон (для отличия дисконтной от флоатера)
+      if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))anyCouponEver++;
+      if(!cd||cd<today)return;                 // прошлые купоны игнорим для горизонта
+      if(horizon&&cd>horizon)return;           // купоны ПОСЛЕ оферты/погашения не смотрим
       if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))futureKnown++;
       else futureUnknown++;
     });
-    if(futureUnknown>0)couponType='float';
-    else if(futureKnown===0 && couponRate===0)couponType='float'; // нет данных и текущая ставка пустая → флоатер
+    // Дисконтная (бескупонная): купонов нет НИГДЕ и ставка нулевая → это ФИКС (доход от дисконта), не флоатер.
+    const isZeroCoupon = (anyCouponEver===0 && couponRate===0);
+    if(isZeroCoupon){
+      couponType='fix';
+      isDiscount=true;                          // дисконтная бумага — покажем отдельным тегом
+    } else if(futureUnknown>0){
+      couponType='float';                       // будущие купоны без значения, но купоны в принципе есть → флоатер
+    } else if(futureKnown===0 && couponRate===0){
+      couponType='float';
+    }
   }catch(e){
     // Фоллбэк: если bondization недоступен — по COUPONPERCENT.
     if(couponRate===0 && couponVal===0)couponType='float';
@@ -724,7 +735,7 @@ async function loadBond(isin){
     emitentId:emitentId||('secid_'+secid),emitentTitle:emitentTitle||shortname,
     couponVal,couponPeriod,couponRate,annualCoupon,currentYield,
     faceValue,price,nkd,matDate,offerDate,nextCoupon,couponsPerYear,board,
-    faceUnit,isRub,currencyLabel,couponType
+    faceUnit,isRub,currencyLabel,couponType,isDiscount
   };
 }
 
@@ -1283,7 +1294,7 @@ async function run(){
     const buckets={cur:{},coup:{fix:0,float:0}};
     bonds.forEach(b=>{
       buckets.cur[b.currencyLabel]=(buckets.cur[b.currencyLabel]||0)+b.marketValue;
-      buckets.coup[b.couponType]=(buckets.coup[b.couponType]||0)+b.marketValue;
+      buckets.coup[b.isDiscount?'discount':b.couponType]=(buckets.coup[b.isDiscount?'discount':b.couponType]||0)+b.marketValue;
     });
     const renderBars=(elId,data,colorMap)=>{
       const el=document.getElementById(elId);el.innerHTML='';
@@ -1306,8 +1317,8 @@ async function run(){
       label:k=>k==='RUB'?'Рублёвые':k+' (валютные)'
     });
     renderBars('structCoupon',buckets.coup,{
-      fix:'var(--accent)',float:'#A67A2E',
-      label:k=>k==='fix'?'Фиксированный':'Флоатер / линкер'
+      fix:'var(--accent)',float:'#A67A2E',discount:'#5B8A72',
+      label:k=>k==='fix'?'Фиксированный':(k==='discount'?'Дисконтные':'Флоатер / линкер')
     });
 
     // ===== Флоатеры: показать контролы базы/надбавки и посчитать спред/PD из цены =====
@@ -1440,7 +1451,7 @@ async function run(){
     let html='<thead><tr><th>Бумага</th><th>Вал.</th><th>Купон</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Выпукл.</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
     bonds.forEach(b=>{
       const curTag=b.isRub?'<span class="tag-rub">'+b.currencyLabel+'</span>':'<span class="tag-fx">'+b.currencyLabel+'</span>';
-      const cTag=b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>';
+      const cTag=b.isDiscount?'<span class="tag-fix">дисконт</span>':(b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>');
       const valueCell=b.isRub
         ? Math.round(b.marketValue).toLocaleString('ru-RU')
         : Math.round(b.marketValue).toLocaleString('ru-RU')+'<br><span style="font-size:0.65rem;color:var(--text3)">'+Math.round(b.marketValueLocal).toLocaleString('ru-RU')+' '+b.currencyLabel+'</span>';
