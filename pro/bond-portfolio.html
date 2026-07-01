@@ -811,10 +811,12 @@ function addManualBond(){
   document.getElementById('manualPanel').style.display='none';
 }
 
-function addRow(isin,qty,fbase,fmargin){
+function addRow(isin,qty,fbase,fmargin,lmin,lmax){
   rowCount++;
   const div=document.createElement('div');div.className='bond-row';
   const showFloat=(fmargin!==undefined && fmargin!==null && String(fmargin).trim()!=='');
+  const vLmin=(lmin!==undefined && lmin!==null)?String(lmin):'';
+  const vLmax=(lmax!==undefined && lmax!==null)?String(lmax):'';
   div.innerHTML='<span class="num">'+rowCount+'</span><input type="text" class="isin" value="'+(isin||'')+'" placeholder="RU000A..."><input type="text" class="qty" value="'+(qty||'')+'" placeholder="шт" inputmode="numeric"><span class="name"></span>'+
     '<span class="floatctl" style="display:'+(showFloat?'inline-flex':'none')+';align-items:center;gap:5px">'+
       '<select class="fbase" style="font-family:var(--mono);font-size:0.72rem;padding:0.25rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">'+
@@ -823,8 +825,8 @@ function addRow(isin,qty,fbase,fmargin){
       '<input type="text" class="fmargin" placeholder="надб.%" inputmode="decimal" value="'+(showFloat?String(fmargin):'')+'" style="width:62px;font-family:var(--mono);font-size:0.72rem;padding:0.25rem 0.4rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);text-align:right">'+
     '</span>'+
     '<span class="limctl" style="display:inline-flex;align-items:center;gap:3px" title="Индивидуальные лимиты доли этой бумаги в оптимизации (пусто = общий лимит)">'+
-      '<input type="text" class="limmin" placeholder="min%" inputmode="decimal" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
-      '<input type="text" class="limmax" placeholder="max%" inputmode="decimal" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
+      '<input type="text" class="limmin" placeholder="min%" inputmode="decimal" value="'+vLmin+'" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
+      '<input type="text" class="limmax" placeholder="max%" inputmode="decimal" value="'+vLmax+'" style="width:48px;font-family:var(--mono);font-size:0.7rem;padding:0.25rem 0.3rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text3);text-align:right">'+
     '</span>'+
     '<button class="remove" onclick="removeRow(this)">×</button>';
   rowsContainer.appendChild(div);
@@ -974,6 +976,10 @@ function pfSave(){
       // если у строки заполнены контролы флоатера — сохраняем базу и надбавку
       const fb=r.querySelector('.fbase'), fm=r.querySelector('.fmargin');
       if(fm && fm.value.trim()!==''){ it.fbase=(fb?fb.value:'key'); it.fmargin=fm.value.trim(); }
+      // индивидуальные лимиты доли бумаги (мин/макс) — сохраняем, если заданы
+      const lmin=r.querySelector('.limmin'), lmax=r.querySelector('.limmax');
+      if(lmin && lmin.value.trim()!==''){ it.lmin=lmin.value.trim(); }
+      if(lmax && lmax.value.trim()!==''){ it.lmax=lmax.value.trim(); }
       items.push(it);
     }
   });
@@ -994,7 +1000,7 @@ function pfLoad(){
   const sel=document.getElementById('pfSelect');if(!sel||!sel.value)return;
   const p=pfAll().find(x=>x.name===sel.value);if(!p)return;
   rowsContainer.innerHTML='';rowCount=0;
-  p.items.forEach(it=>addRow(it.isin,it.qty,it.fbase,it.fmargin));
+  p.items.forEach(it=>addRow(it.isin,it.qty,it.fbase,it.fmargin,it.lmin,it.lmax));
   addRow(); // пустая строка про запас
   renumber();
   const st=document.getElementById('status');
