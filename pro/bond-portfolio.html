@@ -1258,6 +1258,27 @@ async function run(){
 
     st.innerHTML='<span class="loader"></span>Рассчитываю...';
 
+    // Пересчёт купона флоатеров ДО итогов: купон = (база КС/RUONIA + надбавка)% от номинала.
+    // COUPONPERCENT у флоатера = 0, поэтому берём ставку из контрола базы/надбавки в строке.
+    bonds.forEach(b=>{
+      if(b.isRub && b.couponType==='float'){
+        const row=b.qtyRow||b.row;
+        if(!row)return;
+        const baseSel=row.querySelector('.fbase');
+        const marginInp=row.querySelector('.fmargin');
+        let baseRate=getKeyRate();
+        if(baseSel && baseSel.value==='ruonia')baseRate=getRuonia();
+        const m=marginInp?parseFloat((marginInp.value||'').replace(',','.')):NaN;
+        if(isFinite(m)){
+          const floatRate=baseRate+m;
+          b.couponRate=floatRate;
+          b.annualCoupon=b.faceValue*floatRate/100;
+          b.currentYield=b.faceValue>0?(b.annualCoupon/(b.price/100*b.faceValue))*100:0;
+          b.annualCouponRub=b.annualCoupon*b.qty*(b.fxRate||1);
+        }
+      }
+    });
+
     // Total portfolio value
     const totalValue=bonds.reduce((s,b)=>s+b.marketValue,0);
 
