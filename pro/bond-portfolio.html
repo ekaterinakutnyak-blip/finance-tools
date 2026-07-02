@@ -603,7 +603,9 @@ async function loadBond(isin){
   const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
   const nkd=parseFloat(sec.ACCRUEDINT||'0');
   const matDate=sec.MATDATE||'';
-  const offerDate=sec.OFFERDATE||sec.BUYBACKDATE||'';
+  // MOEX отдаёт "0000-00-00" для отсутствующих дат — считаем их пустыми
+  const _validDate=d=>{ const s=String(d||'').trim(); return (s && s!=='0000-00-00' && !s.startsWith('0000')) ? s : ''; };
+  const offerDate=_validDate(sec.OFFERDATE)||_validDate(sec.BUYBACKDATE)||'';
   const nextCoupon=sec.NEXTCOUPON||'';
   const lotSize=parseInt(sec.LOTSIZE||'1');
 
@@ -617,69 +619,84 @@ async function loadBond(isin){
   // Если смотреть до погашения — такой фикс ложно попадает во флоатеры. Доходность/риск всё равно
   // считаются до оферты (BUYBACKDATE), поэтому и тип купона определяем на том же горизонте.
   // Флоатер = купоны не известны заранее ДО оферты (или до погашения, если оферты нет).
+  // ===== КЛАССИФИКАЦИЯ ТИПА КУПОНА — по СУЩНОСТИ (вариативности купонов) =====
+  // Принцип (работает раз и навсегда, не зависит от BOND_TYPE/COUPONPERCENT/оферт):
+  //   • купонов нет вообще                → ДИСКОНТ (бескупонная, доход от дисконта)
+  //   • ставки/суммы купонов РАЗНЫЕ        → ФЛОАТЕР (плавают вслед за индикатором)
+  //   • ставки/суммы ОДИНАКОВЫЕ            → ФИКС (постоянная ставка)
+  // Вариативность считаем по valueprc (ставка %), а если её нет — по value (сумма ₽).
+  // Первый купон отбрасываем (удлинённый/укороченный первый период у фикса — не признак флоатера).
   let couponType='fix'; // дефолт
-  let isDiscount=false;  // дисконтная (бескупонная) бумага
+  let isDiscount=false;
 
-  // ОСНОВНОЙ признак типа — BOND_TYPE прямо из MOEX (description). Надёжнее самодельной логики.
-  // «Флоатер»/«переменн» → флоатер; «дисконт» → дисконтная (фикс, доход от дисконта);
-  // «фикс» → фикс. Если поле недоступно — падаем на фоллбэк по купонам ниже.
-  let bondTypeStr='';
-  try{
-    const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
-    const dd=await moexFetch(dUrl);
-    const dCols=dd.description.columns, dRows=dd.description.data;
-    const nameI=dCols.indexOf('name'), valI=dCols.indexOf('value');
-    let issueName='';
-    for(const r of dRows){
-      if(r[nameI]==='BOND_TYPE') bondTypeStr=String(r[valI]||'').toLowerCase();
-      if(r[nameI]==='ISSUENAME') issueName=String(r[valI]||'').toLowerCase();
-    }
-    // если BOND_TYPE пуст, но в названии выпуска есть «дисконтн» — это дисконтная
-    if(!bondTypeStr && issueName.indexOf('дисконтн')>=0) bondTypeStr='дисконт';
-  }catch(e){}
-
-  let classifiedByType=false;
-  if(bondTypeStr){
-    if(bondTypeStr.indexOf('дисконт')>=0){ couponType='fix'; isDiscount=true; classifiedByType=true; }
-    else if(bondTypeStr.indexOf('флоат')>=0 || bondTypeStr.indexOf('переменн')>=0 || bondTypeStr.indexOf('плавающ')>=0){ couponType='float'; classifiedByType=true; }
-    else if(bondTypeStr.indexOf('фикс')>=0){ couponType='fix'; classifiedByType=true; }
-  }
-
-  // Фоллбэк по купонам (если BOND_TYPE не отдан) — смотрим купоны ДО ближайшей оферты.
-  if(!classifiedByType)
   try{
     const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
     const bd=await moexFetch(bondUrl);
-    const cCols=bd.coupons.columns;const cRows=bd.coupons.data;
-    const today=new Date();
-    // горизонт классификации: ближайшая оферта, иначе погашение
-    const horizon=offerDate?new Date(offerDate):(matDate?new Date(matDate):null);
-    let futureKnown=0,futureUnknown=0,anyCouponEver=0;
+    const cCols=bd.coupons.columns, cRows=bd.coupons.data;
+    const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc');
+    // купоны с известным значением (value>0 или valueprc>0)
+    const known=[];
     cRows.forEach(row=>{
-      const obj={};cCols.forEach((c,i)=>obj[c]=row[i]);
-      const cd=obj.coupondate?new Date(obj.coupondate):null;
-      const v=parseFloat(obj.value);
-      const vp=parseFloat(obj.valueprc);
-      // считаем, был ли КОГДА-ЛИБО ненулевой купон (для отличия дисконтной от флоатера)
-      if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))anyCouponEver++;
-      if(!cd||cd<today)return;                 // прошлые купоны игнорим для горизонта
-      if(horizon&&cd>horizon)return;           // купоны ПОСЛЕ оферты/погашения не смотрим
-      if((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0))futureKnown++;
-      else futureUnknown++;
+      const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
+      const hasV=(!isNaN(v)&&v>0), hasVp=(!isNaN(vp)&&vp>0);
+      if(hasV||hasVp) known.push({value:hasV?v:null, valueprc:hasVp?vp:null});
     });
-    // Дисконтная (бескупонная): купонов нет НИГДЕ и ставка нулевая → это ФИКС (доход от дисконта), не флоатер.
-    const isZeroCoupon = (anyCouponEver===0 && couponRate===0);
-    if(isZeroCoupon){
-      couponType='fix';
-      isDiscount=true;                          // дисконтная бумага — покажем отдельным тегом
-    } else if(futureUnknown>0){
-      couponType='float';                       // будущие купоны без значения, но купоны в принципе есть → флоатер
-    } else if(futureKnown===0 && couponRate===0){
-      couponType='float';
+
+    if(known.length===0){
+      // купонов нет вообще → дисконтная (бескупонная)
+      couponType='fix'; isDiscount=true;
+    }else{
+      // есть ли будущие НЕобъявленные купоны (null) — признак плавающей ставки
+      const today=new Date();
+      let hasFutureUnknown=false;
+      const cdI=cCols.indexOf('coupondate');
+      cRows.forEach(row=>{
+        const cd=row[cdI]?new Date(row[cdI]):null;
+        const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
+        const unknown=!((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0));
+        if(cd&&cd>=today&&unknown)hasFutureUnknown=true;
+      });
+      // ряд для сравнения: предпочитаем СТАВКУ (valueprc) — у неё удлинённый первый период
+      // не мешает (ставка та же, меняется только сумма). Если valueprc нет — берём сумму value,
+      // и тогда отбрасываем первый купон (возможный удлинённый/укороченный период).
+      const havePrc=known.some(c=>c.valueprc!=null);
+      const round=x=>Math.round(x*100)/100;
+      let series;
+      if(havePrc){
+        series=known.filter(c=>c.valueprc!=null&&c.valueprc>0).map(c=>c.valueprc);
+      }else{
+        series=known.map(c=>c.value).filter(x=>x!=null&&x>0).slice(1); // без первого периода
+      }
+      const uniq=[...new Set(series.map(round))];
+      const varied=(uniq.length>=2);
+
+      if(!varied){
+        couponType='fix';                        // ставки одинаковые → фикс
+      }else if(hasFutureUnknown){
+        couponType='float';                      // ставки разные И есть неназначенные будущие → флоатер
+      }else{
+        couponType='fix';                        // ставки разные, но ВСЕ известны заранее → фикс «лесенкой»
+      }
     }
   }catch(e){
-    // Фоллбэк: если bondization недоступен — по COUPONPERCENT.
-    if(couponRate===0 && couponVal===0)couponType='float';
+    // bondization недоступен — резервно по описанию/ставке
+    try{
+      const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
+      const dd=await moexFetch(dUrl);
+      const dCols=dd.description.columns, dRows=dd.description.data;
+      const nI=dCols.indexOf('name'), vI2=dCols.indexOf('value');
+      let bt='', iname='';
+      for(const r of dRows){
+        if(r[nI]==='BOND_TYPE') bt=String(r[vI2]||'').toLowerCase();
+        if(r[nI]==='ISSUENAME') iname=String(r[vI2]||'').toLowerCase();
+      }
+      if(bt.indexOf('дисконт')>=0||iname.indexOf('дисконтн')>=0){ couponType='fix'; isDiscount=true; }
+      else if(bt.indexOf('флоат')>=0||bt.indexOf('переменн')>=0||bt.indexOf('плавающ')>=0){ couponType='float'; }
+      else if(couponRate>0){ couponType='fix'; }
+      else if(couponRate===0&&couponVal===0){ couponType='float'; }
+    }catch(e2){
+      if(couponRate===0&&couponVal===0)couponType='float';
+    }
   }
 
   // Duration in years
@@ -1738,8 +1755,10 @@ function runOptimizer(){
   const excluded=[];
   const bonds=allBonds.filter(b=>{
     const horizon=b.offerDate?new Date(b.offerDate):(b.matDate?new Date(b.matDate):null);
-    if(horizon){
+    if(horizon && !isNaN(horizon.getTime())){
       const days=(horizon.getTime()-nowMs)/(1000*3600*24);
+      // уже погашенные/на дату погашения (days<=0) исключаем ВСЕГДА; плюс отсев раньше N дней
+      if(days<=0){ excluded.push({name:b.shortname,days:0,matured:true}); return false; }
       if(days < minDays){ excluded.push({name:b.shortname,days:Math.max(0,Math.round(days))}); return false; }
     }
     return true;
@@ -1794,7 +1813,7 @@ function runOptimizer(){
       '<div class="status ok" style="margin-bottom:0.6rem">Оптимум найден · YTM '+r.ytm.toFixed(2)+'% · дюрация '+r.dur.toFixed(2)+' лет'+(avgSpread!=null?' · ср. спред '+Math.round(avgSpread)+' бп':'')+' · макс. эмитент '+(maxIss*100).toFixed(0)+'%</div>'+
       '<table class="weights" style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr><th style="text-align:left">Бумага</th><th style="text-align:right">Доля</th><th style="text-align:right">YTM</th><th style="text-align:right">Дюрация</th><th style="text-align:right">Спред</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div style="font-size:0.68rem;color:var(--text3);margin-top:0.5rem">Максимум YTM при дюрации '+Dtgt.toFixed(2)+'±'+tol.toFixed(2)+'. Спред портфеля — по бумагам, у которых он рассчитан (фиксы: Z-spread к ОФЗ; флоатеры: надбавка + дисконт-маржа из цены). Бумаги без спреда в ограничение по спреду не входят.</div>'+
-      (excluded.length>0 ? '<div style="font-size:0.68rem;color:#C25A1E;margin-top:0.4rem">Исключены из оптимизации (погашение/оферта раньше '+minDays+' дн.): '+excluded.map(e=>e.name+' — через '+e.days+' дн.').join('; ')+'.</div>' : '')+
+      (excluded.length>0 ? '<div style="font-size:0.68rem;color:#C25A1E;margin-top:0.4rem">Исключены из оптимизации: '+excluded.map(e=>e.matured?(e.name+' — погашена'):(e.name+' — погашение через '+e.days+' дн.')).join('; ')+'.</div>' : '')+
       '<div class="btn-row" style="margin-top:0.7rem"><button class="btn-sm" onclick="saveOptimum()">💾 Сохранить оптимум как портфель</button></div>';
   },30);
 }
