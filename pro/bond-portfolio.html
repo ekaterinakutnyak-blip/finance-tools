@@ -1255,9 +1255,18 @@ async function run(){
     await loadGcurve();
 
     const bonds=[];
+    const maturedBonds=[];
+    const nowMs0=Date.now();
     for(let i=0;i<port.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
       const b=await loadBond(port[i].isin);
+      // Отсев ПОГАШЕННЫХ бумаг: дата погашения (или оферты) уже прошла — в портфеле их нет.
+      const hz=b.offerDate?new Date(b.offerDate):(b.matDate?new Date(b.matDate):null);
+      if(hz && !isNaN(hz.getTime()) && (hz.getTime()-nowMs0)<=0){
+        maturedBonds.push({name:b.shortname||port[i].isin, date:b.matDate});
+        if(port[i].row){ const nm=port[i].row.querySelector('.name'); if(nm)nm.textContent=(b.shortname||'')+' — погашена'; }
+        continue; // не включаем в расчёт портфеля
+      }
       b.qty=port[i].qty;
       // Курс к рублю для валюты номинала. Для RUB/SUR = 1.
       b.fxRate=fxRates[b.faceUnit]||1;
@@ -1272,6 +1281,7 @@ async function run(){
       bonds.push(b);
       port[i].row.querySelector('.name').textContent=b.shortname;
     }
+    window._maturedBonds=maturedBonds;
 
     st.innerHTML='<span class="loader"></span>Рассчитываю...';
 
@@ -1596,7 +1606,11 @@ async function run(){
     }});
 
     st.className='status ok';
-    st.textContent='Загружено '+bonds.length+' облигаций · стоимость '+Math.round(totalValue).toLocaleString('ru-RU')+' ₽ · YTM '+wYTM.toFixed(2)+'% · дюрация '+wDuration.toFixed(2)+' лет';
+    let statusMsg='Загружено '+bonds.length+' облигаций · стоимость '+Math.round(totalValue).toLocaleString('ru-RU')+' ₽ · YTM '+wYTM.toFixed(2)+'% · дюрация '+wDuration.toFixed(2)+' лет';
+    if(window._maturedBonds && window._maturedBonds.length>0){
+      statusMsg+=' · Исключены (погашены): '+window._maturedBonds.map(m=>m.name).join(', ');
+    }
+    st.textContent=statusMsg;
 
     // ===== Сохраняем готовый портфель для оптимизатора =====
     _optBonds=bonds;
