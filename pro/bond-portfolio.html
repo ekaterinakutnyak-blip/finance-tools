@@ -1316,7 +1316,7 @@ async function run(){
     document.getElementById('weightTotal').textContent='Портфель: '+Math.round(totalValue).toLocaleString('ru-RU')+' ₽';
     document.getElementById('weightTotal').style.color='var(--green)';
 
-    // Weighted averages
+    // Weighted averages (общие — по стоимости, для стоимости/купона/структуры)
     const wYTM=bonds.reduce((s,b)=>s+b.weight*b.ytm,0);
     const wDuration=bonds.reduce((s,b)=>s+b.weight*b.duration,0);
     const wModDuration=bonds.reduce((s,b)=>s+b.weight*b.modDuration,0);
@@ -1325,18 +1325,61 @@ async function run(){
     const wCurrentYield=bonds.reduce((s,b)=>s+b.weight*b.currentYield,0);
     const totalAnnualCoupon=bonds.reduce((s,b)=>s+b.annualCouponRub,0);
 
+    // Раздельные метрики по валюте номинала: доходность и дюрация не смешиваем между валютами.
+    // Внутри каждой группы веса считаем от стоимости ЭТОЙ группы.
+    function partMetrics(list){
+      const v=list.reduce((s,b)=>s+b.marketValue,0);
+      if(v<=0) return null;
+      return {
+        value:v,
+        ytm:list.reduce((s,b)=>s+(b.marketValue/v)*b.ytm,0),
+        dur:list.reduce((s,b)=>s+(b.marketValue/v)*b.duration,0),
+        modDur:list.reduce((s,b)=>s+(b.marketValue/v)*b.modDuration,0),
+        cy:list.reduce((s,b)=>s+(b.marketValue/v)*b.currentYield,0),
+        n:list.length
+      };
+    }
+    const rubPart=partMetrics(bonds.filter(b=>b.isRub));
+    const fxGroups={};
+    bonds.filter(b=>!b.isRub).forEach(b=>{(fxGroups[b.faceUnit]=fxGroups[b.faceUnit]||[]).push(b);});
+    const hasFx=Object.keys(fxGroups).length>0;
+
     // Summary
     document.getElementById('summaryCard').classList.remove('hidden');
     const sg=document.getElementById('summaryGrid');sg.innerHTML='';
-    [
-      {l:'Стоимость портфеля',v:Math.round(totalValue).toLocaleString('ru-RU')+' ₽',s:'по рыночным ценам',c:'hl'},
-      {l:'Доходность (YTM)',v:wYTM.toFixed(2)+'%',s:'средневзвешенная',c:'hl'},
-      {l:'Купонный доход/год',v:Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+' ₽',s:'до вычета налогов',c:'hl'},
-      {l:'Дюрация',v:wDuration.toFixed(2)+' лет',s:'средневзвешенная',c:'hl2'},
-      {l:'Мод. дюрация',v:wModDuration.toFixed(2),s:'чувствительность к ставке',c:'hl2'},
-      {l:'Выпуклость',v:wConvexity.toFixed(1),s:'асимметрия к движению ставки',c:'hl2'},
-      {l:'Текущая доходность',v:wCurrentYield.toFixed(2)+'%',s:'купон / цена',c:''}
-    ].forEach(m=>{
+    const cur=code=>code==='USD'?'$':code==='EUR'?'€':code==='CNY'?'¥':code;
+    let cards;
+    if(hasFx){
+      // Портфель с валютными бумагами — доходность и дюрацию показываем раздельно по валютам
+      cards=[
+        {l:'Стоимость портфеля',v:Math.round(totalValue).toLocaleString('ru-RU')+' ₽',s:'по рыночным ценам',c:'hl'},
+        {l:'Купонный доход/год',v:Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+' ₽',s:'до вычета налогов, все валюты в ₽',c:'hl'},
+      ];
+      if(rubPart) cards.push(
+        {l:'Доходность ₽-части',v:rubPart.ytm.toFixed(2)+'%',s:'рублёвые бумаги · '+Math.round(rubPart.value).toLocaleString('ru-RU')+' ₽',c:'hl'},
+        {l:'Дюрация ₽-части',v:rubPart.dur.toFixed(2)+' лет',s:'рублёвые бумаги',c:'hl2'}
+      );
+      Object.keys(fxGroups).forEach(code=>{
+        const p=partMetrics(fxGroups[code]);
+        cards.push(
+          {l:'Доходность '+cur(code)+'-части',v:p.ytm.toFixed(2)+'%',s:code+' бумаги · '+Math.round(p.value).toLocaleString('ru-RU')+' ₽',c:'hl'},
+          {l:'Дюрация '+cur(code)+'-части',v:p.dur.toFixed(2)+' лет',s:code+' бумаги',c:'hl2'}
+        );
+      });
+      cards.push({l:'Выпуклость',v:wConvexity.toFixed(1),s:'портфель целиком',c:'hl2'});
+    } else {
+      // Чисто рублёвый портфель — как раньше
+      cards=[
+        {l:'Стоимость портфеля',v:Math.round(totalValue).toLocaleString('ru-RU')+' ₽',s:'по рыночным ценам',c:'hl'},
+        {l:'Доходность (YTM)',v:wYTM.toFixed(2)+'%',s:'средневзвешенная',c:'hl'},
+        {l:'Купонный доход/год',v:Math.round(totalAnnualCoupon).toLocaleString('ru-RU')+' ₽',s:'до вычета налогов',c:'hl'},
+        {l:'Дюрация',v:wDuration.toFixed(2)+' лет',s:'средневзвешенная',c:'hl2'},
+        {l:'Мод. дюрация',v:wModDuration.toFixed(2),s:'чувствительность к ставке',c:'hl2'},
+        {l:'Выпуклость',v:wConvexity.toFixed(1),s:'асимметрия к движению ставки',c:'hl2'},
+        {l:'Текущая доходность',v:wCurrentYield.toFixed(2)+'%',s:'купон / цена',c:''}
+      ];
+    }
+    cards.forEach(m=>{
       const el=document.createElement('div');el.className='metric '+(m.c||'');
       el.innerHTML='<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span>';
       sg.appendChild(el);
