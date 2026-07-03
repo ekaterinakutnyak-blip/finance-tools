@@ -739,12 +739,18 @@ async function loadBond(isin){
   // Calc modified duration
   const modDuration=ytm>0?durationYears/(1+ytm/100):0;
 
-  // Выпуклость (convexity): поправка 2-го порядка к дюрации.
-  // Считаем по денежным потокам: C = Σ[t(t+1)·PV_t] / [P·(1+y)²], в годах².
+  // Выпуклость (convexity): поправка 2-го порядка к дюрации. Горизонт:
+  //   1) есть оферта (OFFERDATE/BUYBACKDATE, очищенная от "0000-00-00") → считаем ДО ДАТЫ ОФЕРТЫ;
+  //   2) флоатер без оферты → convexity=null («—» в таблице, 0 в портфель): выпуклость к нему неприменима,
+  //      купон плавает под ставку, бумага к ставке нечувствительна — кривизны нет;
+  //   3) обычная бумага → до погашения.
   let convexity=0;
-  if(matDate && ytm>0){
+  const _cvHorizon = offerDate || matDate;
+  if(couponType==='float' && !offerDate){
+    convexity=null; // флоатер без оферты — метрика неприменима
+  } else if(_cvHorizon && ytm>0){
     const today=new Date();
-    const mat=new Date(matDate);
+    const mat=new Date(_cvHorizon);
     const T=(mat-today)/(365.25*24*60*60*1000);
     if(T>0){
       const y=ytm/100;
