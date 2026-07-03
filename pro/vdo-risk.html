@@ -96,6 +96,16 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .warn-note{font-size:0.72rem;color:var(--amber);background:var(--amber-bg);border:1px solid rgba(166,122,46,0.2);border-radius:var(--radius);padding:0.6rem 0.8rem;margin-top:0.75rem}
 .print-btn{position:fixed;bottom:20px;right:20px;z-index:100}
 @media print{.print-btn,.btn,.btn-sm,.toggle-mode,.lookup-row input,input[type=range],.bond-row .remove{display:none!important}body{background:#fff}.card{break-inside:avoid;box-shadow:none}}
+.cmp-head,.cmp-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:6px 4px}
+.cmp-head{border-bottom:2px solid var(--border);font-weight:600;font-size:0.78rem;color:var(--text2)}
+.cmp-row{border-bottom:1px solid var(--border)}
+.cmp-row .cmp-lbl{font-size:0.82rem;color:var(--text2)}
+.cmp-row .cmp-val{font-family:var(--mono);font-size:0.88rem;text-align:right}
+.cmp-head .cmp-val{text-align:right;font-family:inherit}
+.cmp-name{font-weight:600;color:var(--text);font-size:0.8rem}
+.cmp-good{color:var(--green,#2E7D32);font-weight:700}
+.cmp-bad{color:var(--red,#C62828);font-weight:700}
+.cmp-section{margin-top:14px;margin-bottom:4px;font-size:0.78rem;font-weight:600;color:var(--accent)}
 </style>
 </head>
 <body>
@@ -122,6 +132,19 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     <button class="btn-sm" onclick="pfLoad()">Загрузить</button>
     <button class="btn-sm" onclick="pfSave()">Сохранить текущий</button>
     <button class="btn-sm" onclick="pfDelete()">Удалить</button>
+  </div>
+  <div class="btn-row" id="cmpBar" style="margin-top:0.4rem;padding-top:0.6rem;border-top:1px dashed var(--border)">
+    <span style="font-size:0.78rem;color:var(--text2)">Сравнить два портфеля:</span>
+    <select id="cmpSelA" onfocus="cmpRefresh()" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);max-width:200px"></select>
+    <span style="font-size:0.78rem;color:var(--text2)">vs</span>
+    <select id="cmpSelB" onfocus="cmpRefresh()" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);max-width:200px"></select>
+    <button class="btn-sm" id="cmpBtn" onclick="runCompare()">Сравнить →</button>
+    <span class="status" id="cmpStatus" style="display:inline-block;margin-left:0.4rem"></span>
+  </div>
+  <div class="card hidden" id="cmpResultCard" style="margin-top:0.8rem">
+    <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.6rem">СРАВНЕНИЕ ПОРТФЕЛЕЙ</div>
+    <div id="cmpResult"></div>
+    <div style="font-size:0.72rem;color:var(--text2);margin-top:0.8rem;line-height:1.4">Зелёным выделено, где портфель Б лучше портфеля А (доходность выше / кредитный риск ниже). Дюрация и выпуклость не оцениваются «лучше-хуже» — они зависят от цели. Кредитный риск — по рублёвым фикс-бумагам каждого портфеля.</div>
   </div>
 
   <div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem">
@@ -431,9 +454,12 @@ async function loadBond(isin){
   const faceValue=parseFloat(sec.FACEVALUE||'1000');
   const price=parseFloat(md.LAST||sec.PREVLEGALCLOSEPRICE||sec.PREVWAPRICE||'100');
   const nkd=parseFloat(sec.ACCRUEDINT||'0');
-  const matDate=sec.MATDATE||'';
-  const offerDate=sec.OFFERDATE||sec.BUYBACKDATE||'';
-  const nextCoupon=sec.NEXTCOUPON||'';
+  // MOEX для погашающихся/офертных бумаг иногда отдаёт "0000-00-00" — считаем такие даты пустыми,
+  // иначе new Date() даёт Invalid Date → NaN и ломает расчёт/отсев (баг ВУШ RU000A106HB4).
+  const _validDate=d=>{const s=String(d||'').trim();return (s && s!=='0000-00-00' && !s.startsWith('0000'))?s:'';};
+  const matDate=_validDate(sec.MATDATE);
+  const offerDate=_validDate(sec.OFFERDATE)||_validDate(sec.BUYBACKDATE);
+  const nextCoupon=_validDate(sec.NEXTCOUPON);
   // Дисконтная (бескупонная): купонов нет по конструкции — COUPONPERIOD=0, нет даты следующего купона, купон нулевой
   const isDiscountSig=(parseInt(sec.COUPONPERIOD)===0)&&(!sec.NEXTCOUPON||sec.NEXTCOUPON==='0000-00-00')&&couponVal===0&&couponRate===0;
   const lotSize=parseInt(sec.LOTSIZE||'1');
@@ -672,6 +698,7 @@ function pfRefresh(){
   const sel=document.getElementById('pfSelect');if(!sel)return;
   const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
   sel.innerHTML='<option value="">— выберите —</option>'+list.map(p=>'<option value="'+String(p.name).replace(/"/g,'&quot;')+'">'+p.name+' ('+p.items.length+' бум.)</option>').join('');
+  if(typeof cmpRefresh==='function')cmpRefresh();
 }
 function pfSave(){
   const items=[];
@@ -823,7 +850,7 @@ function lossAtTailProb(D, prob){
 // ======================================================================
 // Запуск: грузим бумаги с MOEX (переиспользует loadBond/computeCreditMetrics)
 // ======================================================================
-let _lastBonds=null, _lastTotal=0, _curveChart=null;
+let _lastBonds=null, _lastTotal=0, _curveChart=null, _maturedBonds=[];
 
 async function run(){
   const port=getPortfolio();
@@ -836,11 +863,20 @@ async function run(){
     if(!gcurvePoints.length){st.className='status err';st.textContent='Не удалось загрузить кривую ОФЗ с MOEX. Попробуйте ещё раз.';btn.disabled=false;return}
 
     const bonds=[];
+    const maturedBonds=[];
+    const nowMs=Date.now();
     for(let i=0;i<port.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+port[i].isin+' ('+(i+1)+'/'+port.length+')...';
       let b;
       try{b=await loadBond(port[i].isin);}
       catch(e){st.className='status err';st.textContent=port[i].isin+': '+e.message;btn.disabled=false;return}
+      // Погашенные/гасящиеся сегодня (горизонт <= сегодня) — не считаем, помечаем в строке.
+      const horizon=b.offerDate?new Date(b.offerDate):(b.matDate?new Date(b.matDate):null);
+      if(horizon && !isNaN(horizon.getTime()) && (horizon.getTime()-nowMs)/(1000*3600*24) <= 0){
+        maturedBonds.push(b.shortname||port[i].isin);
+        port[i].row.querySelector('.name').textContent=(b.shortname||'')+' — погашена';
+        continue;
+      }
       b.qty=port[i].qty;
       b.dirtyPerBond=(b.price/100*b.faceValue)+b.nkd;     // грязная цена 1 бумаги, ₽
       b.positionValue=b.dirtyPerBond*b.qty;               // вложено в позицию, ₽
@@ -857,10 +893,132 @@ async function run(){
       port[i].row.querySelector('.name').textContent=b.shortname||'';
       bonds.push(b);
     }
+    if(bonds.length<1){st.className='status err';st.textContent='Все бумаги погашены или не загрузились. Проверьте портфель.';btn.disabled=false;return}
     _lastBonds=bonds;
-    st.className='status ok';st.textContent='Готово. Параметры можно менять — пересчёт мгновенный.';
+    _maturedBonds=maturedBonds;
+    let okMsg='Готово. Параметры можно менять — пересчёт мгновенный.';
+    if(maturedBonds.length)okMsg+=' Исключены (погашены): '+maturedBonds.join(', ')+'.';
+    st.className='status ok';st.textContent=okMsg;
     recompute();
   }finally{btn.disabled=false;}
+}
+
+// ===== Сравнение двух портфелей =====
+function cmpRefresh(){
+  const list=pfAll().slice().sort((a,b)=>(b.updated||'').localeCompare(a.updated||''));
+  ['cmpSelA','cmpSelB'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— выберите —</option>'+list.map(p=>'<option value="'+String(p.name).replace(/"/g,'&quot;')+'">'+p.name+' ('+p.items.length+' бум.)</option>').join('');
+    if(cur)sel.value=cur;
+  });
+}
+
+async function computePortfolioStats(items, progressCb){
+  await loadGcurve();
+  const nowMs=Date.now();
+  const bonds=[];
+  for(let i=0;i<items.length;i++){
+    if(progressCb)progressCb('Загрузка '+items[i].isin+' ('+(i+1)+'/'+items.length+')...');
+    let b;
+    try{ b=await loadBond(items[i].isin); }catch(e){ continue; }
+    b.qty=parseFloat(items[i].qty)||0;
+    if(b.qty<=0)continue;
+    // отсев погашённых
+    const horizon=b.offerDate?new Date(b.offerDate):(b.matDate?new Date(b.matDate):null);
+    if(horizon && !isNaN(horizon.getTime()) && (horizon.getTime()-nowMs)/(1000*3600*24)<=0)continue;
+    b.marketValue=(b.price/100*b.faceValue)*b.qty;
+    b.annualCouponRub=b.annualCoupon*b.qty;
+    b.isFloat=(b.couponType==='float');
+    bonds.push(b);
+  }
+  if(bonds.length===0)return null;
+  const totalValue=bonds.reduce((s,b)=>s+b.marketValue,0);
+  bonds.forEach(b=>{b.weight=b.marketValue/totalValue});
+  const wYTM=bonds.reduce((s,b)=>s+b.weight*b.ytm,0);
+  const wDuration=bonds.reduce((s,b)=>s+b.weight*b.duration,0);
+  const wModDuration=bonds.reduce((s,b)=>s+b.weight*b.modDuration,0);
+  const totalAnnualCoupon=bonds.reduce((s,b)=>s+b.annualCouponRub,0);
+  const currentYield=bonds.reduce((s,b)=>s+b.weight*(b.currentYield||0),0);
+  const rubFix=bonds.filter(b=>b.isRub&&b.couponType==='fix');
+  let wZ=0,wG=0,wPDann=0,zones={premium:0,quality:0,medium:0,vdo:0};
+  if(rubFix.length>0 && gcurvePoints.length>0){
+    for(let i=0;i<rubFix.length;i++){
+      const b=rubFix[i];
+      if(progressCb)progressCb('Кредит. риск: '+b.shortname+' ('+(i+1)+'/'+rubFix.length+')...');
+      const dirty=b.price/100*b.faceValue+b.nkd;
+      try{ b.credit=await computeCreditMetrics(b,dirty); }catch(e){ b.credit=null; }
+    }
+    const valid=rubFix.filter(b=>b.credit&&b.credit.zSpread!==null);
+    const vv=valid.reduce((s,b)=>s+b.marketValue,0);
+    if(vv>0){
+      wZ=valid.reduce((s,b)=>s+b.marketValue*b.credit.zSpread,0)/vv;
+      wG=valid.reduce((s,b)=>s+b.marketValue*b.credit.gSpread,0)/vv;
+      wPDann=valid.reduce((s,b)=>s+b.marketValue*b.credit.pdAnnual,0)/vv;
+    }
+    valid.forEach(b=>{const bps=b.credit.zSpreadBps;
+      if(bps<100)zones.premium+=b.marketValue;else if(bps<300)zones.quality+=b.marketValue;
+      else if(bps<700)zones.medium+=b.marketValue;else zones.vdo+=b.marketValue;});
+  }
+  const stress={};
+  [-200,-100,100,200].forEach(bp=>{const dy=bp/10000;stress[bp]=(-wModDuration*dy)*100;});
+  return {count:bonds.length,totalValue,wYTM,wDuration,wModDuration,
+    totalAnnualCoupon,currentYield,wZ:wZ*100,wG:wG*100,wPD:wPDann*100,zones,stress};
+}
+
+async function runCompare(){
+  const nameA=document.getElementById('cmpSelA').value;
+  const nameB=document.getElementById('cmpSelB').value;
+  if(!nameA||!nameB){alert('Выберите два портфеля.');return;}
+  if(nameA===nameB){alert('Выберите два разных портфеля.');return;}
+  const pA=pfAll().find(p=>p.name===nameA), pB=pfAll().find(p=>p.name===nameB);
+  if(!pA||!pB){alert('Портфель не найден.');return;}
+  const st=document.getElementById('cmpStatus'), btn=document.getElementById('cmpBtn');
+  btn.disabled=true;
+  try{
+    const A=await computePortfolioStats(pA.items,t=>{st.className='status';st.innerHTML='<span class="loader"></span>А · '+t;});
+    const B=await computePortfolioStats(pB.items,t=>{st.className='status';st.innerHTML='<span class="loader"></span>Б · '+t;});
+    if(!A||!B){st.className='status err';st.textContent='Не удалось рассчитать один из портфелей.';btn.disabled=false;return;}
+    renderCompare(nameA,A,nameB,B);
+    st.className='status';st.textContent='';
+  }catch(e){st.className='status err';st.textContent='Ошибка: '+e.message;}
+  btn.disabled=false;
+}
+
+function fmtR(n){return Math.round(n).toLocaleString('ru-RU');}
+function renderCompare(nameA,A,nameB,B){
+  const card=document.getElementById('cmpResult');
+  const rows=[
+    ['Стоимость, ₽', fmtR(A.totalValue), fmtR(B.totalValue), B.totalValue-A.totalValue, '', 'rub'],
+    ['YTM, %', A.wYTM.toFixed(2), B.wYTM.toFixed(2), B.wYTM-A.wYTM, 'hi', 'pct'],
+    ['Купон/год, ₽', fmtR(A.totalAnnualCoupon), fmtR(B.totalAnnualCoupon), B.totalAnnualCoupon-A.totalAnnualCoupon, 'hi', 'rub'],
+    ['Текущая дох., %', A.currentYield.toFixed(2), B.currentYield.toFixed(2), B.currentYield-A.currentYield, 'hi', 'pct'],
+    ['Дюрация, лет', A.wDuration.toFixed(2), B.wDuration.toFixed(2), B.wDuration-A.wDuration, '', 'num'],
+    ['Мод. дюрация', A.wModDuration.toFixed(2), B.wModDuration.toFixed(2), B.wModDuration-A.wModDuration, '', 'num'],
+    ['Ср. Z-spread, бп', Math.round(A.wZ)+'', Math.round(B.wZ)+'', B.wZ-A.wZ, 'lo', 'bps'],
+    ['Ср. PD/год, %', A.wPD.toFixed(2), B.wPD.toFixed(2), B.wPD-A.wPD, 'lo', 'pct'],
+  ];
+  let html='<div class="cmp-head"><div class="cmp-lbl"></div><div class="cmp-val cmp-name">'+nameA+'</div><div class="cmp-val cmp-name">'+nameB+'</div><div class="cmp-val">Δ</div></div>';
+  rows.forEach(([label,a,b,delta,mode,fmt])=>{
+    let dStr='—', dCls='';
+    if(Math.abs(delta)>1e-9){
+      let dv;
+      if(fmt==='rub')dv=(delta>0?'+':'')+fmtR(delta);
+      else if(fmt==='bps')dv=(delta>0?'+':'')+Math.round(delta);
+      else dv=(delta>0?'+':'')+delta.toFixed(2);
+      dStr=dv;
+      if(mode==='hi')dCls=delta>0?'cmp-good':'cmp-bad';
+      else if(mode==='lo')dCls=delta<0?'cmp-good':'cmp-bad';
+    }
+    html+='<div class="cmp-row"><div class="cmp-lbl">'+label+'</div><div class="cmp-val">'+a+'</div><div class="cmp-val">'+b+'</div><div class="cmp-val '+dCls+'">'+dStr+'</div></div>';
+  });
+  html+='<div class="cmp-section">Стресс-тест · изменение стоимости при сдвиге ключевой ставки</div>';
+  [-200,-100,100,200].forEach(bp=>{
+    const a=A.stress[bp], b=B.stress[bp], d=b-a;
+    html+='<div class="cmp-row"><div class="cmp-lbl">'+(bp>0?'+':'')+bp+' бп</div><div class="cmp-val">'+(a>0?'+':'')+a.toFixed(2)+'%</div><div class="cmp-val">'+(b>0?'+':'')+b.toFixed(2)+'%</div><div class="cmp-val">'+(Math.abs(d)>1e-9?(d>0?'+':'')+d.toFixed(2):'—')+'</div></div>';
+  });
+  card.innerHTML=html;
+  document.getElementById('cmpResultCard').classList.remove('hidden');
 }
 
 // пересчёт от уже загруженных данных (RR slider, вопросы — без MOEX)

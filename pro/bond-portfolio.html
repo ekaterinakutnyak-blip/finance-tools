@@ -1335,6 +1335,7 @@ async function run(){
         ytm:list.reduce((s,b)=>s+(b.marketValue/v)*b.ytm,0),
         dur:list.reduce((s,b)=>s+(b.marketValue/v)*b.duration,0),
         modDur:list.reduce((s,b)=>s+(b.marketValue/v)*b.modDuration,0),
+        conv:list.reduce((s,b)=>s+(b.marketValue/v)*(b.convexity||0),0),
         cy:list.reduce((s,b)=>s+(b.marketValue/v)*b.currentYield,0),
         n:list.length
       };
@@ -1357,16 +1358,15 @@ async function run(){
       ];
       if(rubPart) cards.push(
         {l:'Доходность ₽-части',v:rubPart.ytm.toFixed(2)+'%',s:'рублёвые бумаги · '+Math.round(rubPart.value).toLocaleString('ru-RU')+' ₽',c:'hl'},
-        {l:'Дюрация ₽-части',v:rubPart.dur.toFixed(2)+' лет',s:'рублёвые бумаги',c:'hl2'}
+        {l:'Дюрация ₽-части',v:rubPart.dur.toFixed(2)+' лет',s:'выпуклость '+rubPart.conv.toFixed(1),c:'hl2'}
       );
       Object.keys(fxGroups).forEach(code=>{
         const p=partMetrics(fxGroups[code]);
         cards.push(
           {l:'Доходность '+cur(code)+'-части',v:p.ytm.toFixed(2)+'%',s:code+' бумаги · '+Math.round(p.value).toLocaleString('ru-RU')+' ₽',c:'hl'},
-          {l:'Дюрация '+cur(code)+'-части',v:p.dur.toFixed(2)+' лет',s:code+' бумаги',c:'hl2'}
+          {l:'Дюрация '+cur(code)+'-части',v:p.dur.toFixed(2)+' лет',s:'выпуклость '+p.conv.toFixed(1),c:'hl2'}
         );
       });
-      cards.push({l:'Выпуклость',v:wConvexity.toFixed(1),s:'портфель целиком',c:'hl2'});
     } else {
       // Чисто рублёвый портфель — как раньше
       cards=[
