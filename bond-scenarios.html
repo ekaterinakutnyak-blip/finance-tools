@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Облигации по сценариям ставки · investtools.pro</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF8; --surface:#FFF; --surface2:#F3F2EE; --border:#E5E4DF;
+  --text:#1A1A18; --text2:#6B6A65; --text3:#9C9B96;
+  --accent:#2D5A3D; --accent-light:#E8F0EB; --accent2:#1B6B9A; --accent2-light:#E6F1FB;
+  --warn:#A67A2E; --danger:#B44040; --green:#2D7A4F;
+  --sans:'DM Sans',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+  --radius:10px; --radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 3rem}
+h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem}
+.hnew{font-size:0.6rem;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:#FFE9D6;color:#C25A1E;font-weight:600;letter-spacing:0.05em;vertical-align:middle;margin-left:0.5rem}
+.lead{color:var(--text2);font-size:0.92rem;margin-bottom:0.5rem;max-width:70ch}
+.intro{background:var(--accent-light);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.3rem 0 2rem;font-size:0.88rem;color:var(--text2);line-height:1.65}
+.intro strong{color:var(--text)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card h2{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);font-weight:600;margin-bottom:0.9rem}
+.card .hint{font-size:0.78rem;color:var(--text3);line-height:1.55;margin-top:0.7rem}
+input,select{font-family:var(--mono);font-size:0.85rem;padding:0.4rem 0.55rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:0.6rem 1.3rem;font-size:0.9rem;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.btn:hover{opacity:0.88}
+.btn:disabled{opacity:0.5;cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.bond-input-row{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.55rem;flex-wrap:wrap}
+.bond-input-row .isin{width:150px;text-transform:uppercase}
+.bond-input-row .status{font-size:0.8rem;flex:1;min-width:150px}
+.bond-input-row .status.ok{color:var(--green)}
+.bond-input-row .status.err{color:var(--danger)}
+.bond-input-row .status.load{color:var(--warn)}
+.margin-field{display:none;align-items:center;gap:0.4rem;font-size:0.8rem;color:var(--text2)}
+.margin-field.show{display:flex}
+.margin-field input{width:60px}
+.rm{cursor:pointer;color:var(--text3);font-size:1.1rem;padding:0 0.3rem}
+.rm:hover{color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th,td{padding:0.5rem 0.55rem;text-align:right;border-bottom:1px solid var(--border)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text3);font-weight:600}
+td.num{font-family:var(--mono)}
+.best{background:var(--accent-light);font-weight:600;color:var(--accent);border-radius:4px}
+.worst-col{color:var(--text3)}
+.scen-grid{display:grid;grid-template-columns:1.3fr repeat(5,1fr);gap:0.45rem;align-items:center;font-size:0.8rem}
+.scen-grid .hd{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--text3);font-weight:600;text-align:center}
+.scen-grid .yr{color:var(--text2);font-family:var(--mono)}
+.scen-grid input{width:100%;text-align:right}
+.note{font-size:0.77rem;color:var(--text3);line-height:1.6;margin-top:0.8rem}
+.warnbox{background:#FDF7ED;border:1px solid #EAD9B8;border-radius:9px;padding:0.85rem 1.05rem;font-size:0.8rem;color:#8A6A2E;margin-top:1rem;line-height:1.6}
+canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
+.legend{display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.7rem;font-size:0.78rem;color:var(--text2)}
+.legend span{display:flex;align-items:center}
+.tag{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.badge{font-size:0.68rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--surface2);color:var(--text3);margin-left:0.4rem}
+.long-mark{color:var(--warn);cursor:help}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Как облигации ведут себя при разной ставке<span class="hnew">НОВОЕ</span></h1>
+<div class="lead">Выбор облигации — это всегда ставка на то, куда пойдёт ключевая ставка. Даже если вы об этом не думаете. Этот инструмент показывает не «какая бумага лучше», а как каждая отработает в разных сценариях — чтобы выбор был осознанным.</div>
+
+<div class="intro">
+Посчитать доходность облигации наперёд — не значит узнать её. Будущая ставка неизвестна, а от неё зависит, сколько принесут флоатеры и сколько будут стоить длинные бумаги. Поэтому здесь <strong>не один прогноз, а веер</strong>: вы задаёте несколько траекторий ставки и их вероятности, а инструмент показывает, как поведёт себя каждая бумага в каждом сценарии. Это развилка, а не предсказание — и в этом вся суть.
+</div>
+
+<div class="card">
+  <h2>1. Ваши облигации</h2>
+  <div id="bondRows"></div>
+  <div style="margin-top:0.7rem;display:flex;gap:0.5rem">
+    <button class="btn-ghost btn" onclick="addBondRow()">+ Добавить облигацию</button>
+    <button class="btn-ghost btn" onclick="loadDemo()">Загрузить пример</button>
+  </div>
+  <div class="hint">Введите ISIN (код бумаги с Мосбиржи). Данные — купоны, цена, срок, тип — подтянутся автоматически. Для флоатеров укажите надбавку к ставке из условий выпуска (например, КС + 1.35%). Линкеры с индексацией номинала на RUONIA обрабатываются отдельно.</div>
+</div>
+
+<div class="card">
+  <h2>2. Горизонт и сценарии ключевой ставки</h2>
+  <div style="margin-bottom:0.9rem;font-size:0.85rem;color:var(--text2)">
+    Горизонт расчёта: <strong id="horizonLabel">2029</strong> год — граница официального прогноза Банка России. Дальше не заглядываем: трёхлетний прогноз уже на пределе достоверности, пятилетний — фантазия.
+  </div>
+  <div class="scen-grid" id="scenGrid"></div>
+  <div class="note">База — среднесрочный прогноз Банка России + текущая ставка. RUONIA ≈ КС − 0.3 п.п. Значения меняйте под свой взгляд. Строка «Рынок (форвард)» заполняется из кривой ОФЗ — рыночные ожидания ставки.</div>
+  <button class="btn-ghost btn" style="margin-top:0.8rem" onclick="loadForwards()">Подтянуть форвардные ставки из кривой ОФЗ</button>
+  <div id="marketVsCbr" style="display:none;margin-top:1rem;padding:0.9rem 1.1rem;background:var(--surface2);border-radius:9px;font-size:0.82rem;line-height:1.6"></div>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+    <div class="scen-grid" id="probGrid"></div>
+    <div id="probSum" class="note"></div>
+  </div>
+  <button class="btn" style="margin-top:1rem" onclick="recompute()">Рассчитать</button>
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+  <h2>3. Годовая доходность (IRR) по сценариям</h2>
+  <table id="resultTable"></table>
+  <div class="legend" id="legend"></div>
+  <div class="note" id="resultNote"></div>
+</div>
+
+<div class="card" id="chartCard" style="display:none">
+  <h2>Развилка</h2>
+  <canvas id="chart" width="1020" height="420"></canvas>
+</div>
+
+<div class="warnbox" id="finalWarn" style="display:none"></div>
+</div><!-- /container -->
+
+<script>
+// === Загрузка MOEX (переиспользовано из bond-portfolio) ===
+let _jp=0;
+function moexFetch(url){
+  return fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(()=>new Promise((resolve,reject)=>{
+    const cb='_mc'+(++_jp)+'_'+Date.now();const sep=url.includes('?')?'&':'?';
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cl();reject(new Error('Timeout'))},15000);
+    function cl(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s)}
+    window[cb]=d=>{cl();resolve(d)};s.src=url+sep+'callback='+cb;s.onerror=()=>{cl();reject(new Error('JSONP error'))};
+    document.body.appendChild(s);
+  }));
+}
+
+// Классификация типа купона по вариативности (принцип из bond-portfolio)
+function classifyCoupon(coupons, offerDate){
+  const known=coupons.filter(c=>(c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
+  if(known.length===0) return {type:'discount', isDiscount:true};
+  const today=new Date();
+  // Есть ли будущие НЕазначенные купоны (null в будущем при живой бумаге) — главный признак флоатера
+  let hasFutureUnknown=false;
+  coupons.forEach(c=>{
+    const cd=c.coupondate?new Date(c.coupondate):null;
+    const unk=!((c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
+    if(cd&&cd>=today&&unk)hasFutureUnknown=true;
+  });
+  // ФЛОАТЕР: если впереди есть неназначенные купоны — ставка плавает.
+  // Проверяем ПЕРВЫМ, до анализа вариативности (иначе бумага с малым числом известных
+  // купонов, как РусГидро с 2 известными, ошибочно классифицируется как фикс).
+  if(hasFutureUnknown) return {type:'float'};
+  // Дальше — все купоны известны. Разбираем фикс vs лесенка по вариативности.
+  const havePrc=known.some(c=>c.valueprc!=null);
+  const round=x=>Math.round(x*100)/100;
+  let series;
+  if(havePrc) series=known.filter(c=>c.valueprc!=null&&c.valueprc>0).map(c=>c.valueprc);
+  else series=known.map(c=>c.value).filter(x=>x!=null&&x>0).slice(1);
+  const uniq=[...new Set(series.map(round))];
+  const varied=uniq.length>=2;
+  // все известны: разные ставки = лесенка (тоже фикс по сути), одинаковые = фикс
+  return {type:'fix'};
+}
+
+function _validDate(d){const s=String(d||'').trim();return (s&&s!=='0000-00-00'&&!s.startsWith('0000'))?s:'';}
+
+// Загрузка бумаги: возвращает параметры для расчёта сценариев
+async function loadBondData(isin){
+  isin=isin.trim().toUpperCase();
+  const searchUrl='https://iss.moex.com/iss/securities.json?q='+encodeURIComponent(isin)+'&iss.meta=off&limit=10';
+  const sd=await moexFetch(searchUrl);
+  const cols=sd.securities.columns, rows=sd.securities.data;
+  const gi=cols.indexOf('group'), ti=cols.indexOf('is_traded'), si=cols.indexOf('secid'), ni=cols.indexOf('name');
+  let secid=null, shortname='';
+  for(const r of rows){ if((r[gi]||'').includes('bond')&&r[ti]===1){secid=r[si];shortname=r[ni];break;} }
+  if(!secid) secid=isin;
+  // доски
+  const boards=['TQCB','TQOB','TQIR'];
+  let sec=null, md=null;
+  for(const b of boards){
+    try{
+      const d=await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/'+b+'/securities/'+secid+'.json?iss.meta=off');
+      if(d.securities.data.length>0){
+        sec={}; d.securities.columns.forEach((c,i)=>sec[c]=d.securities.data[0][i]);
+        md={}; d.marketdata.columns.forEach((c,i)=>md[c]=d.marketdata.data[0][i]);
+        if(sec.SHORTNAME)shortname=sec.SHORTNAME;
+        break;
+      }
+    }catch(e){}
+  }
+  if(!sec) throw new Error('не найдена на Мосбирже');
+  // купоны
+  const bd=await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100');
+  const cc=bd.coupons.columns, cr=bd.coupons.data;
+  const coupons=cr.map(row=>{const o={};cc.forEach((c,i)=>o[c]=row[i]);return {coupondate:o.coupondate,value:parseFloat(o.value)||null,valueprc:parseFloat(o.valueprc)||null,facevalue:parseFloat(o.facevalue)||1000};});
+  const offerDate=_validDate(sec.OFFERDATE)||_validDate(sec.BUYBACKDATE)||'';
+  // Блокируем валютные облигации: инструмент считает рублёвые сценарии ставки.
+  const faceUnit=(sec.FACEUNIT||sec.CURRENCYID||'SUR').toUpperCase();
+  if(faceUnit!=='SUR'&&faceUnit!=='RUB'){
+    throw new Error('валютная облигация ('+faceUnit+') — поддерживаются только рублёвые');
+  }
+  const cls=classifyCoupon(coupons, offerDate);
+  // ЛИНКЕР: номинал индексируется (на RUONIA/инфляцию). Ловим по BOND_TYPE или растущему facevalue.
+  const bondTypeStr=(sec.BOND_TYPE||sec.BONDTYPE||'').toString();
+  const faceGrows=coupons.length>=2 && coupons.some(c=>c.facevalue>1000.5);
+  const isLinker = bondTypeStr.includes('ндексируем')||bondTypeStr.includes('инкер')||bondTypeStr.toLowerCase().includes('linker')||faceGrows;
+  if(isLinker) cls.type='linker';
+  const price=parseFloat(md.LAST||md.LCLOSEPRICE||sec.PREVWAPRICE||sec.PREVLEGALCLOSEPRICE||'0');
+  // текущий проиндексированный номинал (последний известный facevalue)
+  let currentFace=parseFloat(sec.FACEVALUE||sec.INITIALFACEVALUE||'1000');
+  if(isLinker){
+    const fv=coupons.map(c=>c.facevalue).filter(x=>x>0);
+    if(fv.length)currentFace=fv[fv.length-1];
+  }
+  return {
+    isin, secid, shortname,
+    price: price>0?price:100,
+    faceValue: parseFloat(sec.INITIALFACEVALUE||sec.FACEVALUE||'1000'),
+    currentFace,
+    matDate: sec.MATDATE,
+    offerDate,
+    couponType: cls.type,
+    isDiscount: !!cls.isDiscount,
+    couponValue: parseFloat(sec.COUPONVALUE||'0'),
+    couponPercent: parseFloat(sec.COUPONPERCENT||'0'),
+    couponFreq: parseInt(sec.COUPONFREQUENCY||'2'),
+    coupons
+  };
+}
+
+// === Кривая доходности и форвардные ставки ===
+let gcurvePoints=[];
+async function loadGcurve(){
+  gcurvePoints=[];
+  try{
+    const d=await moexFetch('https://iss.moex.com/iss/engines/stock/zcyc/securities.json?iss.meta=off');
+    // Кривая лежит в блоке yearyields (колонки period, value)
+    const blk=d.yearyields||d.data;
+    const cols=blk.columns;
+    const periodIdx=cols.indexOf('period'), valueIdx=cols.indexOf('value');
+    blk.data.forEach(row=>{
+      const p=parseFloat(row[periodIdx]), v=parseFloat(row[valueIdx]);
+      if(!isNaN(p)&&!isNaN(v)&&p>0)gcurvePoints.push({t:p,rate:v});
+    });
+    gcurvePoints.sort((a,b)=>a.t-b.t);
+    if(gcurvePoints.length>0)return;
+  }catch(e){}
+  // Fallback: кривая из ОФЗ-ПД (SU26*), YTM по сроку
+  try{
+    const d=await moexFetch('https://iss.moex.com/iss/engines/stock/markets/bonds/boards/TQOB/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID,MATDATE,YIELDATPREVWAPRICE');
+    const cols=d.securities.columns;
+    const secidIdx=cols.indexOf('SECID'), matIdx=cols.indexOf('MATDATE'), yieldIdx=cols.indexOf('YIELDATPREVWAPRICE');
+    const today=new Date();today.setHours(0,0,0,0);
+    d.securities.data.forEach(row=>{
+      const secid=row[secidIdx]||'', matDate=row[matIdx], ytm=parseFloat(row[yieldIdx]);
+      if(secid.startsWith('SU26')&&matDate&&ytm>=8&&ytm<=25){
+        const yy=(new Date(matDate)-today)/(365.25*86400000);
+        if(yy>0.1)gcurvePoints.push({t:yy,rate:ytm});
+      }
+    });
+    gcurvePoints.sort((a,b)=>a.t-b.t);
+  }catch(e){}
+}
+function spotAt(t){
+  if(gcurvePoints.length===0)return null;
+  if(t<=gcurvePoints[0].t)return gcurvePoints[0].rate;
+  if(t>=gcurvePoints[gcurvePoints.length-1].t)return gcurvePoints[gcurvePoints.length-1].rate;
+  for(let i=0;i<gcurvePoints.length-1;i++){
+    if(t>=gcurvePoints[i].t&&t<=gcurvePoints[i+1].t){
+      const w=(t-gcurvePoints[i].t)/(gcurvePoints[i+1].t-gcurvePoints[i].t);
+      return gcurvePoints[i].rate+w*(gcurvePoints[i+1].rate-gcurvePoints[i].rate);
+    }
+  }
+  return gcurvePoints[gcurvePoints.length-1].rate;
+}
+// форвардная годовая ставка между t1 и t2 (годы от сегодня): f = [(1+z2)^t2/(1+z1)^t1]^(1/(t2-t1))-1
+function forward(t1,t2){
+  const z1=spotAt(t1), z2=spotAt(t2);
+  if(z1==null||z2==null)return null;
+  const a=z1/100, b=z2/100;
+  return (Math.pow(1+b,t2)/Math.pow(1+a,t1))**(1/(t2-t1))-1;
+}
+// заполнить форвардный сценарий по годам
+function buildForwardScenario(){
+  if(gcurvePoints.length===0)return null;
+  const now=new Date();
+  const fracToYearEnd=(y)=>((new Date(y+'-12-31'))-now)/(365.25*24*3600*1000);
+  const out={};
+  years.forEach((y,i)=>{
+    const t2=fracToYearEnd(y);
+    const t1=(i===0)?0.01:fracToYearEnd(years[i-1]);
+    const f=forward(Math.max(0.01,t1),Math.max(t1+0.1,t2));
+    out[y]=f!=null?Math.round(f*1000)/10:null;
+  });
+  return out;
+}
+
+// === Сценарии и состояние ===
+const HORIZON=2029;
+const scenNames=['Дезинфляция','База (ЦБ)','Плато','Рост ставки','Рынок (форвард)'];
+const scenColors=['#5fb89a','#5B7FA6','#C89B3C','#c25a4a','#b56fd6'];
+const scenData={
+  'Дезинфляция':{2026:13.5,2027:8.0,2028:7.5,2029:7.0},
+  'База (ЦБ)':{2026:14.25,2027:9.5,2028:8.5,2029:8.0},
+  'Плато':{2026:14.25,2027:14.0,2028:14.0,2029:14.0},
+  'Рост ставки':{2026:14.5,2027:16.0,2028:18.0,2029:18.0},
+  'Рынок (форвард)':{2026:null,2027:null,2028:null,2029:null}
+};
+const scenProb={'Дезинфляция':15,'База (ЦБ)':35,'Плато':15,'Рост ставки':10,'Рынок (форвард)':25};
+const years=[2026,2027,2028,2029];
+const bondColors=['#5B8A72','#7a9e8c','#C89B3C','#B5763E','#5B7FA6','#8B6FA6','#a65b7f','#5b8ba6'];
+
+let loadedBonds=[]; // {data, margin, color, ...}
+let rowCounter=0;
+
+const T0=new Date();
+function yrs(d){return (d-T0)/(365.25*24*3600*1000);}
+function rateAt(scn,d){const y=d.getFullYear(); const r=scn[y]!=null?scn[y]:scn[HORIZON]; return r!=null?r:8;}
+function ruonia(ks){return ks-0.3;}
+function irr(flows){
+  function npv(r){return flows.reduce((s,f)=>s+f.cf/Math.pow(1+r,f.t),0);}
+  let lo=-0.95,hi=5;
+  if(npv(lo)*npv(hi)>0)return null;
+  for(let i=0;i<200;i++){const m=(lo+hi)/2;if(npv(m)>0)lo=m;else hi=m;}
+  return (lo+hi)/2*100;
+}
+
+// IRR одной бумаги в одном сценарии.
+// Горизонт HORIZON: гасится до него → до погашения (номинал); позже → продажа по цене под ставку HORIZON.
+function calcBondIRR(b, scn, margin){
+  const price=b.data.price, face=b.data.faceValue;
+  const mat=new Date(b.data.matDate);
+  const horizonDate=new Date(HORIZON+'-12-31');
+  const sellsEarly = mat>horizonDate; // гасится после горизонта → продаём на горизонте
+  const endDate = sellsEarly ? horizonDate : mat;
+  const flows=[{t:0,cf:-price/100*face}];
+  const freq=Math.max(1,b.data.couponFreq);
+  const perYear=freq;
+
+  if(b.data.couponType==='linker'){
+    // ЛИНКЕР: номинал индексируется на RUONIA (капитализация), купон couponPercent% от растущего номинала.
+    // Погашение/продажа — проиндексированным номиналом.
+    const couponPct=b.data.couponPercent>0?b.data.couponPercent:1.85;
+    let nominal=b.data.currentFace||face; // текущий проиндексированный номинал
+    const flowsL=[{t:0,cf:-price/100*nominal}]; // цена в % от номинала (MOEX котирует линкер в % тек. номинала)
+    // купонные даты (реальные + достройка до endDate)
+    const realDates=b.data.coupons.map(c=>new Date(c.coupondate)).filter(dt=>dt>T0 && dt<=endDate);
+    let sched=realDates.slice();
+    if(sched.length>0){
+      let last=sched[sched.length-1];
+      let stepM=6;
+      if(sched.length>=2){const gap=(sched[sched.length-1]-sched[sched.length-2])/(365.25*24*3600*1000);stepM=Math.max(1,Math.round(gap*12));}
+      while(true){const nx=new Date(last);nx.setMonth(nx.getMonth()+stepM);if(nx>endDate)break;sched.push(nx);last=nx;}
+    }
+    // идём по месяцам, индексируем номинал на RUONIA, на купонных датах платим купон
+    let cur=new Date(); let idxSet=new Set(sched.map(d=>d.toISOString().slice(0,10)));
+    let prevCpnDate=new Date();
+    while(cur<=endDate){
+      const ru=ruonia(rateAt(scn,cur))/100;
+      nominal*=(1+ru/12); // месячная капитализация RUONIA
+      const key=cur.toISOString().slice(0,10);
+      cur=new Date(cur); cur.setMonth(cur.getMonth()+1);
+    }
+    // упрощение: пересчитаем аккуратно по купонным датам
+    nominal=b.data.currentFace||face;
+    let pd=new Date();
+    sched.forEach(cd=>{
+      // индексация номинала от прошлой даты до этой
+      const months=Math.max(1,Math.round((cd-pd)/(365.25*24*3600*1000)*12));
+      for(let m=0;m<months;m++){ const dd=new Date(pd); dd.setMonth(dd.getMonth()+m); const ru=ruonia(rateAt(scn,dd))/100; nominal*=(1+ru/12); }
+      const yearFrac=Math.max(0.02,(cd-pd)/(365.25*24*3600*1000));
+      flowsL.push({t:yrs(cd), cf:nominal*(couponPct/100)*yearFrac});
+      pd=cd;
+    });
+    // конец: проиндексированный номинал (продажа линкера ≈ тек. проиндексированный номинал; погашение — он же)
+    flowsL.push({t:yrs(endDate), cf:nominal});
+    return irr(flowsL);
+  }
+
+  if(b.data.couponType==='discount'){
+    // дисконт: без купонов, номинал в конце (или продажа)
+    if(sellsEarly){
+      // цена дисконтной в момент продажи = номинал, дисконтированный на остаток срока под ставку сценария
+      const y=scn[HORIZON]/100;
+      const tRemain=(mat-endDate)/(365.25*24*3600*1000);
+      flows.push({t:yrs(endDate), cf:face/Math.pow(1+y, tRemain)});
+    } else {
+      flows.push({t:yrs(mat), cf:face});
+    }
+    return irr(flows);
+  }
+
+  // купонные бумаги: идём по купонному графику
+  const cpnDates=[];
+  let d=new Date(); d.setMonth(d.getMonth()+1); // с ближайшего месяца грубо
+  // используем реальные даты купонов из графика, продлевая период до endDate
+  const realDates=b.data.coupons.map(c=>new Date(c.coupondate)).filter(dt=>dt>T0);
+  let couponSchedule = realDates.filter(dt=>dt<=endDate);
+  // если график купонов короче endDate (флоатер: дальние не заданы), достроим по РЕАЛЬНОМУ шагу
+  if(couponSchedule.length>0){
+    let last=couponSchedule[couponSchedule.length-1];
+    // реальный шаг в месяцах между последними известными купонами
+    let stepMonths=1;
+    if(couponSchedule.length>=2){
+      const gap=(couponSchedule[couponSchedule.length-1]-couponSchedule[couponSchedule.length-2])/(365.25*24*3600*1000);
+      stepMonths=Math.max(1,Math.round(gap*12));
+    } else {
+      stepMonths=Math.max(1,Math.round(12/perYear));
+    }
+    while(true){ const nx=new Date(last); nx.setMonth(nx.getMonth()+stepMonths); if(nx>endDate)break; couponSchedule.push(nx); last=nx; }
+  }
+
+  couponSchedule.forEach((cd,idx)=>{
+    // доля года между купонами (по реальным датам, а не по freq — freq из boards может быть неверной)
+    const prev = idx===0 ? (couponSchedule.length>1 ? new Date(cd.getTime()-(couponSchedule[1]-couponSchedule[0])) : new Date(cd.getFullYear(),cd.getMonth()-Math.round(12/perYear),cd.getDate())) : couponSchedule[idx-1];
+    const yearFrac=Math.max(0.02,(cd-prev)/(365.25*24*3600*1000));
+    let cpn;
+    if(b.data.couponType==='float'){
+      const ks=rateAt(scn,cd);
+      cpn = face*((ks+margin)/100)*yearFrac;
+    } else if(b.data.couponType==='linker'){
+      cpn = 0;
+    } else {
+      // фикс: известный купон (абсолют) или по ставке × долю года
+      cpn = b.data.couponValue>0 ? b.data.couponValue : face*(b.data.couponPercent/100)*yearFrac;
+    }
+    flows.push({t:yrs(cd), cf:cpn});
+  });
+
+  // конец: погашение номиналом или продажа
+  if(sellsEarly){
+    if(b.data.couponType==='float'){
+      // ФЛОАТЕР при продаже ≈ номинал: купон плавает, на пересмотре цена возвращается к номиналу.
+      // Не дисконтируем потоки (это дало бы абсурд) — берём номинал.
+      flows.push({t:yrs(endDate), cf:face});
+    } else {
+      // фикс: цена продажи = дисконт оставшихся потоков (купоны после horizon + номинал) под ставку horizon
+      const y=scn[HORIZON]/100;
+      let sellPrice=0;
+      const stepMonths=Math.round(12/freq);
+      let cd=new Date(endDate); cd.setMonth(cd.getMonth()+stepMonths);
+      while(cd<=mat){
+        const cpn=b.data.couponValue>0?b.data.couponValue:face*(b.data.couponPercent/100)/perYear;
+        const tt=(cd-endDate)/(365.25*24*3600*1000);
+        sellPrice += cpn/Math.pow(1+y/perYear, perYear*tt);
+        cd=new Date(cd); cd.setMonth(cd.getMonth()+stepMonths);
+      }
+      const tMat=(mat-endDate)/(365.25*24*3600*1000);
+      sellPrice += face/Math.pow(1+y/perYear, perYear*tMat);
+      flows.push({t:yrs(endDate), cf:sellPrice});
+    }
+  } else {
+    flows[flows.length-1].cf += face; // последний купон + номинал
+  }
+  return irr(flows);
+}
+
+// === UI: строки бумаг ===
+function addBondRow(isin){
+  const id='r'+(++rowCounter);
+  const div=document.createElement('div');
+  div.className='bond-input-row'; div.id=id;
+  div.innerHTML=
+    '<input class="isin" placeholder="RU000A..." value="'+(isin||'')+'">'+
+    '<button class="btn-ghost btn" style="padding:0.4rem 0.8rem" onclick="loadRow(\''+id+'\')">Загрузить</button>'+
+    '<span class="margin-field"><span>надбавка КС +</span><input class="margin" value="1.35">%</span>'+
+    '<span class="status"></span>'+
+    '<span class="rm" onclick="removeRow(\''+id+'\')">×</span>';
+  document.getElementById('bondRows').appendChild(div);
+  return id;
+}
+function removeRow(id){
+  const el=document.getElementById(id); if(el)el.remove();
+  loadedBonds=loadedBonds.filter(b=>b.rowId!==id);
+}
+async function loadRow(id){
+  const row=document.getElementById(id);
+  const isin=row.querySelector('.isin').value.trim().toUpperCase();
+  const status=row.querySelector('.status');
+  const marginField=row.querySelector('.margin-field');
+  if(!isin){status.className='status err';status.textContent='введите ISIN';return;}
+  status.className='status load'; status.textContent='загрузка...';
+  try{
+    const data=await loadBondData(isin);
+    const typeLabel={fix:'фикс',float:'флоатер',discount:'дисконт',linker:'линкер'}[data.couponType]||data.couponType;
+    status.className='status ok';
+    status.textContent=data.shortname+' · '+typeLabel+' · погашение '+data.matDate+(data.offerDate?' · оферта '+data.offerDate:'');
+    if(data.couponType==='float'){marginField.classList.add('show');} else {marginField.classList.remove('show');}
+    // сохранить/обновить
+    loadedBonds=loadedBonds.filter(b=>b.rowId!==id);
+    loadedBonds.push({rowId:id, data, color:bondColors[loadedBonds.length%bondColors.length]});
+  }catch(e){
+    status.className='status err'; status.textContent='ошибка: '+e.message;
+  }
+}
+
+function loadDemo(){
+  document.getElementById('bondRows').innerHTML='';
+  loadedBonds=[];
+  const demo=['RU000A109LG9','RU000A10F8T1','RU000A10F6U3','RU000A10F504','SU26238RMFS4','SU26252RMFS5'];
+  demo.forEach(async(isin)=>{ const id=addBondRow(isin); await loadRow(id); });
+}
+
+// === UI: сценарии и вероятности ===
+function renderScen(){
+  const g=document.getElementById('scenGrid');
+  let h='<div class="hd" style="text-align:left">Год</div>'+scenNames.map((s,i)=>'<div class="hd" style="color:'+scenColors[i]+'">'+s+'</div>').join('');
+  years.forEach(y=>{
+    h+='<div class="yr">'+y+'</div>';
+    scenNames.forEach(s=>{const val=scenData[s][y]!=null?scenData[s][y]:'';h+='<div><input value="'+val+'" placeholder="'+(s==='Рынок (форвард)'?'из кривой':'')+'" onchange="scenData[\''+s+'\']['+y+']=this.value===\'\'?null:(parseFloat(this.value.replace(\',\',\'.\'))||0)"></div>';});
+  });
+  g.innerHTML=h;
+}
+function renderProb(){
+  const g=document.getElementById('probGrid');
+  let h='<div class="yr" style="text-align:left">вероятн.</div>';
+  scenNames.forEach(s=>{h+='<div><input value="'+scenProb[s]+'" onchange="scenProb[\''+s+'\']=parseFloat(this.value.replace(\',\',\'.\'))||0; updateProbSum()"></div>';});
+  g.innerHTML=h; updateProbSum();
+}
+function updateProbSum(){
+  const sum=scenNames.reduce((a,s)=>a+(scenProb[s]||0),0);
+  document.getElementById('probSum').innerHTML='Сумма вероятностей: '+sum.toFixed(0)+'%'+(Math.abs(sum-100)<0.5?' ✓':' — <span style="color:#d8a15a">задайте так, чтобы вышло 100%</span>');
+}
+
+// === Расчёт и вывод ===
+function recompute(){
+  if(loadedBonds.length===0){alert('Добавьте хотя бы одну облигацию (или нажмите «Загрузить пример»)');return;}
+  const results={};
+  const activeScens=scenNames.filter(s=>{
+    // форвардный сценарий учитываем только если загружен (есть значения)
+    if(s==='Рынок (форвард)') return scenData[s][HORIZON]!=null;
+    return true;
+  });
+  loadedBonds.forEach(b=>{
+    results[b.rowId]={};
+    const margin=(b.data.couponType==='float')?(parseFloat(document.getElementById(b.rowId).querySelector('.margin').value)||0):0;
+    activeScens.forEach(s=>{results[b.rowId][s]=calcBondIRR(b, scenData[s], margin);});
+  });
+  const probSum=activeScens.reduce((a,s)=>a+(scenProb[s]||0),0);
+  // таблица
+  let h='<tr><th>Бумага</th><th>Тип</th><th>Срок</th>'+activeScens.map((s)=>{const i=scenNames.indexOf(s);return '<th style="color:'+scenColors[i]+'">'+s+'<br><span style="font-weight:400;color:var(--text3)">'+(scenProb[s]||0)+'%</span></th>';}).join('')+'<th style="border-left:2px solid var(--accent)">Ожидаемая</th><th>Худший</th></tr>';
+  const bestByScen={};
+  activeScens.forEach(s=>{let mx=-1e9,mid=null;loadedBonds.forEach(b=>{const v=results[b.rowId][s];if(v!=null&&v>mx){mx=v;mid=b.rowId;}});bestByScen[s]=mid;});
+  const expected={},worst={};
+  loadedBonds.forEach(b=>{let e=0,mn=1e9;activeScens.forEach(s=>{const v=results[b.rowId][s];if(v!=null){e+=v*(scenProb[s]||0)/100;mn=Math.min(mn,v);}});expected[b.rowId]=(probSum>0)?e*100/probSum:e;worst[b.rowId]=mn;});
+  let bestExp=-1e9,bestExpId=null;loadedBonds.forEach(b=>{if(expected[b.rowId]>bestExp){bestExp=expected[b.rowId];bestExpId=b.rowId;}});
+  loadedBonds.forEach(b=>{
+    const mat=new Date(b.data.matDate); const yearsToMat=((mat-T0)/(365.25*24*3600*1000)).toFixed(1);
+    const horizonDate=new Date(HORIZON+'-12-31'); const isLong=mat>horizonDate;
+    const typeLabel={fix:'фикс',float:'флоатер',discount:'дисконт',linker:'линкер'}[b.data.couponType];
+    h+='<tr><td><span class="tag" style="background:'+b.color+'"></span>'+b.data.shortname+(isLong?'<span class="long-mark badge" title="Гасится после '+HORIZON+' — доход включает цену продажи на горизонте (допущение)">продажа '+HORIZON+'</span>':'')+'</td>';
+    h+='<td style="color:var(--text3)">'+typeLabel+'</td>';
+    h+='<td class="num" style="color:var(--text3)">'+yearsToMat+'г</td>';
+    activeScens.forEach(s=>{const v=results[b.rowId][s];const cls=(bestByScen[s]===b.rowId)?'num best':'num';h+='<td class="'+cls+'">'+(v!=null?v.toFixed(1)+'%':'—')+'</td>';});
+    const ec=(bestExpId===b.rowId)?'num best':'num';
+    h+='<td class="'+ec+'" style="border-left:2px solid var(--accent)">'+expected[b.rowId].toFixed(1)+'%</td>';
+    h+='<td class="num worst-col">'+worst[b.rowId].toFixed(1)+'%</td></tr>';
+  });
+  document.getElementById('resultTable').innerHTML=h;
+  document.getElementById('resultCard').style.display='block';
+  document.getElementById('chartCard').style.display='block';
+  document.getElementById('legend').innerHTML=loadedBonds.map(b=>'<span><span class="tag" style="background:'+b.color+'"></span>'+b.data.shortname+'</span>').join('');
+  document.getElementById('resultNote').innerHTML='<strong>Ожидаемая</strong> — средневзвешенная по вашим вероятностям: не прогноз одного исхода, а взвешивание всех сценариев (как это делают серьёзные риск-системы — считают не исход, а распределение). <strong>Худший</strong> — доходность в самом плохом сценарии: цена риска, спрятанного за средней. Высокая ожидаемая с низким «худшим» = доходность куплена риском. Метки «продажа '+HORIZON+'» — у бумаг, что гасятся позже горизонта: их доход включает цену продажи (математически выводится из ставки сценария, но это допущение).';
+  document.getElementById('finalWarn').style.display='block';
+  document.getElementById('finalWarn').innerHTML='<strong>Это не прогноз, а сравнение поведения.</strong> Инструмент показывает, как бумага отработает в каждом сценарии ставки — а не какой сценарий сбудется. Годовая доходность (IRR) разных по сроку бумаг сравнима, но помните: одинаковый % на 2 года и на 10 лет — разный риск (в длинной больше неопределённости). Для бумаг, что гасятся после '+HORIZON+', доход включает расчётную цену продажи на горизонте — это самое модельно-зависимое место.';
+  drawChart(results, activeScens);
+}
+
+function drawChart(results, activeScens){
+  const c=document.getElementById('chart'),ctx=c.getContext('2d');
+  const W=c.width,H=c.height,padL=50,padR=20,padT=20,padB=55;
+  ctx.clearRect(0,0,W,H);
+  let mn=1e9,mx=-1e9;
+  loadedBonds.forEach(b=>activeScens.forEach(s=>{const v=results[b.rowId][s];if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v);}}));
+  if(mn===1e9){return;}
+  mn=Math.floor(mn/5)*5;mx=Math.ceil(mx/5)*5;
+  const x=i=>padL+(W-padL-padR)*i/(Math.max(1,activeScens.length-1));
+  const y=v=>H-padB-(H-padT-padB)*(v-mn)/(mx-mn||1);
+  ctx.strokeStyle='#E5E4DF';ctx.fillStyle='#9C9B96';ctx.font='11px monospace';ctx.lineWidth=1;
+  for(let v=mn;v<=mx;v+=5){ctx.beginPath();ctx.moveTo(padL,y(v));ctx.lineTo(W-padR,y(v));ctx.stroke();ctx.textAlign='right';ctx.fillText(v+'%',padL-8,y(v)+4);}
+  ctx.textAlign='center';ctx.font='11px sans-serif';
+  activeScens.forEach((s,i)=>{const ci=scenNames.indexOf(s);ctx.fillStyle=scenColors[ci];ctx.fillText(s,x(i),H-padB+22);});
+  loadedBonds.forEach(b=>{
+    ctx.strokeStyle=b.color;ctx.fillStyle=b.color;ctx.lineWidth=2.5;ctx.beginPath();
+    let started=false;
+    activeScens.forEach((s,i)=>{const v=results[b.rowId][s];if(v==null)return;const px=x(i),py=y(v);if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);});
+    ctx.stroke();
+    activeScens.forEach((s,i)=>{const v=results[b.rowId][s];if(v==null)return;ctx.beginPath();ctx.arc(x(i),y(v),3.5,0,7);ctx.fill();});
+  });
+}
+
+// Подтянуть форварды из кривой и заполнить сценарий «Рынок»
+async function loadForwards(){
+  const btn=event.target; btn.disabled=true; btn.textContent='Загрузка кривой...';
+  await loadGcurve();
+  if(gcurvePoints.length===0){ btn.textContent='Не удалось загрузить кривую'; setTimeout(()=>{btn.disabled=false;btn.textContent='Подтянуть форвардные ставки из кривой ОФЗ';},2000); return; }
+  const fwd=buildForwardScenario();
+  years.forEach(y=>{ scenData['Рынок (форвард)'][y]=fwd[y]; });
+  renderScen();
+  // блок Рынок vs ЦБ
+  const box=document.getElementById('marketVsCbr');
+  box.style.display='block';
+  let rows='';
+  let signal='';
+  years.forEach(y=>{
+    const mkt=fwd[y], cbr=scenData['База (ЦБ)'][y];
+    if(mkt==null){rows+='<tr><td>'+y+'</td><td>—</td><td>'+cbr+'%</td><td>—</td></tr>';return;}
+    const diff=mkt-cbr;
+    const dc=diff>0.3?'#d88':(diff<-0.3?'#8d8':'var(--text2)');
+    rows+='<tr><td>'+y+'</td><td class="num">'+mkt.toFixed(1)+'%</td><td class="num">'+cbr.toFixed(1)+'%</td><td class="num" style="color:'+dc+'">'+(diff>0?'+':'')+diff.toFixed(1)+'</td></tr>';
+  });
+  // интегральный сигнал по 2027 (ближний значимый горизонт)
+  const d27=(fwd[2027]!=null)?fwd[2027]-scenData['База (ЦБ)'][2027]:0;
+  if(d27>0.5) signal='<strong>Рынок закладывает ставку выше прогноза ЦБ.</strong> Это значит: участники ждут, что снижать придётся медленнее — рынок видит инфляционный риск, который прогноз ЦБ пока не отражает. Флоатеры и короткие бумаги в этом свете привлекательнее, чем кажется по прогнозу.';
+  else if(d27<-0.5) signal='<strong>Рынок закладывает ставку ниже прогноза ЦБ.</strong> Участники ждут более быстрого смягчения, чем обещает регулятор — рынок «не верит», что высокую ставку удержат. Длинные фиксы в этом свете привлекательнее (успеть зафиксировать доходность перед снижением).';
+  else signal='<strong>Рынок и ЦБ примерно согласны</strong> по траектории ставки — крупного расхождения ожиданий нет.';
+  box.innerHTML='<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text)">Рынок против прогноза ЦБ — само расхождение это сигнал</div>'+
+    '<table style="margin-bottom:0.7rem"><tr><th>Год</th><th>Рынок (форвард)</th><th>Прогноз ЦБ</th><th>Разница</th></tr>'+rows+'</table>'+
+    '<div style="color:var(--text2)">'+signal+' <span style="color:var(--text3)">Форвардные ставки включают премию за срок, поэтому обычно чуть выше реальных ожиданий — но их динамика и расхождение с ЦБ информативны.</span></div>';
+  btn.disabled=false; btn.textContent='Обновить форвардные ставки';
+}
+
+// init
+addBondRow(); renderScen(); renderProb();
+</script>
+</body>
+</html>
