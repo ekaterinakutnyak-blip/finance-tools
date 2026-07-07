@@ -93,6 +93,9 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
   <button class="btn-ghost btn" style="margin-top:0.8rem" onclick="loadForwards()">Подтянуть форвардные ставки из кривой ОФЗ</button>
   <div id="marketVsCbr" style="display:none;margin-top:1rem;padding:0.9rem 1.1rem;background:var(--surface2);border-radius:9px;font-size:0.82rem;line-height:1.6"></div>
   <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+    <div style="font-size:0.82rem;color:var(--text2);line-height:1.55;margin-bottom:0.7rem">
+      <strong>Насколько вы верите в каждый сценарий.</strong> Задайте вероятность каждой траектории ставки — сумма должна быть 100%. По этим весам инструмент сведёт доходность бумаги во всех сценариях в одну <strong>ожидаемую</strong>: не гадание на один исход, а взвешивание всех. Блок «Рынок vs ЦБ» выше — подсказка (что закладывает рынок), но веса ставите вы.
+    </div>
     <div class="scen-grid" id="probGrid"></div>
     <div id="probSum" class="note"></div>
   </div>
@@ -654,13 +657,15 @@ async function loadForwards(){
           '<td class="num">'+cbr.toFixed(1)+'%</td>'+
           '<td class="num" style="color:'+dc+'">'+(diff>0?'+':'')+diff.toFixed(1)+'</td></tr>';
   });
-  // шанс сценария ЦБ по мнению рынка: P(очищ. ставка <= прогноз ЦБ)
+  // шанс дезинфляционного сценария по мнению рынка: P(очищ. ставка <= нейтрали ~9%).
+  // Единый порог для всех лет — чтобы 2026 не завышался из-за близости прогноза ЦБ к текущей ставке.
+  const NEUTRAL=9.0;
   let probRows='';
   years.forEach((y)=>{
-    const mkt=fwdC[y], cbr=scenData['База (ЦБ)'][y];
+    const mkt=fwdC[y];
     if(mkt==null)return;
     const s=sigmaAt(fracToYearEnd(y));
-    const p=ncdf(cbr,mkt,s)*100;
+    const p=ncdf(NEUTRAL,mkt,s)*100;
     probRows+='<tr><td>'+y+'</td><td class="num">'+Math.max(0,Math.round(p))+'%</td></tr>';
   });
   const d27=(fwdC[2027]!=null)?fwdC[2027]-scenData['База (ЦБ)'][2027]:0;
@@ -671,9 +676,9 @@ async function loadForwards(){
   box.innerHTML='<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text)">Согласен ли рынок с прогнозом ЦБ</div>'+
     '<table style="margin-bottom:0.7rem;font-size:0.92em"><tr><th>Год</th><th>Форвард</th><th>Премия</th><th>Ожидание рынка</th><th>Прогноз ЦБ</th><th>Разница</th></tr>'+rows+'</table>'+
     '<div style="color:var(--text2);margin-bottom:0.7rem">'+signal+'</div>'+
-    '<div style="font-weight:600;margin-bottom:0.4rem;color:var(--text)">Шанс сценария ЦБ по мнению рынка</div>'+
-    '<table style="margin-bottom:0.7rem;max-width:280px"><tr><th>Год</th><th>Вероятность прогноза ЦБ</th></tr>'+probRows+'</table>'+
-    '<div style="color:var(--text3);font-size:0.85em"><b>Форвард</b> — ставка, зашитая в кривую ОФЗ (с премией за срок). <b>Премия</b> вычтена по профилю, измеренному в стабильный период КС=4.25% (2020–2021). <b>Ожидание рынка</b> = форвард минус премия — чистый рыночный взгляд на ставку; именно его сравниваем с прогнозом ЦБ. <b>Вероятность</b> оценена по исторической волатильности форвардных ставок (risk-neutral): при высокой волатильности остаточная премия может занижать шанс снижения, поэтому «0%» читать как «пренебрежимо мало». Это оценка того, что рынок думает о прогнозе ЦБ, — не самостоятельный прогноз.</div>';
+    '<div style="font-weight:600;margin-bottom:0.4rem;color:var(--text)">Шанс снижения ставки к нейтрали (≤9%) по мнению рынка</div>'+
+    '<table style="margin-bottom:0.7rem;max-width:320px"><tr><th>Год</th><th>Вероятность снижения к ~9%</th></tr>'+probRows+'</table>'+
+    '<div style="color:var(--text3);font-size:0.85em"><b>Форвард</b> — ставка, зашитая в кривую ОФЗ (с премией за срок). <b>Премия</b> вычтена по профилю, измеренному в стабильный период КС=4.25% (2020–2021). <b>Ожидание рынка</b> = форвард минус премия — чистый рыночный взгляд на ставку; именно его сравниваем с прогнозом ЦБ. <b>Вероятность снижения к ~9%</b> — шанс, что средняя ставка года опустится к нейтральному уровню (цель ЦБ ~7,5–8,5%); единый порог для всех лет, чтобы сравнение было честным. Оценена по исторической волатильности форвардных ставок (risk-neutral): при высокой волатильности остаточная премия может занижать шанс снижения, поэтому «0%» читать как «пренебрежимо мало». Это оценка того, что рынок думает о снижении ставки, — не самостоятельный прогноз.</div>';
   btn.disabled=false; btn.textContent='Обновить форвардные ставки';
 }
 
