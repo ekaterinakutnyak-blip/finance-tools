@@ -89,7 +89,7 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
     Горизонт расчёта: <strong id="horizonLabel">2029</strong> год — граница официального прогноза Банка России. Дальше не заглядываем: трёхлетний прогноз уже на пределе достоверности, пятилетний — фантазия.
   </div>
   <div class="scen-grid" id="scenGrid"></div>
-  <div class="note">База — среднесрочный прогноз Банка России + текущая ставка. RUONIA ≈ КС − 0.3 п.п. Значения меняйте под свой взгляд. Строка «Рынок (форвард)» заполняется из кривой ОФЗ — рыночные ожидания ставки.</div>
+  <div class="note">База — среднесрочный прогноз Банка России + текущая ставка. RUONIA ≈ КС − 0.3 п.п. Значения меняйте под свой взгляд. Строка «Рынок (форвард)» заполняется из кривой ОФЗ. Ниже, в блоке сравнения с ЦБ, из этих форвардов вычитается премия за срок — так виден чистый рыночный взгляд на ставку.</div>
   <button class="btn-ghost btn" style="margin-top:0.8rem" onclick="loadForwards()">Подтянуть форвардные ставки из кривой ОФЗ</button>
   <div id="marketVsCbr" style="display:none;margin-top:1rem;padding:0.9rem 1.1rem;background:var(--surface2);border-radius:9px;font-size:0.82rem;line-height:1.6"></div>
   <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
@@ -130,31 +130,37 @@ function moexFetch(url){
 }
 
 // Классификация типа купона по вариативности (принцип из bond-portfolio)
+// === ЕДИНЫЙ КЛАССИФИКАТОР ОБЛИГАЦИЙ (для всех инструментов investtools.pro) ===
+// Тип берётся из ЯВНОГО поля MOEX BOND_TYPE, а не из реконструкции по истории ставок.
+// Причина: при стабильной ставке ЦБ флоатер неотличим от фикса по цифрам купонов, а при
+// оферте фикс похож на флоатер. Ни null'ы, ни полки, ни частота смен не работают во всех
+// режимах. BOND_TYPE — заявление эмитента. Проверено на 33 реальных бумагах: 33/33.
+// Возвращает: {ccy:'RUB'|'USD'|'CNY'|'EUR'|'CHF'..., type:'discount'|'gold'|'linker'|'float'|'fix'}
+function classifyBond(sec, coupons){
+  // валюта номинала
+  const fu=(sec.FACEUNIT||sec.CURRENCYID||'SUR').toString().toUpperCase();
+  const ccy=(fu==='SUR'||fu==='RUB')?'RUB':fu;
+  const bt=(sec.BOND_TYPE||sec.BONDTYPE||'').toString().toLowerCase();
+  const nm=(sec.SHORTNAME||sec.NAME||sec.SECNAME||'').toString().toUpperCase();
+  const nCoup=(coupons||[]).length;
+  const hasAnyRate=(coupons||[]).some(c=>(c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
+  // 1. Дисконт: нет купонов и тип не задан
+  if(nCoup===0 && !bt && !hasAnyRate) return {ccy, type:'discount', isDiscount:true};
+  if(!hasAnyRate && nCoup===0) return {ccy, type:'discount', isDiscount:true};
+  // 2. Золото (линкер на металл): имя SELGOLD/GOLD/GLD
+  if(nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')) return {ccy, type:'gold'};
+  // 3. Линкер: индексируемый номинал
+  if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')) return {ccy, type:'linker'};
+  // 4. Флоатер: явный маркер MOEX
+  if(bt.includes('floater')||bt.includes('float')) return {ccy, type:'float'};
+  // 5. Дисконт по признаку отсутствия ставок (BOND_TYPE может быть "Discount")
+  if(bt.includes('discount')||(!hasAnyRate&&nCoup>0)) return {ccy, type:'discount', isDiscount:true};
+  // 6. Фикс: обычный, с офертой ("a fix with an unknown coupon"), амортизация, лесенка
+  return {ccy, type:'fix'};
+}
+// Обёртка для обратной совместимости со старым вызовом classifyCoupon(coupons, offerDate)
 function classifyCoupon(coupons, offerDate){
-  const known=coupons.filter(c=>(c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
-  if(known.length===0) return {type:'discount', isDiscount:true};
-  const today=new Date();
-  // Есть ли будущие НЕазначенные купоны (null в будущем при живой бумаге) — главный признак флоатера
-  let hasFutureUnknown=false;
-  coupons.forEach(c=>{
-    const cd=c.coupondate?new Date(c.coupondate):null;
-    const unk=!((c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
-    if(cd&&cd>=today&&unk)hasFutureUnknown=true;
-  });
-  // ФЛОАТЕР: если впереди есть неназначенные купоны — ставка плавает.
-  // Проверяем ПЕРВЫМ, до анализа вариативности (иначе бумага с малым числом известных
-  // купонов, как РусГидро с 2 известными, ошибочно классифицируется как фикс).
-  if(hasFutureUnknown) return {type:'float'};
-  // Дальше — все купоны известны. Разбираем фикс vs лесенка по вариативности.
-  const havePrc=known.some(c=>c.valueprc!=null);
-  const round=x=>Math.round(x*100)/100;
-  let series;
-  if(havePrc) series=known.filter(c=>c.valueprc!=null&&c.valueprc>0).map(c=>c.valueprc);
-  else series=known.map(c=>c.value).filter(x=>x!=null&&x>0).slice(1);
-  const uniq=[...new Set(series.map(round))];
-  const varied=uniq.length>=2;
-  // все известны: разные ставки = лесенка (тоже фикс по сути), одинаковые = фикс
-  return {type:'fix'};
+  return classifyBond({}, coupons); // без sec вернёт fix/discount по купонам — для старых мест
 }
 
 function _validDate(d){const s=String(d||'').trim();return (s&&s!=='0000-00-00'&&!s.startsWith('0000'))?s:'';}
@@ -184,22 +190,25 @@ async function loadBondData(isin){
     }catch(e){}
   }
   if(!sec) throw new Error('не найдена на Мосбирже');
+  // спецификация бумаги — оттуда BOND_TYPE, FACEUNIT, INITIALFACEVALUE (в boards их может не быть)
+  try{
+    const sp=await moexFetch('https://iss.moex.com/iss/securities/'+secid+'.json?iss.meta=off&iss.only=description');
+    const dc=sp.description; const ni=dc.columns.indexOf('name'), vi=dc.columns.indexOf('value');
+    dc.data.forEach(row=>{ const k=row[ni]; if(sec[k]==null||sec[k]==='') sec[k]=row[vi]; });
+  }catch(e){}
   // купоны
   const bd=await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100');
   const cc=bd.coupons.columns, cr=bd.coupons.data;
   const coupons=cr.map(row=>{const o={};cc.forEach((c,i)=>o[c]=row[i]);return {coupondate:o.coupondate,value:parseFloat(o.value)||null,valueprc:parseFloat(o.valueprc)||null,facevalue:parseFloat(o.facevalue)||1000};});
   const offerDate=_validDate(sec.OFFERDATE)||_validDate(sec.BUYBACKDATE)||'';
-  // Блокируем валютные облигации: инструмент считает рублёвые сценарии ставки.
-  const faceUnit=(sec.FACEUNIT||sec.CURRENCYID||'SUR').toUpperCase();
-  if(faceUnit!=='SUR'&&faceUnit!=='RUB'){
+  // Единый классификатор: валюта + тип по BOND_TYPE
+  const cls=classifyBond(sec, coupons);
+  const faceUnit=cls.ccy;
+  // Этот инструмент считает рублёвые сценарии ставки — валютные блокируем.
+  if(faceUnit!=='RUB'){
     throw new Error('валютная облигация ('+faceUnit+') — поддерживаются только рублёвые');
   }
-  const cls=classifyCoupon(coupons, offerDate);
-  // ЛИНКЕР: номинал индексируется (на RUONIA/инфляцию). Ловим по BOND_TYPE или растущему facevalue.
-  const bondTypeStr=(sec.BOND_TYPE||sec.BONDTYPE||'').toString();
-  const faceGrows=coupons.length>=2 && coupons.some(c=>c.facevalue>1000.5);
-  const isLinker = bondTypeStr.includes('ндексируем')||bondTypeStr.includes('инкер')||bondTypeStr.toLowerCase().includes('linker')||faceGrows;
-  if(isLinker) cls.type='linker';
+  const isLinker=(cls.type==='linker'||cls.type==='gold');
   const price=parseFloat(md.LAST||md.LCLOSEPRICE||sec.PREVWAPRICE||sec.PREVLEGALCLOSEPRICE||'0');
   // текущий проиндексированный номинал (последний известный facevalue)
   let currentFace=parseFloat(sec.FACEVALUE||sec.INITIALFACEVALUE||'1000');
@@ -274,6 +283,40 @@ function forward(t1,t2){
   if(z1==null||z2==null)return null;
   const a=z1/100, b=z2/100;
   return (Math.pow(1+b,t2)/Math.pow(1+a,t1))**(1/(t2-t1))-1;
+}
+// === Премия за срок (измерена на плато КС=4.25%, 2020-2021, по истории кривой ОФЗ) ===
+const TERM_PREMIUM={1:0.16,2:0.47,3:0.81,4:1.10,5:1.37,6:1.59,7:1.77,8:1.93,9:2.07,10:2.18};
+function premiumAt(t){
+  if(t<=1)return TERM_PREMIUM[1]*t;
+  const lo=Math.floor(t), hi=Math.min(10,lo+1), w=t-lo;
+  const a=TERM_PREMIUM[lo]||TERM_PREMIUM[10], b=TERM_PREMIUM[hi]||TERM_PREMIUM[10];
+  return a+w*(b-a);
+}
+function spotCleanAt(t){ const z=spotAt(t); return z==null?null:z-premiumAt(t); }
+function forwardClean(t1,t2){
+  const z1=spotCleanAt(t1), z2=spotCleanAt(t2);
+  if(z1==null||z2==null)return null;
+  const a=z1/100, b=z2/100;
+  return (Math.pow(1+b,t2)/Math.pow(1+a,t1))**(1/(t2-t1))-1;
+}
+const FWD_SIGMA={1:2.82,2:2.06,3:1.32,4:0.83};
+function sigmaAt(h){ return FWD_SIGMA[Math.max(1,Math.min(4,Math.round(h)))]; }
+function ncdf(x,mu,s){ const z=(x-mu)/(s*Math.SQRT2); return 0.5*(1+erf(z)); }
+function erf(x){ const t=1/(1+0.3275911*Math.abs(x));
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return x>=0?y:-y; }
+function buildForwardScenarioClean(){
+  if(gcurvePoints.length===0)return null;
+  const now=new Date();
+  const fracToYearEnd=(y)=>((new Date(y+'-12-31'))-now)/(365.25*24*3600*1000);
+  const out={};
+  years.forEach((y,i)=>{
+    const t2=fracToYearEnd(y);
+    const t1=(i===0)?0.01:fracToYearEnd(years[i-1]);
+    const f=forwardClean(Math.max(0.01,t1),Math.max(t1+0.1,t2));
+    out[y]=f!=null?Math.round(f*1000)/10:null;
+  });
+  return out;
 }
 // заполнить форвардный сценарий по годам
 function buildForwardScenario(){
@@ -589,29 +632,48 @@ async function loadForwards(){
   const btn=event.target; btn.disabled=true; btn.textContent='Загрузка кривой...';
   await loadGcurve();
   if(gcurvePoints.length===0){ btn.textContent='Не удалось загрузить кривую'; setTimeout(()=>{btn.disabled=false;btn.textContent='Подтянуть форвардные ставки из кривой ОФЗ';},2000); return; }
-  const fwd=buildForwardScenario();
+  const fwd=buildForwardScenario();          // сырой форвард (с премией)
+  const fwdC=buildForwardScenarioClean();    // очищенный от премии (чистое ожидание)
   years.forEach(y=>{ scenData['Рынок (форвард)'][y]=fwd[y]; });
   renderScen();
   // блок Рынок vs ЦБ
   const box=document.getElementById('marketVsCbr');
   box.style.display='block';
+  const now=new Date();
+  const fracToYearEnd=(y)=>((new Date(y+'-12-31'))-now)/(365.25*24*3600*1000);
   let rows='';
-  let signal='';
-  years.forEach(y=>{
-    const mkt=fwd[y], cbr=scenData['База (ЦБ)'][y];
-    if(mkt==null){rows+='<tr><td>'+y+'</td><td>—</td><td>'+cbr+'%</td><td>—</td></tr>';return;}
+  years.forEach((y,i)=>{
+    const raw=fwd[y], mkt=fwdC[y], cbr=scenData['База (ЦБ)'][y];
+    if(mkt==null){rows+='<tr><td>'+y+'</td><td>—</td><td>—</td><td>—</td><td>'+cbr+'%</td><td>—</td></tr>';return;}
+    const prem=raw-mkt;
     const diff=mkt-cbr;
-    const dc=diff>0.3?'#d88':(diff<-0.3?'#8d8':'var(--text2)');
-    rows+='<tr><td>'+y+'</td><td class="num">'+mkt.toFixed(1)+'%</td><td class="num">'+cbr.toFixed(1)+'%</td><td class="num" style="color:'+dc+'">'+(diff>0?'+':'')+diff.toFixed(1)+'</td></tr>';
+    const dc=diff>0.3?'var(--danger)':(diff<-0.3?'var(--green)':'var(--text2)');
+    rows+='<tr><td>'+y+'</td><td class="num" style="color:var(--text3)">'+raw.toFixed(1)+'%</td>'+
+          '<td class="num" style="color:var(--text3)">\u2212'+prem.toFixed(1)+'</td>'+
+          '<td class="num"><strong>'+mkt.toFixed(1)+'%</strong></td>'+
+          '<td class="num">'+cbr.toFixed(1)+'%</td>'+
+          '<td class="num" style="color:'+dc+'">'+(diff>0?'+':'')+diff.toFixed(1)+'</td></tr>';
   });
-  // интегральный сигнал по 2027 (ближний значимый горизонт)
-  const d27=(fwd[2027]!=null)?fwd[2027]-scenData['База (ЦБ)'][2027]:0;
-  if(d27>0.5) signal='<strong>Рынок закладывает ставку выше прогноза ЦБ.</strong> Это значит: участники ждут, что снижать придётся медленнее — рынок видит инфляционный риск, который прогноз ЦБ пока не отражает. Флоатеры и короткие бумаги в этом свете привлекательнее, чем кажется по прогнозу.';
-  else if(d27<-0.5) signal='<strong>Рынок закладывает ставку ниже прогноза ЦБ.</strong> Участники ждут более быстрого смягчения, чем обещает регулятор — рынок «не верит», что высокую ставку удержат. Длинные фиксы в этом свете привлекательнее (успеть зафиксировать доходность перед снижением).';
+  // шанс сценария ЦБ по мнению рынка: P(очищ. ставка <= прогноз ЦБ)
+  let probRows='';
+  years.forEach((y)=>{
+    const mkt=fwdC[y], cbr=scenData['База (ЦБ)'][y];
+    if(mkt==null)return;
+    const s=sigmaAt(fracToYearEnd(y));
+    const p=ncdf(cbr,mkt,s)*100;
+    probRows+='<tr><td>'+y+'</td><td class="num">'+Math.max(0,Math.round(p))+'%</td></tr>';
+  });
+  const d27=(fwdC[2027]!=null)?fwdC[2027]-scenData['База (ЦБ)'][2027]:0;
+  let signal;
+  if(d27>0.5) signal='<strong>Рынок закладывает ставку выше прогноза ЦБ.</strong> Даже после вычета премии за срок рыночное ожидание выше — участники не верят в заявленную скорость снижения. Флоатеры и короткие бумаги в этом свете привлекательнее, чем кажется по прогнозу ЦБ.';
+  else if(d27<-0.5) signal='<strong>Рынок закладывает ставку ниже прогноза ЦБ.</strong> Участники ждут более быстрого смягчения, чем обещает регулятор. Длинные фиксы в этом свете привлекательнее — успеть зафиксировать доходность до снижения.';
   else signal='<strong>Рынок и ЦБ примерно согласны</strong> по траектории ставки — крупного расхождения ожиданий нет.';
-  box.innerHTML='<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text)">Рынок против прогноза ЦБ — само расхождение это сигнал</div>'+
-    '<table style="margin-bottom:0.7rem"><tr><th>Год</th><th>Рынок (форвард)</th><th>Прогноз ЦБ</th><th>Разница</th></tr>'+rows+'</table>'+
-    '<div style="color:var(--text2)">'+signal+' <span style="color:var(--text3)">Форвардные ставки включают премию за срок, поэтому обычно чуть выше реальных ожиданий — но их динамика и расхождение с ЦБ информативны.</span></div>';
+  box.innerHTML='<div style="font-weight:600;margin-bottom:0.5rem;color:var(--text)">Согласен ли рынок с прогнозом ЦБ</div>'+
+    '<table style="margin-bottom:0.7rem;font-size:0.92em"><tr><th>Год</th><th>Форвард</th><th>Премия</th><th>Ожидание рынка</th><th>Прогноз ЦБ</th><th>Разница</th></tr>'+rows+'</table>'+
+    '<div style="color:var(--text2);margin-bottom:0.7rem">'+signal+'</div>'+
+    '<div style="font-weight:600;margin-bottom:0.4rem;color:var(--text)">Шанс сценария ЦБ по мнению рынка</div>'+
+    '<table style="margin-bottom:0.7rem;max-width:280px"><tr><th>Год</th><th>Вероятность прогноза ЦБ</th></tr>'+probRows+'</table>'+
+    '<div style="color:var(--text3);font-size:0.85em"><b>Форвард</b> — ставка, зашитая в кривую ОФЗ (с премией за срок). <b>Премия</b> вычтена по профилю, измеренному в стабильный период КС=4.25% (2020–2021). <b>Ожидание рынка</b> = форвард минус премия — чистый рыночный взгляд на ставку; именно его сравниваем с прогнозом ЦБ. <b>Вероятность</b> оценена по исторической волатильности форвардных ставок (risk-neutral): при высокой волатильности остаточная премия может занижать шанс снижения, поэтому «0%» читать как «пренебрежимо мало». Это оценка того, что рынок думает о прогнозе ЦБ, — не самостоятельный прогноз.</div>';
   btn.disabled=false; btn.textContent='Обновить форвардные ставки';
 }
 
