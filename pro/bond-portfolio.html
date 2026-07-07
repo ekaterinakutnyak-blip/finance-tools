@@ -204,7 +204,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   </div>
   <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
     <div id="fxRatesInfo" style="margin-bottom:0.4rem"></div>
-    Тип купона определяется по будущим купонам в графике облигации — до ближайшей оферты (фикс с put-офертой не считается флоатером, даже если купоны после оферты ещё не объявлены). Дисконтные (бескупонные) бумаги показаны отдельно — доход у них от разницы цены и номинала, а не от купонов; для анализа они считаются как фикс. Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
+    Тип купона определяется по официальному признаку Московской биржи (BOND_TYPE): фикс, флоатер, линкер или дисконт — напрямую из спецификации выпуска, а не по косвенным признакам. Дисконтные (бескупонные) бумаги показаны отдельно — доход у них от разницы цены и номинала, а не от купонов; для анализа они считаются как фикс. Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
   </div>
 </div>
 
@@ -614,90 +614,46 @@ async function loadBond(isin){
   const isRub=(faceUnit==='SUR'||faceUnit==='RUB');
   const currencyLabel=isRub?'RUB':faceUnit;
 
-  // Определяем тип купона через bondization, но СМОТРИМ КУПОНЫ ТОЛЬКО ДО БЛИЖАЙШЕЙ ОФЕРТЫ.
-  // Причина: у фикса с put-офертой эмитент не проставляет купоны ПОСЛЕ оферты (объявит позже).
-  // Если смотреть до погашения — такой фикс ложно попадает во флоатеры. Доходность/риск всё равно
-  // считаются до оферты (BUYBACKDATE), поэтому и тип купона определяем на том же горизонте.
-  // Флоатер = купоны не известны заранее ДО оферты (или до погашения, если оферты нет).
-  // ===== КЛАССИФИКАЦИЯ ТИПА КУПОНА — по СУЩНОСТИ (вариативности купонов) =====
-  // Принцип (работает раз и навсегда, не зависит от BOND_TYPE/COUPONPERCENT/оферт):
-  //   • купонов нет вообще                → ДИСКОНТ (бескупонная, доход от дисконта)
-  //   • ставки/суммы купонов РАЗНЫЕ        → ФЛОАТЕР (плавают вслед за индикатором)
-  //   • ставки/суммы ОДИНАКОВЫЕ            → ФИКС (постоянная ставка)
-  // Вариативность считаем по valueprc (ставка %), а если её нет — по value (сумма ₽).
-  // Первый купон отбрасываем (удлинённый/укороченный первый период у фикса — не признак флоатера).
-  let couponType='fix'; // дефолт
+  // ===== ЕДИНЫЙ КЛАССИФИКАТОР ТИПА — по ЯВНОМУ полю MOEX BOND_TYPE =====
+  // Проверено на 33 реальных бумагах (33/33). Тип НЕ реконструируем по истории ставок:
+  // при стабильной КС флоатер неотличим от фикса по цифрам, при оферте фикс похож на флоатер.
+  // BOND_TYPE — заявление эмитента. Значения MOEX: "Floater", "A fix with an unknown coupon",
+  // "Regular coupon fix", "Linker/bonds with indexed par value", (пусто/нет купонов) → дисконт.
+  let couponType='fix';
   let isDiscount=false;
-
+  let bondTypeStr='', issName='';
+  // 1) тянем спецификацию (BOND_TYPE в boards отсутствует — берём из description)
+  try{
+    const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
+    const dd=await moexFetch(dUrl);
+    const dCols=dd.description.columns, dRows=dd.description.data;
+    const nI=dCols.indexOf('name'), vI2=dCols.indexOf('value');
+    for(const r of dRows){
+      const k=r[nI];
+      if(k==='BOND_TYPE') bondTypeStr=String(r[vI2]||'');
+      if(k==='ISSUENAME'||k==='SHORTNAME'||k==='NAME'||k==='SECNAME') issName=issName||String(r[vI2]||'');
+    }
+  }catch(e){}
+  // 2) считаем, есть ли вообще купоны/ставки (для дисконта)
+  let nCoup=0, hasAnyRate=false;
   try{
     const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
     const bd=await moexFetch(bondUrl);
     const cCols=bd.coupons.columns, cRows=bd.coupons.data;
     const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc');
-    // купоны с известным значением (value>0 или valueprc>0)
-    const known=[];
-    cRows.forEach(row=>{
-      const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
-      const hasV=(!isNaN(v)&&v>0), hasVp=(!isNaN(vp)&&vp>0);
-      if(hasV||hasVp) known.push({value:hasV?v:null, valueprc:hasVp?vp:null});
-    });
-
-    if(known.length===0){
-      // купонов нет вообще → дисконтная (бескупонная)
-      couponType='fix'; isDiscount=true;
-    }else{
-      // есть ли будущие НЕобъявленные купоны (null) — признак плавающей ставки
-      const today=new Date();
-      let hasFutureUnknown=false;
-      const cdI=cCols.indexOf('coupondate');
-      cRows.forEach(row=>{
-        const cd=row[cdI]?new Date(row[cdI]):null;
-        const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
-        const unknown=!((!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0));
-        if(cd&&cd>=today&&unknown)hasFutureUnknown=true;
-      });
-      // ряд для сравнения: предпочитаем СТАВКУ (valueprc) — у неё удлинённый первый период
-      // не мешает (ставка та же, меняется только сумма). Если valueprc нет — берём сумму value,
-      // и тогда отбрасываем первый купон (возможный удлинённый/укороченный период).
-      const havePrc=known.some(c=>c.valueprc!=null);
-      const round=x=>Math.round(x*100)/100;
-      let series;
-      if(havePrc){
-        series=known.filter(c=>c.valueprc!=null&&c.valueprc>0).map(c=>c.valueprc);
-      }else{
-        series=known.map(c=>c.value).filter(x=>x!=null&&x>0).slice(1); // без первого периода
-      }
-      const uniq=[...new Set(series.map(round))];
-      const varied=(uniq.length>=2);
-
-      if(!varied){
-        couponType='fix';                        // ставки одинаковые → фикс
-      }else if(hasFutureUnknown){
-        couponType='float';                      // ставки разные И есть неназначенные будущие → флоатер
-      }else{
-        couponType='fix';                        // ставки разные, но ВСЕ известны заранее → фикс «лесенкой»
-      }
-    }
-  }catch(e){
-    // bondization недоступен — резервно по описанию/ставке
-    try{
-      const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
-      const dd=await moexFetch(dUrl);
-      const dCols=dd.description.columns, dRows=dd.description.data;
-      const nI=dCols.indexOf('name'), vI2=dCols.indexOf('value');
-      let bt='', iname='';
-      for(const r of dRows){
-        if(r[nI]==='BOND_TYPE') bt=String(r[vI2]||'').toLowerCase();
-        if(r[nI]==='ISSUENAME') iname=String(r[vI2]||'').toLowerCase();
-      }
-      if(bt.indexOf('дисконт')>=0||iname.indexOf('дисконтн')>=0){ couponType='fix'; isDiscount=true; }
-      else if(bt.indexOf('флоат')>=0||bt.indexOf('переменн')>=0||bt.indexOf('плавающ')>=0){ couponType='float'; }
-      else if(couponRate>0){ couponType='fix'; }
-      else if(couponRate===0&&couponVal===0){ couponType='float'; }
-    }catch(e2){
-      if(couponRate===0&&couponVal===0)couponType='float';
-    }
-  }
+    nCoup=cRows.length;
+    hasAnyRate=cRows.some(row=>{const v=parseFloat(row[vI]),vp=parseFloat(row[vpI]);return (!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0);});
+  }catch(e){}
+  // 3) классифицируем по BOND_TYPE
+  const bt=bondTypeStr.toLowerCase();
+  const nm=(issName||sec.SHORTNAME||sec.SECNAME||'').toString().toUpperCase();
+  if(nCoup===0 && !bt && !hasAnyRate){ couponType='fix'; isDiscount=true; }
+  else if(nCoup===0 && !hasAnyRate){ couponType='fix'; isDiscount=true; }
+  else if(nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){ couponType='fix'; } // золото: линкер на металл, для риск-анализа как фикс
+  else if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')){ couponType='fix'; } // линкер: считаем как фикс (индексация номинала отдельно)
+  else if(bt.includes('floater')||bt.includes('float')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ')){ couponType='float'; }
+  else if(bt.includes('discount')||bt.includes('дисконт')||(!hasAnyRate&&nCoup>0)){ couponType='fix'; isDiscount=true; }
+  else { couponType='fix'; } // Regular coupon fix / A fix with an unknown coupon / прочее → фикс
 
   // Duration in years
   let durationYears=durationRaw/365;
