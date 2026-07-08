@@ -193,29 +193,49 @@ async function loadBondData(isin){
     }catch(e){}
   }
   if(!sec) throw new Error('не найдена на Мосбирже');
-  // спецификация бумаги — оттуда BOND_TYPE, FACEUNIT, INITIALFACEVALUE (в boards их может не быть)
+  // ===== КЛАССИФИКАЦИЯ ТИПА — ДОСЛОВНО как в bond-portfolio =====
+  let couponType='fix';
+  let isDiscount=false;
+  let bondTypeStr='', issName='', faceUnitStr='';
+  // 1) тянем спецификацию — BOND_TYPE и валюту берём в ОТДЕЛЬНЫЕ переменные напрямую
   try{
-    const sp=await moexFetch('https://iss.moex.com/iss/securities/'+secid+'.json?iss.meta=off&iss.only=description');
-    const dc=sp.description; const ni=dc.columns.indexOf('name'), vi=dc.columns.indexOf('value');
-    dc.data.forEach(row=>{ const k=row[ni], v=row[vi];
-      // BOND_TYPE и валюту перезаписываем ВСЕГДА (в boards они пустые), как в bond-portfolio
-      if(k==='BOND_TYPE'||k==='FACEUNIT'||k==='CURRENCYID'){ if(v!=null && String(v).trim()!=='') sec[k]=v; }
-      else if(sec[k]==null||sec[k]===''){ sec[k]=v; }
-    });
+    const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
+    const dd=await moexFetch(dUrl);
+    const dCols=dd.description.columns, dRows=dd.description.data;
+    const nI=dCols.indexOf('name'), vI2=dCols.indexOf('value');
+    for(const r of dRows){
+      const k=r[nI];
+      if(k==='BOND_TYPE') bondTypeStr=String(r[vI2]||'');
+      if(k==='FACEUNIT'||k==='CURRENCYID'){ if(!faceUnitStr && r[vI2]) faceUnitStr=String(r[vI2]); }
+      if(k==='ISSUENAME'||k==='SHORTNAME'||k==='NAME'||k==='SECNAME') issName=issName||String(r[vI2]||'');
+      if(sec[k]==null||sec[k]===''){ sec[k]=r[vI2]; }
+    }
   }catch(e){}
   // купоны
   const bd=await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100');
   const cc=bd.coupons.columns, cr=bd.coupons.data;
   const coupons=cr.map(row=>{const o={};cc.forEach((c,i)=>o[c]=row[i]);return {coupondate:o.coupondate,value:parseFloat(o.value)||null,valueprc:parseFloat(o.valueprc)||null,facevalue:parseFloat(o.facevalue)||1000};});
   const offerDate=_validDate(sec.OFFERDATE)||_validDate(sec.BUYBACKDATE)||'';
-  // Единый классификатор: валюта + тип по BOND_TYPE
-  const cls=classifyBond(sec, coupons);
-  const faceUnit=cls.ccy;
+  // 2) считаем купоны/ставки
+  let nCoup=coupons.length, hasAnyRate=coupons.some(c=>(c.value!=null&&c.value>0)||(c.valueprc!=null&&c.valueprc>0));
+  // 3) классифицируем — ТОЧНО как в bond-portfolio
+  const bt=bondTypeStr.toLowerCase();
+  const nm=(issName||sec.SHORTNAME||sec.SECNAME||'').toString().toUpperCase();
+  if(nCoup===0 && !bt && !hasAnyRate){ couponType='fix'; isDiscount=true; }
+  else if(nCoup===0 && !hasAnyRate){ couponType='fix'; isDiscount=true; }
+  else if(nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){ couponType='linker'; } // золото→линкер (индексация номинала в scenarios обрабатывается)
+  else if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')){ couponType='linker'; }
+  else if(bt.includes('floater')||bt.includes('float')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ')){ couponType='float'; }
+  else if(bt.includes('discount')||bt.includes('дисконт')){ couponType='discount'; isDiscount=true; }
+  else { couponType='fix'; }
+  // валюта
+  const fu=(faceUnitStr||sec.FACEUNIT||sec.CURRENCYID||'SUR').toString().toUpperCase();
+  const faceUnit=(fu==='SUR'||fu==='RUB')?'RUB':fu;
   // Этот инструмент считает рублёвые сценарии ставки — валютные блокируем.
   if(faceUnit!=='RUB'){
     throw new Error('валютная облигация ('+faceUnit+') — поддерживаются только рублёвые');
   }
-  const isLinker=(cls.type==='linker'||cls.type==='gold');
+  const isLinker=(couponType==='linker');
   const price=parseFloat(md.LAST||md.LCLOSEPRICE||sec.PREVWAPRICE||sec.PREVLEGALCLOSEPRICE||'0');
   // текущий проиндексированный номинал (последний известный facevalue)
   let currentFace=parseFloat(sec.FACEVALUE||sec.INITIALFACEVALUE||'1000');
@@ -230,8 +250,8 @@ async function loadBondData(isin){
     currentFace,
     matDate: sec.MATDATE,
     offerDate,
-    couponType: cls.type,
-    isDiscount: !!cls.isDiscount,
+    couponType: couponType,
+    isDiscount: !!isDiscount,
     couponValue: parseFloat(sec.COUPONVALUE||'0'),
     couponPercent: parseFloat(sec.COUPONPERCENT||'0'),
     couponFreq: parseInt(sec.COUPONFREQUENCY||'2'),
