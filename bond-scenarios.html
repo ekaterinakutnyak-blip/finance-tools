@@ -193,11 +193,16 @@ async function loadBondData(isin){
     }catch(e){}
   }
   if(!sec) throw new Error('не найдена на Мосбирже');
-  // спецификация бумаги — оттуда BOND_TYPE, FACEUNIT, INITIALFACEVALUE (в boards их может не быть)
+  // спецификация бумаги — оттуда BOND_TYPE, FACEUNIT, INITIALFACEVALUE (в boards их может не быть).
+  // BOND_TYPE и валюту пишем БЕЗУСЛОВНО (как в bond-portfolio): в boards они бывают пустой
+  // строкой/пробелом, и условный домерж их не перезаписывал → флоатер терялся.
   try{
     const sp=await moexFetch('https://iss.moex.com/iss/securities/'+secid+'.json?iss.meta=off&iss.only=description');
     const dc=sp.description; const ni=dc.columns.indexOf('name'), vi=dc.columns.indexOf('value');
-    dc.data.forEach(row=>{ const k=row[ni]; if(sec[k]==null||sec[k]==='') sec[k]=row[vi]; });
+    dc.data.forEach(row=>{ const k=row[ni], v=row[vi];
+      if(k==='BOND_TYPE'||k==='FACEUNIT'||k==='CURRENCYID'){ if(v!=null && String(v).trim()!=='') sec[k]=v; }
+      else if(sec[k]==null||sec[k]===''){ sec[k]=v; }
+    });
   }catch(e){}
   // купоны
   const bd=await moexFetch('https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100');
