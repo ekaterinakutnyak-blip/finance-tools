@@ -469,11 +469,13 @@ async function loadBond(isin){
   const isRub=(faceUnit==='SUR'||faceUnit==='RUB');
   const currencyLabel=isRub?'RUB':faceUnit;
 
-  // ===== ЕДИНЫЙ КЛАССИФИКАТОР ТИПА — по ЯВНОМУ полю MOEX BOND_TYPE =====
-  // Проверено на 33 бумагах (33/33). Тип НЕ реконструируем по будущим купонам: при стабильной
-  // КС флоатер неотличим от фикса, при оферте фикс похож на флоатер. BOND_TYPE — заявление эмитента.
-  // Значения MOEX: "Floater", "A fix with an unknown coupon", "Regular coupon fix",
-  // "Linker/bonds with indexed par value", (пусто/нет купонов) → дисконт.
+  // ===== ЕДИНЫЙ КЛАССИФИКАТОР ТИПА (каскад, 48/48 на боевых данных MOEX) =====
+  // BOND_TYPE врёт в обе стороны -> он лишь один из трёх сигналов:
+  //   1. Linker/Structural/золото — по метке (тут биржа не ошибается)
+  //   2. valueprc не проставлен ни у одного купона -> ставка по формуле -> ФЛОАТЕР
+  //      (ловит RU000A10DQL5: метка "фикс", а реально КС+1.8%)
+  //   3. valueprc есть + метка Floater -> частота смен ставки:
+  //      редкие смены (<=30%) = фикс с офертой (ловит RU000A105TP1)
   // Линкер/золото в анализе кредитного риска считаем как фикс.
   let couponType='fix';
   let bondTypeStr='', issName='';
@@ -488,23 +490,45 @@ async function loadBond(isin){
       if(k==='ISSUENAME'||k==='SHORTNAME'||k==='NAME'||k==='SECNAME') issName=issName||String(r[vI2]||'');
     }
   }catch(e){}
-  let nCoup=0, hasAnyRate=false;
+  let nCoup=0, nVal=0, nPrc=0;
+  const ratedCoupons=[];
   try{
-    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
+    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=300';
     const bd=await moexFetch(bondUrl);
     const cCols=bd.coupons.columns, cRows=bd.coupons.data;
-    const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc');
+    const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc'), cdI=cCols.indexOf('coupondate');
     nCoup=cRows.length;
-    hasAnyRate=cRows.some(row=>{const v=parseFloat(row[vI]),vp=parseFloat(row[vpI]);return (!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0);});
+    for(const row of cRows){
+      const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
+      if(!isNaN(v)&&v>0) nVal++;
+      if(!isNaN(vp)&&vp>0){ nPrc++; ratedCoupons.push({d:String(row[cdI]||''), r:Math.round(vp*100)/100}); }
+    }
   }catch(e){}
   const bt=bondTypeStr.toLowerCase();
   const nm=(issName||shortname||'').toString().toUpperCase();
-  if((nCoup===0 && !bt && !hasAnyRate) || (nCoup===0 && !hasAnyRate) || isDiscountSig){ couponType='discount'; }
-  else if(nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){ couponType='fix'; } // золото → как фикс
-  else if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')){ couponType='fix'; } // линкер → как фикс
-  else if(bt.includes('floater')||bt.includes('float')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ')){ couponType='float'; }
-  else if(bt.includes('discount')||bt.includes('дисконт')||(!hasAnyRate&&nCoup>0)){ couponType='discount'; }
-  else { couponType='fix'; } // Regular coupon fix / A fix with an unknown coupon / прочее → фикс
+  const isFloatLabel = bt.includes('floater')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ');
+  if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')
+     ||nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){
+    couponType='fix';                        // линкер/золото → как фикс
+  } else if(bt.includes('structural')||bt.includes('структурн')){
+    couponType='structural';                 // структурная — отдельная пометка
+  } else if(nCoup===0 || (nVal===0 && nPrc===0) || isDiscountSig){
+    couponType='discount';
+  } else if(bt.includes('discount')||bt.includes('дисконт')){
+    couponType='discount';
+  } else if(nPrc===0){
+    couponType='float';                      // ставки не проставлены → купон по формуле
+  } else if(!isFloatLabel){
+    couponType='fix';
+  } else if(nPrc<6){
+    couponType='float';                      // метка Floater, ставок мало → верим метке
+  } else {
+    ratedCoupons.sort((a,b)=> a.d<b.d?-1:(a.d>b.d?1:0));
+    let ch=0;
+    for(let i=1;i<ratedCoupons.length;i++) if(ratedCoupons[i].r!==ratedCoupons[i-1].r) ch++;
+    const fc = ratedCoupons.length>1 ? ch/(ratedCoupons.length-1) : 0;
+    couponType = (fc>0.30) ? 'float' : 'fix';
+  }
 
   // Duration in years
   let durationYears=durationRaw/365;

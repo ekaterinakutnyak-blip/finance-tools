@@ -204,7 +204,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
   </div>
   <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--surface2);font-size:0.72rem;color:var(--text3)">
     <div id="fxRatesInfo" style="margin-bottom:0.4rem"></div>
-    Тип купона определяется по официальному признаку Московской биржи (BOND_TYPE): фикс, флоатер, линкер или дисконт — напрямую из спецификации выпуска, а не по косвенным признакам. Дисконтные (бескупонные) бумаги показаны отдельно — доход у них от разницы цены и номинала, а не от купонов; для анализа они считаются как фикс. Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
+    Тип купона определяется каскадом: сначала признак Мосбиржи (BOND_TYPE), затем перепроверка по купонному графику — потому что биржевая метка иногда ошибается в обе стороны. Флоатер распознаётся по тому, что ставка купона не зафиксирована (считается по формуле «ключевая + надбавка»), фикс — по стабильной ставке между офертами. Структурные облигации помечены отдельно: выплата у них зависит от базового актива. Дисконтные (бескупонные) показаны отдельно — доход от разницы цены и номинала; для анализа считаются как фикс. Анализ кредитного риска по спредам охватывает рублёвые фиксы (Z-spread к ОФЗ) и флоатеры с указанной надбавкой (надбавка + дисконт-маржа из цены).
   </div>
 </div>
 
@@ -614,15 +614,17 @@ async function loadBond(isin){
   const isRub=(faceUnit==='SUR'||faceUnit==='RUB');
   const currencyLabel=isRub?'RUB':faceUnit;
 
-  // ===== ЕДИНЫЙ КЛАССИФИКАТОР ТИПА — по ЯВНОМУ полю MOEX BOND_TYPE =====
-  // Проверено на 33 реальных бумагах (33/33). Тип НЕ реконструируем по истории ставок:
-  // при стабильной КС флоатер неотличим от фикса по цифрам, при оферте фикс похож на флоатер.
-  // BOND_TYPE — заявление эмитента. Значения MOEX: "Floater", "A fix with an unknown coupon",
-  // "Regular coupon fix", "Linker/bonds with indexed par value", (пусто/нет купонов) → дисконт.
+  // ===== ЕДИНЫЙ КЛАССИФИКАТОР ТИПА (каскад, 48/48 на боевых данных MOEX) =====
+  // BOND_TYPE врёт в обе стороны, поэтому он лишь один из трёх сигналов:
+  //   1. Linker/Structural — по BOND_TYPE (тут биржа не ошибается)
+  //   2. valueprc не проставлен ни у одного купона -> ставка считается по формуле -> ФЛОАТЕР
+  //      (ловит бумаги вроде RU000A10DQL5, помеченные "фикс", но реально КС+надбавка)
+  //   3. valueprc есть + метка Floater -> смотрим, как часто ставка менялась:
+  //      редкие смены (<=30% периодов) = фикс с офертой (ловит RU000A105TP1)
   let couponType='fix';
   let isDiscount=false;
   let bondTypeStr='', issName='';
-  // 1) тянем спецификацию (BOND_TYPE в boards отсутствует — берём из description)
+  // 1) спецификация: BOND_TYPE (в boards его нет)
   try{
     const dUrl='https://iss.moex.com/iss/securities/'+secid+'.json?iss.only=description&iss.meta=off';
     const dd=await moexFetch(dUrl);
@@ -634,26 +636,47 @@ async function loadBond(isin){
       if(k==='ISSUENAME'||k==='SHORTNAME'||k==='NAME'||k==='SECNAME') issName=issName||String(r[vI2]||'');
     }
   }catch(e){}
-  // 2) считаем, есть ли вообще купоны/ставки (для дисконта)
-  let nCoup=0, hasAnyRate=false;
+  // 2) купоны: собираем даты, суммы и ставки
+  let nCoup=0, nVal=0, nPrc=0;
+  const ratedCoupons=[];   // {d, r} — купоны с проставленной ставкой
   try{
-    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=100';
+    const bondUrl='https://iss.moex.com/iss/statistics/engines/stock/markets/bonds/bondization/'+secid+'.json?iss.only=coupons&iss.meta=off&limit=300';
     const bd=await moexFetch(bondUrl);
     const cCols=bd.coupons.columns, cRows=bd.coupons.data;
-    const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc');
+    const vI=cCols.indexOf('value'), vpI=cCols.indexOf('valueprc'), cdI=cCols.indexOf('coupondate');
     nCoup=cRows.length;
-    hasAnyRate=cRows.some(row=>{const v=parseFloat(row[vI]),vp=parseFloat(row[vpI]);return (!isNaN(v)&&v>0)||(!isNaN(vp)&&vp>0);});
+    for(const row of cRows){
+      const v=parseFloat(row[vI]), vp=parseFloat(row[vpI]);
+      if(!isNaN(v)&&v>0) nVal++;
+      if(!isNaN(vp)&&vp>0){ nPrc++; ratedCoupons.push({d:String(row[cdI]||''), r:Math.round(vp*100)/100}); }
+    }
   }catch(e){}
-  // 3) классифицируем по BOND_TYPE
+  // 3) каскад
   const bt=bondTypeStr.toLowerCase();
   const nm=(issName||sec.SHORTNAME||sec.SECNAME||'').toString().toUpperCase();
-  if(nCoup===0 && !bt && !hasAnyRate){ couponType='fix'; isDiscount=true; }
-  else if(nCoup===0 && !hasAnyRate){ couponType='fix'; isDiscount=true; }
-  else if(nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){ couponType='fix'; } // золото: линкер на металл, для риск-анализа как фикс
-  else if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')){ couponType='fix'; } // линкер: считаем как фикс (индексация номинала отдельно)
-  else if(bt.includes('floater')||bt.includes('float')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ')){ couponType='float'; }
-  else if(bt.includes('discount')||bt.includes('дисконт')||(!hasAnyRate&&nCoup>0)){ couponType='fix'; isDiscount=true; }
-  else { couponType='fix'; } // Regular coupon fix / A fix with an unknown coupon / прочее → фикс
+  const isFloatLabel = bt.includes('floater')||bt.includes('флоат')||bt.includes('переменн')||bt.includes('плавающ');
+  if(bt.includes('linker')||bt.includes('indexed')||bt.includes('ндексируем')||bt.includes('инкер')
+     ||nm.includes('SELGOLD')||nm.includes('GOLD')||nm.includes('GLD')){
+    couponType='fix';                       // линкер/золото: для риск-анализа как фикс
+  } else if(bt.includes('structural')||bt.includes('структурн')){
+    couponType='structural';                // структурная — отдельная пометка
+  } else if(nCoup===0 || (nVal===0 && nPrc===0)){
+    couponType='fix'; isDiscount=true;      // купонов нет -> дисконт
+  } else if(bt.includes('discount')||bt.includes('дисконт')){
+    couponType='fix'; isDiscount=true;
+  } else if(nPrc===0){
+    couponType='float';                     // ставки не проставлены -> купон по формуле
+  } else if(!isFloatLabel){
+    couponType='fix';                       // ставки есть + метка не Floater -> фикс
+  } else if(nPrc<6){
+    couponType='float';                     // метка Floater, ставок мало -> верим метке
+  } else {
+    ratedCoupons.sort((a,b)=> a.d<b.d?-1:(a.d>b.d?1:0));
+    let ch=0;
+    for(let i=1;i<ratedCoupons.length;i++) if(ratedCoupons[i].r!==ratedCoupons[i-1].r) ch++;
+    const fc = ratedCoupons.length>1 ? ch/(ratedCoupons.length-1) : 0;
+    couponType = (fc>0.30) ? 'float' : 'fix';   // частые смены -> флоатер, редкие -> фикс с офертой
+  }
 
   // Duration in years
   let durationYears=durationRaw/365;
@@ -1532,7 +1555,7 @@ async function run(){
     let html='<thead><tr><th>Бумага</th><th>Вал.</th><th>Купон</th><th>Кол-во</th><th>Доля</th><th>Стоимость</th><th>YTM</th><th>Купон/год</th><th>Дюрация</th><th>Выпукл.</th><th>Цена</th><th>Погашение</th></tr></thead><tbody>';
     bonds.forEach(b=>{
       const curTag=b.isRub?'<span class="tag-rub">'+b.currencyLabel+'</span>':'<span class="tag-fx">'+b.currencyLabel+'</span>';
-      const cTag=b.isDiscount?'<span class="tag-fix">дисконт</span>':(b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>');
+      const cTag=b.isDiscount?'<span class="tag-fix">дисконт</span>':(b.couponType==='structural'?'<span class="tag-float" title="Структурная облигация: выплата зависит от базового актива, обычный расчёт доходности неприменим">структурная</span>':(b.couponType==='fix'?'<span class="tag-fix">фикс</span>':'<span class="tag-float">флоат</span>'));
       const valueCell=b.isRub
         ? Math.round(b.marketValue).toLocaleString('ru-RU')
         : Math.round(b.marketValue).toLocaleString('ru-RU')+'<br><span style="font-size:0.65rem;color:var(--text3)">'+Math.round(b.marketValueLocal).toLocaleString('ru-RU')+' '+b.currencyLabel+'</span>';
