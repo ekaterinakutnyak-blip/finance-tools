@@ -128,6 +128,7 @@ td:first-child{text-align:center;color:var(--text2)}
 
 <div style="text-align:center;margin:0.5rem 0 1.25rem">
   <button type="button" class="calc-btn" onclick="calc()">Рассчитать</button>
+  <button type="button" onclick="resetParams()" style="margin-left:0.6rem;font-family:inherit;font-size:0.8rem;padding:0.5rem 1rem;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text3);cursor:pointer" title="Очистить сохранённые параметры">Сбросить</button>
 </div>
 
 <div class="card" id="resCard">
@@ -741,6 +742,42 @@ function toggleSchedule(){
 document.querySelectorAll('#loan,#term,#rate,#freq,#epPeriod,#epAmount').forEach(e=>e.addEventListener('input',()=>{
   // не пересчитываем автоматически — ждём кнопку
 }));
+
+// ===== Автосохранение параметров (чтобы не вводить каждый раз) =====
+const _SAVE_KEY='loan_calc_params_v1';
+const _saveFields=['loan','term','rate','paidMonths','epPeriod','epAmount','bondIsin'];
+const _saveChecks=['useOfz','useDeduction','usePropertyDeduction'];
+function saveParams(){
+  try{
+    const d={};
+    _saveFields.forEach(id=>{const el=document.getElementById(id); if(el) d[id]=el.value;});
+    _saveChecks.forEach(id=>{const el=document.getElementById(id); if(el) d[id]=el.checked;});
+    localStorage.setItem(_SAVE_KEY, JSON.stringify(d));
+  }catch(e){}
+}
+function restoreParams(){
+  try{
+    const raw=localStorage.getItem(_SAVE_KEY);
+    if(!raw) return false;
+    const d=JSON.parse(raw);
+    _saveFields.forEach(id=>{const el=document.getElementById(id); if(el && d[id]!=null) el.value=d[id];});
+    _saveChecks.forEach(id=>{const el=document.getElementById(id); if(el && d[id]!=null) el.checked=d[id];});
+    // если был включён блок ОФЗ — раскрыть его
+    if(d.useOfz && typeof toggleOfzBlock==='function') toggleOfzBlock();
+    return true;
+  }catch(e){ return false; }
+}
+// сохраняем при каждом расчёте
+const _origCalc=calc;
+calc=function(){ saveParams(); return _origCalc.apply(this,arguments); };
+// кнопка сброса к пустым полям
+function resetParams(){
+  try{ localStorage.removeItem(_SAVE_KEY); }catch(e){}
+  location.reload();
+}
+
+// восстанавливаем сохранённое и считаем
+restoreParams();
 calc();
 </script>
 </body>
