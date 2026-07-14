@@ -84,13 +84,22 @@ td:first-child{text-align:center;color:var(--text2)}
 .compare-col.best .item.total-cost .val{color:var(--green)}
 .scenario-section{font-size:0.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin:0.8rem 0 0.2rem}
 @media print{
+  @page{margin:10mm;size:landscape}
   .calc-btn,.pdf-btn,.reset-btn,.ofz-pick-btn,.toggle-detail,button{display:none!important}
-  body{background:#fff}
-  .card{break-inside:avoid;box-shadow:none;border:1px solid #ddd}
-  #scheduleCard{display:none!important}          /* таблица платежей — не в PDF */
-  .hint{display:none!important}                   /* подсказки под полями убираем */
-  input,select{border:none!important;background:transparent!important;font-weight:600}
-  #ofzList,#bondHint{display:none!important}       /* список выбора ОФЗ не печатаем */
+  body{background:#fff;font-size:11px}
+  .card{break-inside:avoid;box-shadow:none;border:1px solid #ddd;margin-bottom:8px;padding:10px}
+  #scheduleCard{display:none!important}            /* таблица платежей — не в PDF */
+  .chart-container,#mainChart{display:none!important}  /* график накопленных % — не в PDF */
+  .hint{display:none!important}
+  input,select{border:none!important;background:transparent!important;font-weight:600;padding:2px 0!important}
+  #ofzList,#bondHint{display:none!important}
+  /* колонки сравнения — три рядом, каждая целиком, без разрыва между страницами */
+  .compare{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important;break-inside:avoid;page-break-inside:avoid}
+  .compare-col{break-inside:avoid;page-break-inside:avoid;padding:0.6rem}
+  #compareCard{break-inside:avoid;page-break-inside:avoid}
+  .compare-col .item{padding:3px 0;font-size:0.68rem}
+  .scenario-section{margin:0.5rem 0 0.1rem}
+  .card-title{font-size:0.95rem}
 }
 </style>
 </head>
@@ -139,6 +148,13 @@ td:first-child{text-align:center;color:var(--text2)}
   <button type="button" class="calc-btn" onclick="calc()">Рассчитать</button>
   <button type="button" class="pdf-btn" onclick="window.print()" style="margin-left:0.6rem;font-family:inherit;font-size:0.85rem;padding:0.55rem 1.1rem;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text2);cursor:pointer">📄 Скачать PDF</button>
   <button type="button" class="reset-btn" onclick="resetParams()" style="margin-left:0.6rem;font-family:inherit;font-size:0.8rem;padding:0.5rem 1rem;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text3);cursor:pointer" title="Очистить сохранённые параметры">Сбросить</button>
+  <button type="button" class="savevar-btn" onclick="saveVariant()" style="margin-left:0.6rem;font-family:inherit;font-size:0.85rem;padding:0.55rem 1.1rem;border:1px solid var(--green);border-radius:8px;background:transparent;color:var(--green);cursor:pointer" title="Сохранить этот расчёт для сравнения">💾 Сохранить вариант</button>
+</div>
+
+<div class="card" id="variantsCard" style="display:none">
+  <div class="card-title">Сохранённые варианты</div>
+  <div id="variantsList" style="margin-top:8px"></div>
+  <div id="variantsCompare" style="margin-top:12px;overflow-x:auto"></div>
 </div>
 
 <div class="card" id="resCard">
@@ -714,6 +730,19 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     html+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost3)+'</span></div>';
     html+=warn;
     
+    // сохраняем итог этого расчёта — для функции «Сохранить вариант»
+    window._lastResult={
+      loan:document.getElementById('loan').value,
+      term:document.getElementById('term').value,
+      rate:document.getElementById('rate').value,
+      epAmount:document.getElementById('epAmount').value,
+      epPeriod:document.getElementById('epPeriod').value,
+      bond:bond.shortname, isin:isin,
+      monthlyCoupon:monthlyCoupon, payment:payment, coverage:coverage,
+      surcharge:Math.max(0,payment-monthlyCoupon),
+      matDate:bond.matDate, nominalTotal:nominalTotal,
+      finalDebt:finalDebtPayment, cashAfter:cashAfterRepay, cost:cost3
+    };
     placeholder.innerHTML=html;
     if(winning){
       placeholder.classList.add('best');
@@ -786,9 +815,73 @@ function resetParams(){
   location.reload();
 }
 
+// ===== Сохранённые варианты (сравнение разных бумаг/параметров) =====
+const _VAR_KEY='loan_variants_v1';
+function _getVariants(){ try{return JSON.parse(localStorage.getItem(_VAR_KEY)||'[]');}catch(e){return [];} }
+function _setVariants(v){ try{localStorage.setItem(_VAR_KEY, JSON.stringify(v));}catch(e){} }
+function saveVariant(){
+  if(!window._lastResult){ alert('Сначала нажмите «Рассчитать» с выбранной облигацией'); return; }
+  const r=window._lastResult;
+  const def=(r.term+'л/'+r.bond);
+  const name=prompt('Название варианта:', def);
+  if(name===null) return;
+  const vars=_getVariants();
+  vars.push({name:name||def, ...r, ts:Date.now()});
+  _setVariants(vars);
+  renderVariants();
+}
+function deleteVariant(i){
+  const vars=_getVariants(); vars.splice(i,1); _setVariants(vars); renderVariants();
+}
+function clearVariants(){
+  if(confirm('Удалить все сохранённые варианты?')){ _setVariants([]); renderVariants(); }
+}
+function renderVariants(){
+  const vars=_getVariants();
+  const card=document.getElementById('variantsCard');
+  const list=document.getElementById('variantsList');
+  const cmp=document.getElementById('variantsCompare');
+  if(vars.length===0){ card.style.display='none'; return; }
+  card.style.display='';
+  // список с кнопками удаления
+  list.innerHTML=vars.map((v,i)=>'<span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border-radius:6px;padding:4px 8px;margin:0 6px 6px 0;font-size:0.8rem">'+v.name+' <span onclick="deleteVariant('+i+')" style="cursor:pointer;color:var(--text3)" title="удалить">✕</span></span>').join('')
+    + '<button onclick="clearVariants()" style="font-family:inherit;font-size:0.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-left:4px">очистить всё</button>';
+  // таблица сравнения
+  const rows=[
+    ['Сумма ипотеки', v=>fm(parseFloat(v.loan||0))],
+    ['Срок, лет', v=>v.term],
+    ['Ставка, %', v=>v.rate],
+    ['Свободные деньги', v=>fm(parseFloat(v.epAmount||0))],
+    ['Бумага', v=>v.bond],
+    ['Купон/мес', v=>fm(v.monthlyCoupon)],
+    ['Покрытие платежа', v=>v.coverage.toFixed(0)+'%'],
+    ['Доплата/мес', v=>fm(v.surcharge)],
+    ['Погашение ОФЗ', v=>fmDate(v.matDate)],
+    ['Остаток долга', v=>fm(v.finalDebt)],
+    ['На руках после гашения', v=>fm(Math.max(0,v.cashAfter))],
+    ['Квартира обойдётся в', v=>fm(v.cost)]
+  ];
+  let t='<table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:'+(140+vars.length*110)+'px">';
+  t+='<thead><tr><th style="text-align:left;padding:6px;border-bottom:2px solid var(--border)"></th>'+vars.map(v=>'<th style="text-align:right;padding:6px;border-bottom:2px solid var(--border);font-weight:600">'+v.name+'</th>').join('')+'</tr></thead><tbody>';
+  rows.forEach(([label,fn],ri)=>{
+    const isTotal=(label==='Квартира обойдётся в');
+    t+='<tr'+(isTotal?' style="border-top:2px solid var(--border)"':'')+'><td style="padding:5px 6px;color:var(--text2)'+(isTotal?';font-weight:600':'')+'">'+label+'</td>';
+    // для строки "квартира" подсветим минимум зелёным
+    let vals=vars.map(fn);
+    let minIdx=-1;
+    if(isTotal){ let mn=Infinity; vars.forEach((v,i)=>{if(v.cost<mn){mn=v.cost;minIdx=i;}}); }
+    if(label==='Покрытие платежа'){ let mx=-1; vars.forEach((v,i)=>{if(v.coverage>mx){mx=v.coverage;minIdx=i;}}); }
+    t+=vars.map((v,i)=>'<td style="text-align:right;padding:5px 6px;font-family:var(--mono)'+(i===minIdx?';color:var(--green);font-weight:600':'')+(isTotal?';font-weight:600':'')+'">'+fn(v)+'</td>').join('');
+    t+='</tr>';
+  });
+  t+='</tbody></table>';
+  cmp.innerHTML=t;
+}
+
 // восстанавливаем сохранённое и считаем
 restoreParams();
 calc();
+renderVariants();
 </script>
 </body>
 </html>
