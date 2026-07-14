@@ -631,6 +631,16 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     const incomeTotal  = couponsBeforeMat + discountGain;            // весь доход с 12 млн
     const cost3 = expenseTotal - incomeTotal - refund - propRefund;
     const cashAfterRepay = bondRedemption - finalDebtPayment;        // остаётся на руках после гашения
+
+    // Среднемесячный купон = годовой купонный доход / 12 (после НДФЛ), и покрытие платежа
+    let annualCoupon=0;
+    {
+      const yearAhead=new Date(today.getTime()+365*86400000);
+      bond.coupons.filter(c=>c.coupondate&&c.value&&new Date(c.coupondate)>=today&&new Date(c.coupondate)<yearAhead)
+                  .forEach(c=>{ annualCoupon += parseFloat(c.value)*bondsNeeded; });
+    }
+    const monthlyCoupon = annualCoupon*0.87/12;        // после НДФЛ, среднемесячно
+    const coverage = payment>0 ? (monthlyCoupon/payment*100) : 0;   // % покрытия платежа
     
     // Для сравнения: пересчитаем стоимость стратегии "↓ срок" (она же best обычно)
     let bSim=L,intBefore=0;
@@ -667,21 +677,30 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     const winning=savingB>0;
     const matYear = new Date(bond.matDate).getFullYear();
     let html='<h3>Купить ОФЗ '+(winning?'✓':'')+'</h3>';
-    html+='<div class="col-sub">12 млн в ОФЗ. Расчёт при условии, что ипотека гасится номиналом в '+matYear+' году (когда гасится ОФЗ)</div>';
+    html+='<div class="col-sub">Свободные средства вложены в ОФЗ, купоны идут на ипотечный платёж</div>';
+    // 1. Бумага и вложение
     html+='<div class="item"><span class="lbl">Бумага</span><span class="val">'+bond.shortname+'</span></div>';
-    html+='<div class="item"><span class="lbl">Вложено в ОФЗ</span><span class="val">'+fm(investment)+' ('+bondsNeeded.toLocaleString('ru-RU')+' шт)</span></div>';
-    html+='<div class="scenario-section">Расход по ипотеке (до '+matYear+')</div>';
-    html+='<div class="item"><span class="lbl">Платежи банку</span><span class="val">'+fm(paymentsBeforeMat)+'</span></div>';
-    html+='<div class="item"><span class="lbl">Гашение остатка номиналом</span><span class="val">'+fm(finalDebtPayment)+'</span></div>';
-    html+='<div class="scenario-section">Доход с 12 млн (до '+matYear+')</div>';
-    html+='<div class="item"><span class="lbl">Купоны</span><span class="val" style="color:var(--green)">−'+fm(couponsBeforeMat)+'</span></div>';
-    html+='<div class="item"><span class="lbl">Дисконт (номинал − вложено)</span><span class="val" style="color:var(--green)">−'+fm(discountGain)+'</span></div>';
-    if(useDed)html+='<div class="item"><span class="lbl">Вычет за %</span><span class="val" style="color:var(--green)">−'+fm(refund)+'</span></div>';
-    if(usePropDed)html+='<div class="item"><span class="lbl">Вычет за покупку</span><span class="val" style="color:var(--green)">−'+fm(propRefund)+'</span></div>';
-    html+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost3)+'</span></div>';
-    if(cashAfterRepay>1){
-      html+='<div class="item" style="font-size:0.74rem;color:var(--text3);line-height:1.4"><span class="lbl" style="font-weight:400">После гашения долга остаётся на руках '+fm(cashAfterRepay)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Вложено</span><span class="val">'+fm(investment)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Куплено по номиналу на</span><span class="val">'+fm(nominalTotal)+' ('+bondsNeeded.toLocaleString('ru-RU')+' шт)</span></div>';
+    // 2. Купоны и покрытие платежа — ГЛАВНОЕ
+    html+='<div class="scenario-section">Купоны и покрытие платежа</div>';
+    html+='<div class="item"><span class="lbl">Купоны в месяц (в среднем)</span><span class="val">'+fm(monthlyCoupon)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Ипотечный платёж</span><span class="val">'+fm(payment)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Покрытие платежа купонами</span><span class="val" style="color:'+(coverage>=100?'var(--green)':'var(--text)')+';font-weight:600">'+coverage.toFixed(0)+'%</span></div>';
+    if(coverage<100){
+      html+='<div class="item"><span class="lbl">Доплата из своих</span><span class="val">'+fm(Math.max(0,payment-monthlyCoupon))+'/мес</span></div>';
+    }else{
+      html+='<div class="item"><span class="lbl">Купоны покрывают платёж полностью</span><span class="val" style="color:var(--green)">+'+fm(monthlyCoupon-payment)+'/мес</span></div>';
     }
+    // 3. Погашение облигации
+    html+='<div class="scenario-section">Погашение облигации</div>';
+    html+='<div class="item"><span class="lbl">Бумага гасится</span><span class="val">'+fmDate(bond.matDate)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Гасится по номиналу на</span><span class="val">'+fm(nominalTotal)+'</span></div>';
+    html+='<div class="item"><span class="lbl">Остаток долга по ипотеке</span><span class="val">'+fm(finalDebtPayment)+'</span></div>';
+    // 4. Итоговый вывод — отдельным блоком, с явным условием
+    html+='<div class="scenario-section">Если гасить ипотеку досрочно из ОФЗ</div>';
+    html+='<div class="item" style="font-size:0.74rem;color:var(--text3);line-height:1.4"><span class="lbl" style="font-weight:400">В '+matYear+' номинал ('+fm(nominalTotal)+') гасит остаток долга ('+fm(finalDebtPayment)+')'+(cashAfterRepay>1?', на руках остаётся '+fm(cashAfterRepay):'')+'</span></div>';
+    html+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost3)+'</span></div>';
     if(savingB>0){
       html+='<div class="item" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px"><span class="lbl">Дешевле «'+bestName+'» на</span><span class="val" style="color:var(--green)">'+fm(savingB)+'</span></div>';
     }else{
