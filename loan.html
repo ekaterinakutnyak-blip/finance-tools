@@ -701,11 +701,6 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     html+='<div class="scenario-section">Если гасить ипотеку досрочно из ОФЗ</div>';
     html+='<div class="item" style="font-size:0.74rem;color:var(--text3);line-height:1.4"><span class="lbl" style="font-weight:400">В '+matYear+' номинал ('+fm(nominalTotal)+') гасит остаток долга ('+fm(finalDebtPayment)+')'+(cashAfterRepay>1?', на руках остаётся '+fm(cashAfterRepay):'')+'</span></div>';
     html+='<div class="item total-cost"><span class="lbl">Квартира обойдётся в</span><span class="val">'+fm(cost3)+'</span></div>';
-    if(savingB>0){
-      html+='<div class="item" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px"><span class="lbl">Дешевле «'+bestName+'» на</span><span class="val" style="color:var(--green)">'+fm(savingB)+'</span></div>';
-    }else{
-      html+='<div class="item" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px"><span class="lbl">Дороже «'+bestName+'» на</span><span class="val" style="color:var(--red)">'+fm(Math.abs(savingB))+'</span></div>';
-    }
     html+=warn;
     
     placeholder.innerHTML=html;
