@@ -644,11 +644,6 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     const savingB=bestDosroch-cost3; // положительное → ОФЗ выгоднее
     
     let warn='';
-    if(bondRedeemedEarly){
-      const mortgageEndDate=new Date(today.getTime()+n*(86400000*365.25/12));
-      const yearsDiff=((mortgageEndDate-bondMat)/(86400000*365.25)).toFixed(1);
-      warn='<div class="warn-box">⚠ ОФЗ гасится '+fmDate(bond.matDate)+' — на ~'+yearsDiff+' лет раньше окончания ипотеки. Номинал ('+fm(bondRedemption)+') придёт раньше и будет лежать без процента до конца срока.</div>';
-    }
     
     const winning=savingB>0;
     let html='<h3>Купить ОФЗ '+(winning?'✓':'')+'</h3>';
@@ -660,17 +655,20 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     html+='<div class="item"><span class="lbl">Доплата из зарплаты</span><span class="val">'+fm(userOutOfPocket)+'</span></div>';
     if(cashRemainder>0)html+='<div class="item"><span class="lbl">Остаток наличными</span><span class="val" style="color:var(--green)">−'+fm(cashRemainder)+'</span></div>';
     html+='<div class="item"><span class="lbl">Возврат номинала ОФЗ</span><span class="val" style="color:var(--green)">−'+fm(bondRedemption)+'</span></div>';
-    // --- Остаток долга на момент погашения облигации ---
+    // --- Остаток долга на момент погашения облигации (нейтрально, без оценки) ---
     if(debtAtBondMat!==null){
+      const yrsEarly = ((n - monthsToBondMat)/12);
+      const earlyNote = yrsEarly>0.5 ? ' (за '+yrsEarly.toFixed(0)+' лет до конца ипотеки)' : '';
       html+='<div class="scenario-section">На момент погашения ОФЗ</div>';
-      html+='<div class="item"><span class="lbl">Погашение ОФЗ</span><span class="val">'+fmDate(bond.matDate)+'</span></div>';
-      html+='<div class="item"><span class="lbl">Остаток долга по ипотеке</span><span class="val">'+fm(debtAtBondMat)+'</span></div>';
+      html+='<div class="item"><span class="lbl">Погашение ОФЗ</span><span class="val">'+fmDate(bond.matDate)+earlyNote+'</span></div>';
+      html+='<div class="item"><span class="lbl">Остаток долга к этой дате</span><span class="val">'+fm(debtAtBondMat)+'</span></div>';
       html+='<div class="item"><span class="lbl">Номинал облигаций</span><span class="val">'+fm(nominalTotal)+'</span></div>';
-      if(coversDebt){
-        const surplus=nominalTotal-debtAtBondMat;
-        html+='<div class="item"><span class="lbl">Итог</span><span class="val" style="color:var(--green)">✓ номинал закрывает долг'+(surplus>1?' (+'+fm(surplus)+' остаётся)':'')+'</span></div>';
+      if(debtAtBondMat<=1){
+        html+='<div class="item"><span class="lbl">Разница</span><span class="val">долг уже закрыт, номинал '+fm(nominalTotal)+' — на руки</span></div>';
+      }else if(nominalTotal>=debtAtBondMat){
+        html+='<div class="item"><span class="lbl">Разница</span><span class="val">номинала хватает на долг, остаётся '+fm(nominalTotal-debtAtBondMat)+'</span></div>';
       }else{
-        html+='<div class="item"><span class="lbl">Итог</span><span class="val" style="color:var(--red)">останется долг '+fm(debtTail)+'</span></div>';
+        html+='<div class="item"><span class="lbl">Разница</span><span class="val">номинала не хватает на '+fm(debtAtBondMat-nominalTotal)+'</span></div>';
       }
     }
     if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">−'+fm(finalAccum)+'</span></div>';
