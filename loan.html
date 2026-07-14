@@ -574,6 +574,29 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
       bondRedemption=bondsNeeded*bond.faceValue;
     }
     
+    // ===== Остаток долга на дату погашения облигации =====
+    // Прогоняем амортизацию ипотеки (обычными платежами) до месяца, на который
+    // приходится погашение ОФЗ, и смотрим, сколько долга останется к этому моменту.
+    // Цель: видно, закрывает ли номинал долг или остаётся хвост.
+    let debtAtBondMat = null, monthsToBondMat = null;
+    {
+      monthsToBondMat = Math.round((bondMat - today) / (86400000 * 365.25 / 12));
+      if(monthsToBondMat >= n){
+        debtAtBondMat = 0;              // облигация гасится не раньше конца ипотеки — долг уже закрыт
+      }else if(monthsToBondMat > 0){
+        let b = L;
+        for(let i=1; i<=monthsToBondMat; i++){
+          const interest = b*r;
+          b = b + interest - payment;
+          if(b < 0){ b = 0; break; }
+        }
+        debtAtBondMat = b;
+      }
+    }
+    const nominalTotal = bondsNeeded * bond.faceValue;
+    const coversDebt = (debtAtBondMat !== null) && (nominalTotal >= debtAtBondMat - 1);
+    const debtTail = (debtAtBondMat !== null) ? Math.max(0, debtAtBondMat - nominalTotal) : null;
+
     // Налоговый вычет за %
     const refund=useDed?Math.min(baseTotalInterest,3_000_000)*0.13:0;
     // Налоговый вычет за покупку жилья (одинаков для всех стратегий)
@@ -637,6 +660,19 @@ async function appendOfzScenario(L,r,n,F,payment,epP,epA,baseTotalInterest){
     html+='<div class="item"><span class="lbl">Доплата из зарплаты</span><span class="val">'+fm(userOutOfPocket)+'</span></div>';
     if(cashRemainder>0)html+='<div class="item"><span class="lbl">Остаток наличными</span><span class="val" style="color:var(--green)">−'+fm(cashRemainder)+'</span></div>';
     html+='<div class="item"><span class="lbl">Возврат номинала ОФЗ</span><span class="val" style="color:var(--green)">−'+fm(bondRedemption)+'</span></div>';
+    // --- Остаток долга на момент погашения облигации ---
+    if(debtAtBondMat!==null){
+      html+='<div class="scenario-section">На момент погашения ОФЗ</div>';
+      html+='<div class="item"><span class="lbl">Погашение ОФЗ</span><span class="val">'+fmDate(bond.matDate)+'</span></div>';
+      html+='<div class="item"><span class="lbl">Остаток долга по ипотеке</span><span class="val">'+fm(debtAtBondMat)+'</span></div>';
+      html+='<div class="item"><span class="lbl">Номинал облигаций</span><span class="val">'+fm(nominalTotal)+'</span></div>';
+      if(coversDebt){
+        const surplus=nominalTotal-debtAtBondMat;
+        html+='<div class="item"><span class="lbl">Итог</span><span class="val" style="color:var(--green)">✓ номинал закрывает долг'+(surplus>1?' (+'+fm(surplus)+' остаётся)':'')+'</span></div>';
+      }else{
+        html+='<div class="item"><span class="lbl">Итог</span><span class="val" style="color:var(--red)">останется долг '+fm(debtTail)+'</span></div>';
+      }
+    }
     if(finalAccum>0)html+='<div class="item"><span class="lbl">Накопленные купоны</span><span class="val" style="color:var(--green)">−'+fm(finalAccum)+'</span></div>';
     if(useDed)html+='<div class="item"><span class="lbl">Вычет за %</span><span class="val" style="color:var(--green)">−'+fm(refund)+'</span></div>';
     if(usePropDed)html+='<div class="item"><span class="lbl">Вычет за покупку</span><span class="val" style="color:var(--green)">−'+fm(propRefund)+'</span></div>';
