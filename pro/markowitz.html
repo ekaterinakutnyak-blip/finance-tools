@@ -607,6 +607,89 @@ function renderCompare(nameA,A,nameB,B){
   document.getElementById('cmpPrintNames').textContent='А: '+nameA+'   ·   Б: '+nameB;
   document.getElementById('cmpPdfBtn').style.display='inline-block';
 }
+// ===== Скачать PDF-отчёт (серверный ReportLab) =====
+async function downloadReport(){
+  const R = window._reportData;
+  if(!R || !R.cards){ alert('Сначала нажмите «Рассчитать»'); return; }
+  const btn = document.getElementById('reportBtn');
+  const old = btn ? btn.textContent : '';
+  if(btn){ btn.textContent = 'Готовлю отчёт…'; btn.disabled = true; }
+  try{
+    const {cards, tickers, retMap, userPort} = R;
+    const byTitle = t => cards.find(c=>c.title===t);
+    const m = c => c ? ({
+      label: c.title,
+      ret: +(c.data.r*100).toFixed(2),
+      vol: +(c.data.v*100).toFixed(2),
+      dd: -Math.abs(+(c.data.d*100).toFixed(2)),
+      sharpe: +c.data.s.toFixed(2),
+      beta: (c.data.betaIMOEX!=null && !isNaN(c.data.betaIMOEX)) ? +c.data.betaIMOEX.toFixed(2) : null
+    }) : null;
+
+    const your = byTitle('Ваш портфель');
+    const optimals = ['Max Sharpe','Min Volatility','Min Drawdown','Equal Weight']
+      .map(byTitle).filter(Boolean).map(m);
+
+    const wsrc = your || byTitle('Equal Weight');
+    const weights = [];
+    if(wsrc){
+      tickers.forEach((t,i)=>{
+        const wp = wsrc.data.w[i]*100;
+        if(wp >= 0.05) weights.push({ticker:t, weight:+wp.toFixed(1)});
+      });
+    }
+
+    const held = weights.map(w=>w.ticker);
+    let corr_avg=null, corr_top=[], corr_low=[];
+    if(held.length>=2 && typeof pearson==='function'){
+      const pairs=[];
+      for(let i=0;i<held.length;i++)for(let j=i+1;j<held.length;j++){
+        const c=pearson(retMap[held[i]], retMap[held[j]]);
+        if(!isNaN(c)) pairs.push({a:held[i],b:held[j],corr:+c.toFixed(2)});
+      }
+      if(pairs.length){
+        corr_avg = +(pairs.reduce((s,p)=>s+p.corr,0)/pairs.length).toFixed(2);
+        const sorted=[...pairs].sort((x,y)=>y.corr-x.corr);
+        corr_top = sorted.slice(0,5);
+        corr_low = sorted.slice(-5).reverse();
+      }
+    }
+
+    const png = ch => ch ? ch.toBase64Image('image/png', 1) : null;
+
+    const payload = {
+      market: "ru",
+      benchmark: "IMOEX",
+      portfolio_value: (your && your.data.totalValue) ? your.data.totalValue : null,
+      your: your ? m(your) : optimals[optimals.length-1],
+      optimals,
+      weights,
+      chart_frontier: png(frontierChart),
+      chart_cumulative: png(equityChart),
+      chart_drawdown: png(ddChart),
+      corr_avg, corr_top, corr_low
+    };
+
+    const resp = await fetch('/api/us/report', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok){ throw new Error('Сервер вернул '+resp.status); }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'portfolio_ru_'+new Date().toISOString().slice(0,10)+'.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Не удалось сформировать отчёт: '+e.message);
+  }finally{
+    if(btn){ btn.textContent = old; btn.disabled = false; }
+  }
+}
+
 function printCompare(){
   document.getElementById('cmpPrintDate').textContent=new Date().toLocaleDateString('ru-RU');
   document.getElementById('cmpPrintHead').style.display='block';
@@ -1510,6 +1593,9 @@ async function run(){
       og.appendChild(el);
     });
 
+    // сохраняем данные для PDF-отчёта
+    window._reportData = {cards, tickers, retMap, userPort};
+
     // Weights table
     document.getElementById('weightsCard').classList.remove('hidden');
     const wt=document.getElementById('weightsTable');
@@ -1639,6 +1725,6 @@ async function run(){
   }finally{btn.disabled=false;}
 }
 </script>
-<button class="btn print-btn" onclick="window.print()">Скачать PDF</button>
+<button class="btn print-btn" id="reportBtn" onclick="downloadReport()">📄 Скачать отчёт PDF</button>
 </body>
 </html>
