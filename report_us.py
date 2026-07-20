@@ -68,6 +68,8 @@ class CorrPair(BaseModel):
     corr: float
 
 class ReportPayload(BaseModel):
+    market: str = "us"                  # "us" | "ru"
+    benchmark: str = "SPY"              # SPY | IMOEX
     portfolio_value: Optional[float] = None
     your: Metric                       # метрики "Вашего портфеля"
     optimals: List[Metric]             # Max Sharpe / Min Vol / Min DD / Equal
@@ -125,10 +127,17 @@ def build_pdf(p: ReportPayload) -> io.BytesIO:
     CONTENT_W = 178  # мм рабочей ширины
 
     # ---- ШАПКА ----
-    story.append(Paragraph("Оптимизация портфеля · США", S["h1"]))
+    is_ru = (p.market == "ru")
+    title = "Оптимизация портфеля · Россия" if is_ru else "Оптимизация портфеля · США"
+    exchange = "Московская биржа" if is_ru else "NYSE / NASDAQ"
+    cur = "₽" if is_ru else "$"
+    story.append(Paragraph(title, S["h1"]))
     dt = datetime.now().strftime("%d.%m.%Y")
-    val = f" · Стоимость портфеля ${p.portfolio_value:,.0f}".replace(",", " ") if p.portfolio_value else ""
-    story.append(Paragraph(f"investtools.pro · Markowitz · NYSE / NASDAQ · {dt}{val}", S["sub"]))
+    if p.portfolio_value:
+        val = f" · Стоимость портфеля {p.portfolio_value:,.0f} {cur}".replace(",", " ")
+    else:
+        val = ""
+    story.append(Paragraph(f"investtools.pro · Markowitz · {exchange} · {dt}{val}", S["sub"]))
 
     # ---- ЭФФЕКТИВНАЯ ГРАНИЦА ----
     story.append(Paragraph("Эффективная граница (риск vs доходность)", S["h2"]))
@@ -142,7 +151,7 @@ def build_pdf(p: ReportPayload) -> io.BytesIO:
     y = p.your
     beta_txt = f"{y.beta:.2f}" if y.beta is not None else "—"
     param_rows = [
-        ["Доходность", "Волатильность", "Макс. просадка", "Sharpe", "β к SPY"],
+        ["Доходность", "Волатильность", "Макс. просадка", "Sharpe", f"β к {p.benchmark}"],
         [f"{y.ret:.1f}%", f"{y.vol:.1f}%", f"{y.dd:.1f}%", f"{y.sharpe:.2f}", beta_txt],
     ]
     pt = Table(param_rows, colWidths=[CONTENT_W/5*mm]*5)
