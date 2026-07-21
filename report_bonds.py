@@ -89,6 +89,24 @@ class BondReport(BaseModel):
     coupons_note: Optional[str]=""
 
 
+import re as _re
+def _cleandate(s):
+    """Любую дату -> ДД.ММ.ГГГГ. Режет хвост T00:00:00 и ISO."""
+    if not s: return ""
+    s=str(s)
+    # вытащить пометку в скобках (оферта)
+    suffix=""
+    m=_re.search(r'\s*(\([^)]*\))\s*$', s)
+    if m:
+        suffix=" "+m.group(1); s=s[:m.start()]
+    s=s.strip()
+    m=_re.match(r'(\d{4})-(\d{2})-(\d{2})', s)
+    if m:
+        return f"{m.group(3)}.{m.group(2)}.{m.group(1)}"+suffix
+    # уже в формате ДД.ММ.ГГГГ или иное — вернуть как есть
+    return s+suffix
+
+
 def _img(b64, max_w_mm):
     if not b64: return None
     if b64.startswith("data:"): b64=b64.split(",",1)[1]
@@ -216,7 +234,7 @@ def build_pdf(p: BondReport) -> io.BytesIO:
                 f"{x.duration:.2f}" if x.duration is not None else "—",
                 f"{x.convexity:.1f}" if x.convexity is not None else "—",
                 f"{x.price:.2f}%" if x.price is not None else "—",
-                x.maturity,
+                _cleandate(x.maturity),
             ])
         if p.positions_total:
             t=p.positions_total
@@ -282,7 +300,7 @@ def build_pdf(p: BondReport) -> io.BytesIO:
             rows=[head]
             for r in p.credit_rows:
                 rows.append([r.name, f"{r.ytm:.2f}%" if r.ytm is not None else "—",
-                    r.g_spread, r.z_spread, r.horizon, r.pd_year, r.pd_cum, r.el, r.zone])
+                    r.g_spread, r.z_spread, _cleandate(r.horizon), r.pd_year, r.pd_cum, r.el, r.zone])
             cw=[CW*w*mm for w in [0.15,0.08,0.10,0.10,0.19,0.09,0.09,0.08,0.12]]
             ct=Table(rows,colWidths=cw,repeatRows=1)
             cstyle=[("BACKGROUND",(0,0),(-1,0),GREEN),("TEXTCOLOR",(0,0),(-1,0),colors.white),
