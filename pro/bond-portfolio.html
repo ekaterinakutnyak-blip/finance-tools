@@ -1199,8 +1199,14 @@ async function downloadBondReport(){
       ytm: +R.wYTM.toFixed(2),
       duration: +R.wDuration.toFixed(2),
       metrics: R.metrics,
-      holdings: R.holdings,
+      struct_ccy: R.struct_ccy,
+      struct_type: R.struct_type,
+      positions: R.positions,
+      positions_total: R.positions_total,
       stress: R.stress,
+      credit_summary: R.credit_summary,
+      credit_zones: R.credit_zones,
+      credit_rows: R.credit_rows,
       chart_coupons
     };
     const resp = await fetch('/api/bonds/report', {
@@ -1626,23 +1632,74 @@ async function run(){
     });
 
     // сохраняем данные для PDF-отчёта
+    // ===== ПОЛНЫЙ сбор данных для PDF-отчёта =====
+    const _fmt = n => Math.round(n).toLocaleString('ru-RU');
+    const _ctype = b => b.isDiscount ? 'дисконт' : (b.couponType==='float' ? 'флоат' : (b.couponType==='structural' ? 'структ.' : 'фикс'));
+    const _ccyGroups = {};
+    bonds.forEach(b=>{ const c=b.currencyLabel||'RUB'; _ccyGroups[c]=(_ccyGroups[c]||0)+b.marketValue; });
+    const struct_ccy = Object.entries(_ccyGroups).sort((a,b)=>b[1]-a[1]).map(([c,v])=>({
+      label: c==='RUB'?'Рублёвые':(c+' (валютные)'), pct:+(v/totalValue*100).toFixed(1), amount:_fmt(v)+' \u20bd'
+    }));
+    let _fix=0,_flt=0;
+    bonds.forEach(b=>{ if(b.couponType==='float'||b.couponType==='linker'||b.isDiscount) _flt+=b.marketValue; else _fix+=b.marketValue; });
+    const struct_type = [
+      {label:'Фиксированный', pct:+(_fix/totalValue*100).toFixed(1), amount:_fmt(_fix)+' \u20bd'},
+      {label:'Флоатер / линкер', pct:+(_flt/totalValue*100).toFixed(1), amount:_fmt(_flt)+' \u20bd'},
+    ].filter(r=>r.pct>0);
+    const positions = bonds.map(b=>({
+      name: b.shortname||b.secid, ccy: b.currencyLabel||'RUB', ctype: _ctype(b),
+      qty: b.qty, weight:+(b.weight*100).toFixed(1), value:_fmt(b.marketValue),
+      ytm:+b.ytm.toFixed(2), coupon_year:_fmt((b.annualCouponRub!=null?b.annualCouponRub:b.annualCoupon*b.qty*(b.fxRate||1))),
+      duration:+b.duration.toFixed(2),
+      convexity:(b.couponType==='float'||b.couponType==='linker')?null:+b.convexity.toFixed(1),
+      price:+b.price.toFixed(2), maturity:b.matDate||''
+    }));
+    const positions_total = {
+      weight:'100%', value:_fmt(totalValue), ytm:wYTM.toFixed(2)+'%',
+      coupon_year:_fmt(totalAnnualCoupon), duration:wDuration.toFixed(2), convexity:wConvexity.toFixed(1)
+    };
+    const stress = [-200,-100,-50,50,100,200,300,400,500].map(bp=>{
+      const dy=bp/10000; const pct=(-wModDuration*dy+0.5*wConvexity*dy*dy)*100;
+      const rub=totalValue*pct/100;
+      return {shift:bp, pct:+pct.toFixed(2), rub:(rub>0?'+':'\u2212')+_fmt(Math.abs(rub))+' \u20bd'};
+    });
+    let credit_summary=null, credit_zones=[], credit_rows=[];
+    const _valid = bonds.filter(b=>b.credit && b.credit.zSpread!==null && b.credit.zSpread!==undefined);
+    if(_valid.length){
+      const _vv=_valid.reduce((s,b)=>s+b.marketValue,0);
+      const _wZ=_valid.reduce((s,b)=>s+b.marketValue*b.credit.zSpread,0)/_vv;
+      const _wG=_valid.reduce((s,b)=>s+b.marketValue*b.credit.gSpread,0)/_vv;
+      const _wPD=_valid.reduce((s,b)=>s+b.marketValue*(b.credit.pdAnnual||0),0)/_vv;
+      credit_summary={
+        g_spread:Math.round(_wG*100)+' бп', z_spread:Math.round(_wZ*100)+' бп',
+        pd_year:(_wPD*100).toFixed(2)+'%',
+        note:'Анализ по '+_valid.length+' рублёвым бумагам со спредом ('+_fmt(_vv)+' \u20bd = '+(_vv/totalValue*100).toFixed(1)+'% портфеля). Фиксы \u2014 Z-spread к ОФЗ; флоатеры \u2014 надбавка + дисконт-маржа из цены.'
+      };
+      const _zones={premium:0,quality:0,medium:0,vdo:0};
+      _valid.forEach(b=>{const bps=b.credit.zSpreadBps;
+        if(bps<100)_zones.premium+=b.marketValue; else if(bps<300)_zones.quality+=b.marketValue;
+        else if(bps<700)_zones.medium+=b.marketValue; else _zones.vdo+=b.marketValue;});
+      const _zdef=[['Премиум (<100 бп)',_zones.premium],['Качественные (100\u2013300 бп)',_zones.quality],
+                   ['Средние (300\u2013700 бп)',_zones.medium],['ВДО (>700 бп)',_zones.vdo]];
+      credit_zones=_zdef.filter(z=>z[1]>0).map(z=>({label:z[0],pct:+(z[1]/_vv*100).toFixed(1),amount:_fmt(z[1])+' \u20bd'}));
+      credit_rows=_valid.map(b=>{
+        const cr=b.credit; const bps=cr.zSpreadBps;
+        const zone=bps<100?'премиум':bps<300?'качество':bps<700?'среднее':'ВДО';
+        let hor=cr.horizonDate||b.matDate||'';
+        if(cr.hidden) hor+=' (оферта)';
+        return {name:b.shortname||b.secid, ytm:+b.ytm.toFixed(2),
+          g_spread:Math.round(cr.gSpread*100)+' бп', z_spread:Math.round(cr.zSpread*100)+' бп',
+          horizon:hor, pd_year:cr.pdAnnual!=null?(cr.pdAnnual*100).toFixed(2)+'%':'\u2014',
+          pd_cum:cr.pdCum!=null?(cr.pdCum*100).toFixed(2)+'%':'\u2014',
+          el:cr.expectedLoss!=null?(cr.expectedLoss*100).toFixed(2)+'%':'\u2014', zone};
+      });
+    }
     window._bondReport = {
       totalValue, wYTM, wDuration,
-      metrics: cards.map(c=>({label:c.l, value:(c.v||'').replace(/<[^>]+>/g,''), sub:c.s||''})),
-      holdings: bonds.map(b=>({
-        isin: b.secid,
-        name: b.shortname || b.secid,
-        weight: +(b.weight*100).toFixed(1),
-        ctype: b.isDiscount ? 'дисконт' : (b.couponType==='float' ? 'флоатер' : (b.couponType==='structural' ? 'структурная' : 'фикс')),
-        ytm: (b.couponType==='float'||b.isDiscount) ? null : +b.ytm.toFixed(1),
-        duration: +b.duration.toFixed(2),
-        ccy: b.currencyLabel || 'RUB'
-      })),
-      stress: [-200,-100,-50,50,100,200,300,400,500].map(bp=>{
-        const dy=bp/10000;
-        const pct=(-wModDuration*dy + 0.5*wConvexity*dy*dy)*100;
-        return {shift:bp, change:+pct.toFixed(1)};
-      })
+      metrics: cards.map(c=>({label:c.l, value:(c.v||'').replace(/<[^>]+>/g,''), sub:c.s||'',
+        kind: /Дюрация|дюрация/.test(c.l)?'blue':'green'})),
+      struct_ccy, struct_type, positions, positions_total, stress,
+      credit_summary, credit_zones, credit_rows
     };
 
     // ===== Купонный календарь: реальный график выплат из bondization =====
