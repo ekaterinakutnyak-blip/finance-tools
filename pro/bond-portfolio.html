@@ -16,7 +16,10 @@
 <!-- /Yandex.Metrika counter -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Портфель облигаций · MOEX</title>
+<title>Стресс-тест и оптимизация портфеля облигаций по дюрации · MOEX</title>
+<meta name="description" content="Загрузите портфель по ISIN: дюрация, YTM, купонный поток, стресс-тест по ключевой ставке и оптимизация долей под целевую дюрацию. Данные с Мосбиржи в реальном времени.">
+<meta name="keywords" content="стресс-тест портфеля облигаций, оптимизация портфеля облигаций по дюрации, дюрация портфеля, доходность портфеля облигаций, купонный поток, MOEX ISS API">
+<link rel="canonical" href="https://investtools.pro/pro/bond-portfolio.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -108,8 +111,11 @@ body.printing-compare #cmpPdfBtn{display:none!important}
 <body>
 <script src="../gate.js"></script>
 <div class="container">
-<h1>Портфель облигаций</h1>
+<h1>Портфель облигаций: стресс-тест и оптимизация по дюрации</h1>
 <p class="subtitle">Дюрация · доходность · купонный поток · стресс-тест · MOEX ISS API</p>
+<p style="font-size:0.86rem;color:var(--text2);line-height:1.6;margin:0.6rem 0 0;max-width:70ch">
+Загрузите портфель по ISIN — инструмент подтянет данные с Мосбиржи и посчитает дюрацию, доходность к погашению и купонный поток по каждой бумаге и по портфелю в целом. <strong>Стресс-тест портфеля облигаций</strong> покажет, как изменится стоимость при сдвиге ключевой ставки. <strong>Оптимизация портфеля облигаций по дюрации</strong> подберёт доли бумаг так, чтобы попасть в целевую дюрацию с максимальной доходностью — с учётом лимитов на бумагу, эмитента и кредитный спред.
+</p>
 
 <div class="card">
   <div class="card-title">Состав портфеля</div>
@@ -126,7 +132,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
     <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
     <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
-    <button class="btn-sm" onclick="window.print()">📄 Скачать PDF</button>
+    <button class="btn-sm" id="bondReportBtn" onclick="downloadBondReport()">📄 Скачать отчёт PDF</button>
     <span class="weight-total" id="weightTotal">Итого: 0%</span>
   </div>
   <div id="manualPanel" style="display:none;margin-top:0.6rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
@@ -1179,6 +1185,42 @@ function renderCompare(nameA,A,nameB,B){
 }
 
 // Печать только блока сравнения (отдельный PDF для клиента)
+// ===== Скачать PDF-отчёт по портфелю (серверный ReportLab) =====
+async function downloadBondReport(){
+  const R = window._bondReport;
+  if(!R){ alert('Сначала нажмите «Рассчитать»'); return; }
+  const btn = document.getElementById('bondReportBtn');
+  const old = btn ? btn.textContent : '';
+  if(btn){ btn.textContent = 'Готовлю отчёт…'; btn.disabled = true; }
+  try{
+    const chart_coupons = (typeof couponChart!=='undefined' && couponChart) ? couponChart.toBase64Image('image/png',1) : null;
+    const payload = {
+      portfolio_value: R.totalValue,
+      ytm: +R.wYTM.toFixed(2),
+      duration: +R.wDuration.toFixed(2),
+      metrics: R.metrics,
+      holdings: R.holdings,
+      stress: R.stress,
+      chart_coupons
+    };
+    const resp = await fetch('/api/bonds/report', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok) throw new Error('Сервер вернул '+resp.status);
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'bond_portfolio_'+new Date().toISOString().slice(0,10)+'.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Не удалось сформировать отчёт: '+e.message);
+  }finally{
+    if(btn){ btn.textContent = old; btn.disabled = false; }
+  }
+}
+
 function printCompare(){
   const d=new Date();
   document.getElementById('cmpPrintDate').textContent=d.toLocaleDateString('ru-RU');
@@ -1582,6 +1624,26 @@ async function run(){
       el.innerHTML='<div class="stress-label">'+(bp>0?'+':'')+bp+' бп</div><div class="stress-val" style="color:'+(isNeg?'#B44040':'#2D7A4F')+'">'+(pctChange>0?'+':'')+pctChange.toFixed(2)+'%</div><div style="font-size:0.65rem;color:var(--text3)">'+(rubChange>0?'+':'')+Math.round(rubChange).toLocaleString('ru-RU')+' ₽</div>';
       sg2.appendChild(el);
     });
+
+    // сохраняем данные для PDF-отчёта
+    window._bondReport = {
+      totalValue, wYTM, wDuration,
+      metrics: cards.map(c=>({label:c.l, value:(c.v||'').replace(/<[^>]+>/g,''), sub:c.s||''})),
+      holdings: bonds.map(b=>({
+        isin: b.secid,
+        name: b.shortname || b.secid,
+        weight: +(b.weight*100).toFixed(1),
+        ctype: b.isDiscount ? 'дисконт' : (b.couponType==='float' ? 'флоатер' : (b.couponType==='structural' ? 'структурная' : 'фикс')),
+        ytm: (b.couponType==='float'||b.isDiscount) ? null : +b.ytm.toFixed(1),
+        duration: +b.duration.toFixed(2),
+        ccy: b.currencyLabel || 'RUB'
+      })),
+      stress: [-200,-100,-50,50,100,200,300,400,500].map(bp=>{
+        const dy=bp/10000;
+        const pct=(-wModDuration*dy + 0.5*wConvexity*dy*dy)*100;
+        return {shift:bp, change:+pct.toFixed(1)};
+      })
+    };
 
     // ===== Купонный календарь: реальный график выплат из bondization =====
     document.getElementById('couponCard').classList.remove('hidden');
