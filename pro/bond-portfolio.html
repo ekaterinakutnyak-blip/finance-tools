@@ -1634,7 +1634,15 @@ async function run(){
     // сохраняем данные для PDF-отчёта
     // ===== ПОЛНЫЙ сбор данных для PDF-отчёта =====
     const _fmt = n => Math.round(n).toLocaleString('ru-RU');
-    const _date = s => { if(!s) return ''; const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3]+'.'+m[2]+'.'+m[1] : s; };
+    const _date = v => {
+      if(!v) return '';
+      const d = (v instanceof Date) ? v : new Date(v);
+      if(!isNaN(d.getTime())){
+        return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
+      }
+      const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? m[3]+'.'+m[2]+'.'+m[1] : String(v);
+    };
     const _ctype = b => b.isDiscount ? 'дисконт' : (b.couponType==='float' ? 'флоат' : (b.couponType==='structural' ? 'структ.' : 'фикс'));
     const _ccyGroups = {};
     bonds.forEach(b=>{ const c=b.currencyLabel||'RUB'; _ccyGroups[c]=(_ccyGroups[c]||0)+b.marketValue; });
