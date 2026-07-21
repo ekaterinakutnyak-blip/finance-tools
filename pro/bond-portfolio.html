@@ -1634,6 +1634,7 @@ async function run(){
     // сохраняем данные для PDF-отчёта
     // ===== ПОЛНЫЙ сбор данных для PDF-отчёта =====
     const _fmt = n => Math.round(n).toLocaleString('ru-RU');
+    const _date = s => { if(!s) return ''; const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3]+'.'+m[2]+'.'+m[1] : s; };
     const _ctype = b => b.isDiscount ? 'дисконт' : (b.couponType==='float' ? 'флоат' : (b.couponType==='structural' ? 'структ.' : 'фикс'));
     const _ccyGroups = {};
     bonds.forEach(b=>{ const c=b.currencyLabel||'RUB'; _ccyGroups[c]=(_ccyGroups[c]||0)+b.marketValue; });
@@ -1652,7 +1653,7 @@ async function run(){
       ytm:+b.ytm.toFixed(2), coupon_year:_fmt((b.annualCouponRub!=null?b.annualCouponRub:b.annualCoupon*b.qty*(b.fxRate||1))),
       duration:+b.duration.toFixed(2),
       convexity:(b.couponType==='float'||b.couponType==='linker')?null:+b.convexity.toFixed(1),
-      price:+b.price.toFixed(2), maturity:b.matDate||''
+      price:+b.price.toFixed(2), maturity:_date(b.matDate)
     }));
     const positions_total = {
       weight:'100%', value:_fmt(totalValue), ytm:wYTM.toFixed(2)+'%',
@@ -1685,7 +1686,7 @@ async function run(){
       credit_rows=_valid.map(b=>{
         const cr=b.credit; const bps=cr.zSpreadBps;
         const zone=bps<100?'премиум':bps<300?'качество':bps<700?'среднее':'ВДО';
-        let hor=cr.horizonDate||b.matDate||'';
+        let hor=_date(cr.horizonDate||b.matDate||'');
         if(cr.hidden) hor+=' (оферта)';
         return {name:b.shortname||b.secid, ytm:+b.ytm.toFixed(2),
           g_spread:Math.round(cr.gSpread*100)+' бп', z_spread:Math.round(cr.zSpread*100)+' бп',
