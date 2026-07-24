@@ -1,27 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
-    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Какие облигации покупать при снижении ключевой ставки</title>
-<meta name="description" content="Как разные облигации — фикс, флоатер, длинные ОФЗ, линкер — поведут себя при разной траектории ключевой ставки. Интерактивные сценарии: что выигрывает при снижении, удержании и росте ставки.">
-<meta name="keywords" content="облигации при снижении ключевой ставки, какие облигации покупать при снижении ставки, флоатер или фикс, длинные офз при снижении ставки, цена облигаций при снижении ставки">
-<link rel="canonical" href="https://investtools.pro/bond-scenarios.html">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://investtools.pro/bond-scenarios.html">
-<meta property="og:title" content="Какие облигации покупать при снижении ключевой ставки">
-<meta property="og:description" content="Как фикс, флоатер, длинные ОФЗ и линкеры ведут себя при снижении, удержании и росте ключевой ставки. Интерактивные сценарии.">
-<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
-<script type="application/ld+json">
-{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Почему при снижении ключевой ставки растут облигации?", "acceptedAnswer": {"@type": "Answer", "text": "Когда ставка падает, новые выпуски идут с меньшим купоном, а старые бумаги с высоким фиксированным купоном становятся ценнее — их цена растёт, чтобы доходность сравнялась с рынком. Сильнее всего дорожают длинные облигации."}}, {"@type": "Question", "name": "Какие облигации покупать при снижении ставки?", "acceptedAnswer": {"@type": "Answer", "text": "При ставке на снижение выигрывают длинные ОФЗ с фиксированным купоном — у них наибольший рост цены. Но если ставку, наоборот, удержат высокой, они же сильнее просядут, поэтому важно понимать сценарий."}}, {"@type": "Question", "name": "Что выбрать — флоатер или фикс?", "acceptedAnswer": {"@type": "Answer", "text": "Флоатер с плавающим купоном защищает, когда высокая ставка задерживается или растёт. Фикс с постоянным купоном выигрывает при снижении ставки. Выбор между ними — это ваша ставка на то, куда пойдёт ключевая."}}, {"@type": "Question", "name": "Что будет с длинными ОФЗ при снижении ставки?", "acceptedAnswer": {"@type": "Answer", "text": "Их цена вырастет сильнее всего — это самая агрессивная ставка на снижение. Обратная сторона: при росте ставки они и потеряют больше других."}}]}
-</script>
+<title>Облигации по сценариям ставки · investtools.pro</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -80,15 +62,6 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
 .tag{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .badge{font-size:0.68rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--surface2);color:var(--text3);margin-left:0.4rem}
 .long-mark{color:var(--warn);cursor:help}
-</style>
-<style>
-.seo-wrap{max-width:900px;margin:0 auto;padding:0 1.5rem}
-.seo{background:#FFF;border:1px solid #E5E4DF;border-radius:14px;padding:1.5rem 1.75rem;margin:1.5rem 0 2rem}
-.seo h2{font-size:1.15rem;font-weight:700;margin:0 0 0.6rem;color:#1A1A18;letter-spacing:-0.01em}
-.seo h2:not(:first-child){margin-top:1.4rem}
-.seo h3{font-size:0.98rem;font-weight:600;margin:1.1rem 0 0.35rem;color:#1A1A18}
-.seo p{font-size:0.92rem;color:#6B6A65;line-height:1.6;margin-bottom:0.7rem}
-.seo p:last-child{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -280,6 +253,8 @@ async function loadBondData(isin){
     couponValue: parseFloat(sec.COUPONVALUE||'0'),
     couponPercent: parseFloat(sec.COUPONPERCENT||'0'),
     couponFreq: parseInt(sec.COUPONFREQUENCY||'2'),
+    accruedInt: parseFloat(sec.ACCRUEDINT||'0'),            // НКД в рублях: покупатель доплачивает его сверх цены
+    moexYield: parseFloat(md.YIELD||sec.YIELDATPREVWAPRICE||md.YIELDATWAPRICE||'0'), // текущая доходность по расчёту Мосбиржи
     coupons
   };
 }
@@ -423,7 +398,9 @@ function calcBondIRR(b, scn, margin){
   const horizonDate=new Date(HORIZON+'-12-31');
   const sellsEarly = mat>horizonDate; // гасится после горизонта → продаём на горизонте
   const endDate = sellsEarly ? horizonDate : mat;
-  const flows=[{t:0,cf:-price/100*face}];
+  // Реальный отток при покупке = чистая цена + НКД (накопленный купонный доход).
+  // Без НКД купон первого периода учитывался бы целиком как доход, хотя часть его оплачена сверху цены — это завышало доходность.
+  const flows=[{t:0,cf:-(price/100*face + (b.data.accruedInt||0))}];
   const freq=Math.max(1,b.data.couponFreq);
   const perYear=freq;
 
@@ -432,7 +409,7 @@ function calcBondIRR(b, scn, margin){
     // Погашение/продажа — проиндексированным номиналом.
     const couponPct=b.data.couponPercent>0?b.data.couponPercent:1.85;
     let nominal=b.data.currentFace||face; // текущий проиндексированный номинал
-    const flowsL=[{t:0,cf:-price/100*nominal}]; // цена в % от номинала (MOEX котирует линкер в % тек. номинала)
+    const flowsL=[{t:0,cf:-(price/100*nominal + (b.data.accruedInt||0))}]; // цена в % от номинала (MOEX котирует линкер в % тек. номинала) + НКД
     // купонные даты (реальные + достройка до endDate)
     const realDates=b.data.coupons.map(c=>new Date(c.coupondate)).filter(dt=>dt>T0 && dt<=endDate);
     let sched=realDates.slice();
@@ -628,7 +605,7 @@ function recompute(){
   });
   const probSum=activeScens.reduce((a,s)=>a+(scenProb[s]||0),0);
   // таблица
-  let h='<tr><th>Бумага</th><th>Тип</th><th>Срок</th>'+activeScens.map((s)=>{const i=scenNames.indexOf(s);return '<th style="color:'+scenColors[i]+'">'+s+'<br><span style="font-weight:400;color:var(--text3)">'+(scenProb[s]||0)+'%</span></th>';}).join('')+'<th style="border-left:2px solid var(--accent)">Ожидаемая</th><th>Худший</th></tr>';
+  let h='<tr><th>Бумага</th><th>Тип</th><th>Срок</th><th title="Текущая доходность к погашению по данным Мосбиржи — эталон для сверки">Биржа</th>'+activeScens.map((s)=>{const i=scenNames.indexOf(s);return '<th style="color:'+scenColors[i]+'">'+s+'<br><span style="font-weight:400;color:var(--text3)">'+(scenProb[s]||0)+'%</span></th>';}).join('')+'<th style="border-left:2px solid var(--accent)">Ожидаемая</th><th>Худший</th></tr>';
   const bestByScen={};
   activeScens.forEach(s=>{let mx=-1e9,mid=null;loadedBonds.forEach(b=>{const v=results[b.rowId][s];if(v!=null&&v>mx){mx=v;mid=b.rowId;}});bestByScen[s]=mid;});
   const expected={},worst={};
@@ -641,6 +618,7 @@ function recompute(){
     h+='<tr><td><span class="tag" style="background:'+b.color+'"></span>'+b.data.shortname+(isLong?'<span class="long-mark badge" title="Гасится после '+HORIZON+' — доход включает цену продажи на горизонте (допущение)">продажа '+HORIZON+'</span>':'')+'</td>';
     h+='<td style="color:var(--text3)">'+typeLabel+'</td>';
     h+='<td class="num" style="color:var(--text3)">'+yearsToMat+'г</td>';
+    h+='<td class="num" style="color:var(--text2);font-weight:600">'+(b.data.moexYield>0?b.data.moexYield.toFixed(1)+'%':'—')+'</td>';
     activeScens.forEach(s=>{const v=results[b.rowId][s];const cls=(bestByScen[s]===b.rowId)?'num best':'num';h+='<td class="'+cls+'">'+(v!=null?v.toFixed(1)+'%':'—')+'</td>';});
     const ec=(bestExpId===b.rowId)?'num best':'num';
     h+='<td class="'+ec+'" style="border-left:2px solid var(--accent)">'+expected[b.rowId].toFixed(1)+'%</td>';
@@ -650,7 +628,7 @@ function recompute(){
   document.getElementById('resultCard').style.display='block';
   document.getElementById('chartCard').style.display='block';
   document.getElementById('legend').innerHTML=loadedBonds.map(b=>'<span><span class="tag" style="background:'+b.color+'"></span>'+b.data.shortname+'</span>').join('');
-  document.getElementById('resultNote').innerHTML='<strong>Ожидаемая</strong> — средневзвешенная по вашим вероятностям: не прогноз одного исхода, а взвешивание всех сценариев (как это делают серьёзные риск-системы — считают не исход, а распределение). <strong>Худший</strong> — доходность в самом плохом сценарии: цена риска, спрятанного за средней. Высокая ожидаемая с низким «худшим» = доходность куплена риском. Метки «продажа '+HORIZON+'» — у бумаг, что гасятся позже горизонта: их доход включает цену продажи (математически выводится из ставки сценария, но это допущение).';
+  document.getElementById('resultNote').innerHTML='<strong>Биржа</strong> — текущая доходность к погашению по расчёту Мосбиржи: эталон для сверки. Если наш «Базовый» сценарий по бумаге, которая гасится до горизонта, заметно расходится с ней — это повод присмотреться. <strong>Ожидаемая</strong> — средневзвешенная по вашим вероятностям: не прогноз одного исхода, а взвешивание всех сценариев (как это делают серьёзные риск-системы — считают не исход, а распределение). <strong>Худший</strong> — доходность в самом плохом сценарии: цена риска, спрятанного за средней. Высокая ожидаемая с низким «худшим» = доходность куплена риском. Метки «продажа '+HORIZON+'» — у бумаг, что гасятся позже горизонта: их доход включает цену продажи (математически выводится из ставки сценария, но это допущение).';
   document.getElementById('finalWarn').style.display='block';
   document.getElementById('finalWarn').innerHTML='<strong>Это не прогноз, а сравнение поведения.</strong> Инструмент показывает, как бумага отработает в каждом сценарии ставки — а не какой сценарий сбудется. Годовая доходность (IRR) разных по сроку бумаг сравнима, но помните: одинаковый % на 2 года и на 10 лет — разный риск (в длинной больше неопределённости). Для бумаг, что гасятся после '+HORIZON+', доход включает расчётную цену продажи на горизонте — это самое модельно-зависимое место.';
   drawChart(results, activeScens);
@@ -734,19 +712,5 @@ async function loadForwards(){
 // init
 addBondRow(); renderScen(); renderProb();
 </script>
-<div class="seo-wrap"><section class="seo">
-<h2>Какие облигации покупать при снижении ключевой ставки</h2>
-<p>Выбор облигации — это всегда ставка на траекторию ключевой ставки, просто чаще неосознанная. Инструмент показывает, как разные типы бумаг ведут себя в каждом сценарии: длинные ОФЗ с фиксированным купоном сильнее всего растут при снижении ставки, флоатеры выигрывают, когда высокая ставка держится, линкеры защищают от инфляции, короткие бумаги — самые устойчивые.</p>
-<p>Это не прогноз «что купить», а развилка: видно, какая бумага выигрывает в каждом варианте — снижение, удержание, рост ставки. Форвардные ставки из кривой ОФЗ показывают, что уже закладывает рынок, чтобы сравнить это с прогнозом ЦБ и своим сценарием.</p>
-<h2>Частые вопросы</h2>
-<h3>Почему при снижении ключевой ставки растут облигации?</h3>
-<p>Когда ставка падает, новые выпуски идут с меньшим купоном, а старые бумаги с высоким фиксированным купоном становятся ценнее — их цена растёт, чтобы доходность сравнялась с рынком. Сильнее всего дорожают длинные облигации.</p>
-<h3>Какие облигации покупать при снижении ставки?</h3>
-<p>При ставке на снижение выигрывают длинные ОФЗ с фиксированным купоном — у них наибольший рост цены. Но если ставку, наоборот, удержат высокой, они же сильнее просядут, поэтому важно понимать сценарий.</p>
-<h3>Что выбрать — флоатер или фикс?</h3>
-<p>Флоатер с плавающим купоном защищает, когда высокая ставка задерживается или растёт. Фикс с постоянным купоном выигрывает при снижении ставки. Выбор между ними — это ваша ставка на то, куда пойдёт ключевая.</p>
-<h3>Что будет с длинными ОФЗ при снижении ставки?</h3>
-<p>Их цена вырастет сильнее всего — это самая агрессивная ставка на снижение. Обратная сторона: при росте ставки они и потеряют больше других.</p>
-</section></div>
 </body>
 </html>
