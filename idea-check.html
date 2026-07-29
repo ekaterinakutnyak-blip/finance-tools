@@ -66,7 +66,9 @@ textarea:focus{outline:none;border-color:var(--accent2)}
   <div class="spin" id="spin">Разбираю вашу идею… это занимает 10–30 секунд.</div>
   <div class="msg err" id="err"></div>
   <div class="msg pro" id="propaywall">
-    Проверка <b>своей</b> идеи доступна по подписке PRO. Оформите подписку — и проверяйте свои решения, плюс открываются все PRO-калькуляторы. <a href="/pro/">Подробнее о подписке →</a>
+    <div>Проверка <b>своей</b> идеи — по подписке PRO. Если у вас есть PRO-код (тот же, что открывает калькуляторы) — введите его и нажмите «Проверить» ещё раз:</div>
+    <input id="procode" type="text" autocomplete="off" placeholder="Ваш PRO-код" style="margin-top:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:15px;text-transform:uppercase;background:#fff">
+    <div style="margin-top:10px;font-size:14px">Нет подписки? <a href="/">Оформить подписку →</a></div>
   </div>
 
   <div class="result" id="result"></div>
@@ -192,8 +194,9 @@ goBtn.addEventListener('click', async () => {
   err.style.display='none'; paywall.style.display='none'; result.style.display='none';
   const text = document.getElementById('idea').value.trim();
   if(!text){ err.textContent='Опишите свою идею.'; err.style.display='block'; return; }
-  const token = proToken();
-  if(!token){ paywall.style.display='block'; return; }
+  const codeEl = document.getElementById('procode');
+  let token = (codeEl && codeEl.value.trim()) ? codeEl.value.trim().toUpperCase() : proToken();
+  if(!token){ paywall.style.display='block'; if(codeEl) codeEl.focus(); return; }
 
   goBtn.disabled = true; spin.style.display='block';
   try{
@@ -202,8 +205,11 @@ goBtn.addEventListener('click', async () => {
       body: JSON.stringify({ token: token, text: text })
     });
     const data = await r.json().catch(()=>({}));
-    if(r.status===403){ paywall.style.display='block'; return; }
+    if(r.status===403){ paywall.style.display='block'; if(codeEl){ codeEl.focus(); } err.textContent='Код не подошёл или подписка истекла. Проверьте PRO-код.'; err.style.display='block'; return; }
     if(!r.ok){ err.textContent = data.detail || 'Не получилось выполнить разбор. Попробуйте позже.'; err.style.display='block'; return; }
+    // код подошёл — запомним его, чтобы больше не вводить
+    try{ localStorage.setItem('pro_access_token', token); localStorage.setItem('pro_access_type','token'); localStorage.setItem('pro_access_expiry', String(Date.now()+30*864e5)); }catch(e){}
+    paywall.style.display='none';
     result.innerHTML = renderAnalysis(data.analysis||'');
     result.style.display='block';
     if(typeof data.left_this_month==='number'){ leftNote.textContent = 'Осталось разборов в этом месяце: '+data.left_this_month; }
