@@ -1,0 +1,114 @@
+# idea_check.py — эндпоинт «Проверка идеи» (Оптимист против пессимиста).
+# Подключаемый роутер: main.py трогать не режем, только добавим 2 строки в конец.
+# ДОСТУП: как у «Мои портфели» — токен проверяем ПРЯМЫМ запросом в таблицу tokens
+#   той же базы db.sqlite (та же логика, что _resolve_user_id в main.py), плюс
+#   принимаем мастер-пароль PRO по хешу (как gate.js). /api/check не дёргаем.
+# Счётчик разборов — в своём файле idea_usage.db (основную базу только читаем).
+# Модель — Alice (дёшево, ~1₽/разбор). Лимит 15 разборов/месяц на PRO.
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import sqlite3, datetime, hashlib
+from yandex_ai import call_model, _load, MODEL_IDEA
+
+router = APIRouter()
+
+PROMPT_IDEA = _load("/opt/finance-api/prompts/optimist_pessimist.txt")
+IDEA_DB = "/opt/finance-api/idea_usage.db"
+MAIN_DB = "/opt/finance-api/db.sqlite"        # та же база, что у бота/портфелей (таблица tokens)
+MONTHLY_LIMIT = 15
+MAX_INPUT_CHARS = 4000
+# Мастер-пароль PRO (тот же, что в gate.js): пускаем без токена. Хеш sha256(пароль), без соли и апперкейса.
+PASS_HASH = "cadfe76d8624764d43fde9e741030aedb945ed221a928854dc4babda1c6eea89"
+
+
+class IdeaIn(BaseModel):
+    token: str
+    text: str
+
+
+def _is_master(code: str) -> bool:
+    # Принимаем и сырой пароль (его sha256 совпал с PASS_HASH, как проверяет gate.js),
+    # и уже готовый хеш — при парольном входе gate.js кладёт в localStorage именно хеш,
+    # поэтому страница может прислать его напрямую (бесшовный вход для Екатерины).
+    if code == PASS_HASH:
+        return True
+    return hashlib.sha256(code.encode("utf-8")).hexdigest() == PASS_HASH
+
+
+def _token_user_id(token: str):
+    """user_id, если токен есть в таблице tokens и не истёк, иначе None.
+    Повторяет логику _resolve_user_id из main.py (та же база, тот же расчёт срока).
+    Пробуем и как введено, и в верхнем регистре — токены выпускаются заглавными."""
+    try:
+        con = sqlite3.connect(MAIN_DB)
+        row = con.execute(
+            "SELECT user_id, expires_at FROM tokens WHERE token = ? OR token = ?",
+            (token, token.upper()),
+        ).fetchone()
+        con.close()
+    except Exception:
+        return None
+    if not row:
+        return None
+    try:
+        if datetime.datetime.fromisoformat(row[1]) < datetime.datetime.utcnow():
+            return None
+    except Exception:
+        return None
+    return row[0]
+
+
+def _month():
+    return datetime.date.today().strftime("%Y-%m")
+
+
+def _used(token):
+    con = sqlite3.connect(IDEA_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS idea_usage
+                   (token TEXT, month TEXT, cnt INTEGER, PRIMARY KEY(token, month))""")
+    row = con.execute("SELECT cnt FROM idea_usage WHERE token=? AND month=?",
+                      (token, _month())).fetchone()
+    con.close()
+    return row[0] if row else 0
+
+
+def _bump(token):
+    con = sqlite3.connect(IDEA_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS idea_usage
+                   (token TEXT, month TEXT, cnt INTEGER, PRIMARY KEY(token, month))""")
+    con.execute("""INSERT INTO idea_usage(token, month, cnt) VALUES(?,?,1)
+                   ON CONFLICT(token, month) DO UPDATE SET cnt = cnt + 1""",
+                (token, _month()))
+    con.commit(); con.close()
+
+
+@router.post("/api/idea-check")
+async def idea_check(payload: IdeaIn):
+    code = (payload.token or "").strip()
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Опишите идею")
+    if len(text) > MAX_INPUT_CHARS:
+        text = text[:MAX_INPUT_CHARS]
+
+    is_master = _is_master(code)
+    uid = None if is_master else _token_user_id(code)
+    if not is_master and uid is None:
+        raise HTTPException(status_code=403, detail="Проверка своей идеи доступна по подписке")
+
+    # Ключ счётчика: мастер-пароль — общий ключ MASTER; токен — по user_id (лимит на человека, а не на конкретный токен).
+    key = "MASTER" if is_master else f"U:{uid}"
+
+    used = _used(key)
+    if used >= MONTHLY_LIMIT:
+        raise HTTPException(status_code=402,
+                            detail=f"Лимит {MONTHLY_LIMIT} разборов в этом месяце исчерпан")
+
+    try:
+        result = call_model(PROMPT_IDEA, text, model=MODEL_IDEA, max_output_tokens=3000)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
+
+    _bump(key)
+    return {"analysis": result, "left_this_month": max(0, MONTHLY_LIMIT - (used + 1))}
