@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка идеи · Оптимист против пессимиста — InvestTools</title>
+<meta name="description" content="Проверьте свою инвестиционную идею: действительно ли ваши аргументы ведут к выводу. Оптимист и пессимист разбирают логику и находят слабое место — логический скачок.">
+<link rel="canonical" href="https://investtools.pro/idea-check.html">
+<meta property="og:title" content="Проверка идеи — Оптимист против пессимиста">
+<meta property="og:description" content="Проверяем, ведут ли ваши аргументы к вашему выводу. Находим логический скачок.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FAFAF8;--card:#fff;--text:#1a1a1a;--text2:#5a5a54;--accent:#2D5A3D;--accent2:#1B6B9A;--border:#E5E4DF;--warn:#9a5b1b;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px}
+a{color:var(--accent2);text-decoration:none}
+.top{font-size:14px;color:var(--text2);margin-bottom:24px}
+h1{font-size:30px;line-height:1.2;margin:0 0 10px}
+.sub{color:var(--text2);font-size:17px;margin:0 0 26px}
+.how{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:15px;color:var(--text2);margin-bottom:26px}
+.how b{color:var(--text)}
+label{display:block;font-weight:600;margin:0 0 8px;font-size:15px}
+textarea{width:100%;min-height:120px;padding:14px;border:1px solid var(--border);border-radius:12px;font-family:inherit;font-size:16px;resize:vertical;background:#fff}
+textarea:focus{outline:none;border-color:var(--accent2)}
+.hint{font-size:13px;color:var(--text2);margin:6px 2px 0}
+.btn{margin-top:14px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:13px 22px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.secondary{background:var(--accent2)}
+.note{margin-top:12px;font-size:14px;color:var(--text2)}
+.msg{margin-top:16px;padding:14px 16px;border-radius:12px;font-size:15px;display:none}
+.msg.err{background:#fdf1ec;border:1px solid #f0cdbd;color:var(--warn)}
+.msg.pro{background:#eef4f0;border:1px solid #cfe2d6;color:var(--accent)}
+.result{margin-top:30px;display:none}
+.section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+.section h3{margin:0 0 10px;font-size:18px}
+.section.opt h3{color:var(--accent)}
+.section.pess h3{color:#8a3b2e}
+.section.itog h3{color:var(--accent2)}
+.section p{margin:0 0 10px;font-size:15.5px}
+.section p:last-child{margin-bottom:0}
+.section h4{margin:14px 0 6px;font-size:15px;color:var(--text2);font-weight:600}
+.final{font-family:'JetBrains Mono',monospace;font-size:14.5px;background:#f4f6f3;border-left:3px solid var(--accent);padding:12px 14px;border-radius:8px;margin-top:8px}
+.demo-tag{display:inline-block;font-size:12px;font-weight:600;color:var(--accent2);background:#eaf1f6;border-radius:20px;padding:3px 11px;margin-bottom:14px}
+.divider{height:1px;background:var(--border);margin:40px 0 30px}
+.disc{margin-top:34px;font-size:13px;color:var(--text2);border-top:1px solid var(--border);padding-top:16px}
+.spin{display:none;margin-top:16px;color:var(--text2);font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/">← InvestTools</a></div>
+  <h1>Проверка идеи</h1>
+  <p class="sub">Оптимист против пессимиста. Проверяем не «хорошая идея или плохая», а <b>действительно ли ваши аргументы ведут к вашему выводу</b> — и где спрятан логический скачок.</p>
+
+  <div class="how">
+    <b>Как это работает.</b> Опишите идею и почему вы так решили. Оптимист строит сильнейший довод «за», пессимист ищет разрывы, затем стороны отвечают друг другу — и в конце честный итог: что аргументы доказывают, чего не доказывают и где переход от разумного наблюдения к слишком сильному выводу.
+  </div>
+
+  <label for="idea">Ваша идея и аргументы</label>
+  <textarea id="idea" placeholder="Например: ставка ЦБ на пике, скоро начнут снижать — поэтому перекладываю 100% в длинные ОФЗ, заработаю на росте цены."></textarea>
+  <div class="hint">Пишите как думаете: что хотите сделать и почему. Чем конкретнее аргументы — тем точнее разбор.</div>
+  <button class="btn" id="go">Проверить</button>
+  <div class="note" id="left"></div>
+
+  <div class="spin" id="spin">Разбираю вашу идею… это занимает 10–30 секунд.</div>
+  <div class="msg err" id="err"></div>
+  <div class="msg pro" id="propaywall">
+    Проверка <b>своей</b> идеи доступна по подписке PRO. Оформите подписку — и проверяйте свои решения, плюс открываются все PRO-калькуляторы. <a href="/pro/">Подробнее о подписке →</a>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <div class="divider"></div>
+  <span class="demo-tag">Пример разбора · бесплатно</span>
+  <div id="demo"></div>
+
+  <div class="disc">
+    Это образовательный разбор достаточности аргументов, а не индивидуальная инвестиционная рекомендация. Решение всегда за вами.
+  </div>
+</div>
+
+<script>
+// --- рендер разбора из текста модели (## разделы, ### подразделы, финальная фраза) ---
+function renderAnalysis(text){
+  const lines = text.split('\n');
+  let html = '', cur = null, curClass = '';
+  function open(title){
+    let cls='section';
+    if(/^Оптимист/i.test(title)) cls+=' opt';
+    else if(/^Пессимист/i.test(title)) cls+=' pess';
+    else if(/итог/i.test(title)) cls+=' itog';
+    html += (cur?'</div>':'') + '<div class="'+cls+'"><h3>'+esc(title)+'</h3>';
+    cur = title;
+  }
+  for(let raw of lines){
+    const l = raw.trim();
+    if(!l) continue;
+    if(l.startsWith('## ')){ open(l.slice(3).trim()); }
+    else if(l.startsWith('### ')){ if(cur) html += '<h4>'+esc(l.slice(4).trim())+'</h4>'; }
+    else {
+      const isFinal = /^Анализ показывает|^Из представленных аргументов следует/.test(l);
+      if(!cur){ open('Предмет проверки'); }
+      html += isFinal ? '<div class="final">'+esc(l)+'</div>' : '<p>'+esc(l)+'</p>';
+    }
+  }
+  if(cur) html += '</div>';
+  return html;
+}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// --- демо ---
+const DEMO = `## Предмет проверки
+
+Пользователь хочет выделить 30% портфеля под физическое золото, но не приводит аргументов в пользу этого решения. Поэтому можно проверить условия, при которых такой вывод мог бы быть обоснован, однако оценить достаточность фактически представленных доводов пока невозможно.
+
+## Оптимист
+
+Физическое золото не является обязательством банка, государства или компании. Поэтому крупная доля может иметь внутреннюю логику, если цель состоит в снижении зависимости портфеля от кредитоспособности отдельных эмитентов и финансовой инфраструктуры.
+
+Золото может вести себя иначе, чем акции и облигации. Если остальной портфель сильно зависит от одних и тех же экономических факторов, доля золота способна изменить общую структуру рисков.
+
+Физическая форма владения уменьшает зависимость от брокера, депозитария и работы торговой системы. Это может быть существенным свойством, если именно инфраструктурный риск лежит в основе решения.
+
+Золото может сохранять привлекательность в сценариях недоверия к валютам, высокой инфляции или геополитической нестабильности. Если пользователь считает такие сценарии достаточно вероятными и рассматривает золото как долгосрочный защитный актив, значительная доля может соответствовать этой исходной гипотезе.
+
+## Пессимист
+
+Защитные свойства золота сами по себе не обосновывают долю 30%. Из утверждения «золото может защищать капитал при некоторых сценариях» не следует, что почти треть портфеля должна зависеть от одного актива.
+
+Неизвестна структура остальных 70% портфеля. Без этой информации невозможно определить, уменьшает золото общую концентрацию рисков или создаёт новую концентрацию.
+
+Не указан горизонт. Цена золота может существенно колебаться, поэтому защитная функция не означает стабильности стоимости на любом сроке.
+
+Неизвестна текущая оценка золота и то, насколько ожидаемые инфляционные, валютные или геополитические риски уже отражены в цене. Верный макроэкономический сценарий не гарантирует соответствующего результата при любой цене приобретения.
+
+Физическое владение связано с хранением, проверкой подлинности и издержками реализации. Без оценки этих факторов нельзя установить, оправдана ли именно физическая форма для всей предполагаемой доли.
+
+## Оптимист отвечает
+
+Возражение о концентрации существенно, но его сила зависит от структуры остального портфеля. Если другие активы тесно связаны между собой и чувствительны к одинаковым рискам, высокая доля золота не обязательно равнозначна пропорциональному росту совокупного риска. Данных о составе портфеля для проверки этого условия нет.
+
+Отсутствие информации о цене также не опровергает саму логику защитной позиции. Оно означает, что пока обосновано только возможное назначение золота, но не экономический результат решения при текущей оценке и заданном горизонте.
+
+## Пессимист отвечает
+
+Отсутствие кредитного и инфраструктурного риска подтверждает отдельные свойства физического золота, но не определяет необходимый масштаб позиции. Для обоснования доли 30% требуется показать, почему меньшая доля не выполняет предполагаемую функцию.
+
+Возможная защита от инфляции, валютных и геополитических рисков зависит от срока, цены и характера конкретного кризиса. Один положительный сценарий недостаточен: необходимо также оценить результат при стабилизации инфляции, укреплении доверия к финансовым активам или длительном отсутствии ожидаемого кризиса.
+
+## Нейтральный итог
+
+### Что подтверждают аргументы
+Физическое золото может уменьшать зависимость капитала от эмитентов и финансовой инфраструктуры. Оно также способно выполнять отдельную защитную функцию в некоторых неблагоприятных экономических сценариях.
+
+### Чего аргументы не доказывают
+Эти свойства не доказывают обоснованность доли 30%, пригодность физической формы для всей предполагаемой позиции и соответствие решения структуре конкретного портфеля.
+
+### Где находится логический скачок
+Логический скачок возникает при переходе от тезиса «физическое золото обладает полезными защитными свойствами» к выводу «поэтому оно должно занимать 30% портфеля». Между свойством актива и размером позиции отсутствует необходимое обоснование.
+
+### Ключевые предпосылки
+Вывод зависит от структуры остального портфеля, предполагаемого горизонта, назначения этой части капитала, требований к ликвидности, отношения к ценовым колебаниям и сценариев, от которых должна защищать позиция.
+
+### Что необходимо проверить
+Необходимо проверить состав портфеля, основания выбора доли 30%, срок, текущую оценку золота, требования к ликвидности и денежному потоку, издержки физического владения, сравнение с альтернативами и степень отражения предполагаемого сценария в цене.
+
+Анализ показывает, что защитные свойства физического золота могут обосновывать его присутствие в портфеле, но представленный запрос не содержит аргументов, достаточных для обоснования именно доли 30%.`;
+document.getElementById('demo').innerHTML = renderAnalysis(DEMO);
+
+// --- PRO-статус из localStorage (как ставит gate.js) ---
+function proToken(){
+  try{
+    const t = localStorage.getItem('pro_access_token');
+    const exp = parseInt(localStorage.getItem('pro_access_expiry')||'0',10);
+    const type = localStorage.getItem('pro_access_type');
+    if(!t) return null;
+    if(exp && Date.now() > exp) return null;
+    if(type === 'password') return null; // серверная проверка идёт по токену
+    return t;
+  }catch(e){ return null; }
+}
+
+const goBtn = document.getElementById('go');
+const err = document.getElementById('err');
+const paywall = document.getElementById('propaywall');
+const spin = document.getElementById('spin');
+const result = document.getElementById('result');
+const leftNote = document.getElementById('left');
+
+goBtn.addEventListener('click', async () => {
+  err.style.display='none'; paywall.style.display='none'; result.style.display='none';
+  const text = document.getElementById('idea').value.trim();
+  if(!text){ err.textContent='Опишите свою идею.'; err.style.display='block'; return; }
+  const token = proToken();
+  if(!token){ paywall.style.display='block'; return; }
+
+  goBtn.disabled = true; spin.style.display='block';
+  try{
+    const r = await fetch('/api/idea-check', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: token, text: text })
+    });
+    const data = await r.json().catch(()=>({}));
+    if(r.status===403){ paywall.style.display='block'; return; }
+    if(!r.ok){ err.textContent = data.detail || 'Не получилось выполнить разбор. Попробуйте позже.'; err.style.display='block'; return; }
+    result.innerHTML = renderAnalysis(data.analysis||'');
+    result.style.display='block';
+    if(typeof data.left_this_month==='number'){ leftNote.textContent = 'Осталось разборов в этом месяце: '+data.left_this_month; }
+    result.scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(e){
+    err.textContent='Сеть недоступна. Попробуйте ещё раз.'; err.style.display='block';
+  }finally{
+    goBtn.disabled=false; spin.style.display='none';
+  }
+});
+</script>
+
+<!-- Яндекс.Метрика -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+ym(109013741,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute;left:-9999px" alt=""/></div></noscript>
+</body>
+</html>
