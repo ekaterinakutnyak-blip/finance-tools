@@ -18,7 +18,8 @@ from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak,
+    KeepTogether
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 
@@ -67,6 +68,17 @@ class CorrPair(BaseModel):
     b: str
     corr: float
 
+class VarRow(BaseModel):
+    name: str                    # горизонт: «1 день» / «1 неделя» / «1 месяц»
+    var95: float                 # доли (0.023 = 2.3%), убыток положительным числом
+    cvar95: float
+    var99: float
+    cvar99: float
+
+class VarMethod(BaseModel):
+    name: str                    # «Исторический» / «Параметрический (норм.)» / «Monte Carlo …»
+    rows: List[VarRow] = []
+
 class ReportPayload(BaseModel):
     market: str = "us"                  # "us" | "ru"
     benchmark: str = "SPY"              # SPY | IMOEX
@@ -81,6 +93,8 @@ class ReportPayload(BaseModel):
     corr_avg: Optional[float] = None
     corr_top: List[CorrPair] = []          # самые связанные пары
     corr_low: List[CorrPair] = []          # самые независимые пары
+    var_stats: List[VarMethod] = []        # VaR/CVaR: методы × горизонты
+    var_label: Optional[str] = None        # для какого портфеля посчитан VaR
 
 
 def _img_from_b64(b64: str, max_w_mm: float):
@@ -171,6 +185,72 @@ def build_pdf(p: ReportPayload) -> io.BytesIO:
     ]))
     story.append(pt)
 
+    # ---- VALUE AT RISK / CVaR ----
+    if p.var_stats:
+        story.append(Paragraph("Value at Risk и CVaR", S["h2"]))
+        lbl = p.var_label or "Ваш портфель"
+        extra = f" и в {cur}" if p.portfolio_value else ""
+        story.append(Paragraph(
+            f"Оценка возможного убытка для портфеля «{lbl}». "
+            f"<b>VaR</b> — порог убытка, который с указанной вероятностью не будет превышен за горизонт; "
+            f"<b>CVaR</b> — средний убыток в худших случаях за этим порогом. "
+            f"Значения — доля стоимости портфеля{extra}.",
+            S["small"]))
+        story.append(Spacer(1, 2*mm))
+
+        cell = ParagraphStyle("vcell", fontName=FONT, fontSize=8.5,
+                              textColor=TEXT, leading=10, alignment=TA_CENTER)
+        cellh = ParagraphStyle("vcellh", fontName=FONT_B, fontSize=8.5,
+                               textColor=colors.white, leading=10, alignment=TA_CENTER)
+        lblc = ParagraphStyle("vlbl", parent=cell, alignment=TA_LEFT)
+        methc = ParagraphStyle("vmeth", parent=cell, fontName=FONT_B,
+                               textColor=GREEN, alignment=TA_LEFT)
+        pv = p.portfolio_value
+
+        def vcell(frac):
+            txt = f"−{frac*100:.2f}%"
+            if pv:
+                rub = f"{frac*pv:,.0f}".replace(",", " ")
+                txt += f'<br/><font size=7 color="#6B6A65">−{rub} {cur}</font>'
+            return Paragraph(txt, cell)
+
+        vdata = [
+            [Paragraph("Горизонт", cellh),
+             Paragraph("95% — обычный сценарий", cellh), "",
+             Paragraph("99% — стресс-сценарий", cellh), ""],
+            ["", Paragraph("VaR", cellh), Paragraph("CVaR", cellh),
+                 Paragraph("VaR", cellh), Paragraph("CVaR", cellh)],
+        ]
+        vspans = [("SPAN", (0,0), (0,1)), ("SPAN", (1,0), (2,0)), ("SPAN", (3,0), (4,0))]
+        meth_rows = []
+        ri = 2
+        for meth in p.var_stats:
+            vdata.append([Paragraph(meth.name, methc), "", "", "", ""])
+            vspans.append(("SPAN", (0,ri), (4,ri)))
+            meth_rows.append(ri)
+            ri += 1
+            for row in meth.rows:
+                vdata.append([Paragraph(row.name, lblc),
+                              vcell(row.var95), vcell(row.cvar95),
+                              vcell(row.var99), vcell(row.cvar99)])
+                ri += 1
+
+        vt = Table(vdata, colWidths=[38*mm] + [(CONTENT_W-38)/4*mm]*4)
+        vstyle = [
+            ("BACKGROUND", (0,0), (-1,1), GREEN),
+            ("GRID", (0,0), (-1,-1), 0.4, BORDER),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("TOPPADDING", (0,0), (-1,-1), 3),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ("LEFTPADDING", (0,0), (-1,-1), 4),
+            ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ] + vspans
+        for mr in meth_rows:
+            vstyle.append(("BACKGROUND", (0,mr), (-1,mr), SURFACE2))
+        vt.setStyle(TableStyle(vstyle))
+        story.append(vt)
+        story.append(Spacer(1, 4*mm))
+
     # ---- СРАВНЕНИЕ С ОПТИМАЛЬНЫМИ ----
     story.append(Paragraph("Сравнение с оптимальными портфелями", S["h2"]))
     head = ["Стратегия", "Доходность", "Волатильность", "Просадка", "Sharpe"]
@@ -235,21 +315,23 @@ def build_pdf(p: ReportPayload) -> io.BytesIO:
         story.append(wt)
 
     # ---- ГРАФИКИ ДОХОДНОСТИ И ПРОСАДКИ ----
-    if p.chart_cumulative or p.chart_drawdown:
-        story.append(PageBreak())
-        if p.chart_cumulative:
-            story.append(Paragraph("Кумулятивная доходность", S["h2"]))
-            im = _img_from_b64(p.chart_cumulative, CONTENT_W)
-            if im: story.append(im)
-            story.append(Spacer(1, 4*mm))
-        if p.chart_drawdown:
-            story.append(Paragraph("Просадка от пика", S["h2"]))
-            im = _img_from_b64(p.chart_drawdown, CONTENT_W)
-            if im: story.append(im)
+    # Без принудительного PageBreak: секции идут потоком и заполняют страницу.
+    # KeepTogether держит заголовок вместе с его графиком (не даёт «осиротеть»).
+    if p.chart_cumulative:
+        im = _img_from_b64(p.chart_cumulative, CONTENT_W)
+        blk = [Paragraph("Кумулятивная доходность", S["h2"])]
+        if im: blk.append(im)
+        blk.append(Spacer(1, 4*mm))
+        story.append(KeepTogether(blk))
+    if p.chart_drawdown:
+        im = _img_from_b64(p.chart_drawdown, CONTENT_W)
+        blk = [Paragraph("Просадка от пика", S["h2"])]
+        if im: blk.append(im)
+        blk.append(Spacer(1, 4*mm))
+        story.append(KeepTogether(blk))
 
     # ---- КОРРЕЛЯЦИИ ----
     if p.chart_corr or p.corr_top:
-        story.append(PageBreak())
         story.append(Paragraph("Корреляции бумаг портфеля", S["h2"]))
         if p.corr_avg is not None:
             lvl = ("низкая — хорошая диверсификация" if p.corr_avg < 0.3
