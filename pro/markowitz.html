@@ -615,7 +615,7 @@ async function downloadReport(){
   const old = btn ? btn.textContent : '';
   if(btn){ btn.textContent = 'Готовлю отчёт…'; btn.disabled = true; }
   try{
-    const {cards, tickers, retMap, userPort} = R;
+    const {cards, tickers, retMap, userPort, varStats, varLabel} = R;
     const byTitle = t => cards.find(c=>c.title===t);
     const m = c => c ? ({
       label: c.title,
@@ -667,7 +667,9 @@ async function downloadReport(){
       chart_frontier: png(frontierChart),
       chart_cumulative: png(equityChart),
       chart_drawdown: png(ddChart),
-      corr_avg, corr_top, corr_low
+      corr_avg, corr_top, corr_low,
+      var_stats: Array.isArray(varStats) ? varStats : [],
+      var_label: varLabel || null
     };
 
     const resp = await fetch('/api/us/report', {
@@ -1718,6 +1720,8 @@ async function run(){
     renderVarTable(varStats,userPort&&userPort.totalValue?userPort.totalValue:null);
     document.getElementById('varPortTag').textContent=varSrcLabel;
     document.getElementById('varCard').classList.remove('hidden');
+    // для PDF-отчёта
+    if(window._reportData){ window._reportData.varStats=varStats; window._reportData.varLabel=varSrcLabel; }
 
     st.className='status ok';st.textContent='Готово · '+common.length+' торговых дней · '+nsim.toLocaleString('ru')+' симуляций';
   }catch(e){
