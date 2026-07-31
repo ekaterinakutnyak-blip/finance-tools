@@ -179,7 +179,7 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
       <label style="font-size:0.74rem;color:var(--text2)">макс. доля, %
         <input type="text" id="globalMax" value="100" inputmode="decimal" style="width:70px;display:block;margin-top:3px">
       </label>
-      <span style="font-size:0.7rem;color:var(--text3);max-width:340px;line-height:1.4">Каждая бумага в портфеле — либо 0, либо в коридоре [мин; макс]. Применяется ко всем расчётным портфелям. Индивидуальные лимиты по бумагам (если заданы) перебивают общий.</span>
+      <span style="font-size:0.7rem;color:var(--text3);max-width:340px;line-height:1.4">Каждая бумага держится в коридоре [мин; макс] — доля не ниже минимума и не выше максимума, в ноль не уходит. Применяется ко всем расчётным портфелям. Индивидуальные лимиты по бумагам (если заданы) перебивают общий.</span>
     </div>
   </div>
 
@@ -859,62 +859,39 @@ function getLimits(N, tickers){
   return {lo,hi};
 }
 
-// Проверка собираемости портфеля под лимитами. Возвращает строку-ошибку или null.
+// Проверка собираемости портфеля под КОРОБОЧНЫМИ лимитами. Возвращает строку-ошибку или null.
+// Каждая бумага держится в [lo,hi], поэтому: сумма минимумов ≤ 100% ≤ сумма максимумов.
 function validateLimits(lo,hi,N){
+  let sLo=0,sHi=0;
   for(let i=0;i<N;i++){
-    if(lo[i]>hi[i]+1e-9)return 'Минимальная доля больше максимальной.';
+    if(lo[i]>hi[i]+1e-9)return 'У одной из бумаг минимальная доля больше максимальной.';
+    sLo+=lo[i]; sHi+=hi[i];
   }
-  // максимум, который можно собрать: сумма всех hi (по всем бумагам, т.к. их можно все включить)
-  const sumHi=hi.reduce((a,b)=>a+b,0);
-  if(sumHi<1-1e-9)return 'Слишком жёсткий максимум: даже по всем бумагам сумма долей не достигает 100% (макс. сумма '+(sumHi*100).toFixed(0)+'%). Увеличьте макс. долю или добавьте бумаги.';
-  // минимум: если все lo>0, нужно хотя бы одно подмножество с суммой lo<=1.
-  // минимально возможная сумма минимумов = lo наименьшей бумаги (можно включить всего 1, если её hi>=1).
-  // практичная проверка: если самый маленький lo>0 и 1/maxHi бумаг минимумами уже перебирают 100%.
-  const minLo=Math.min(...lo);
-  if(minLo>0){
-    const maxHiVal=Math.max(...hi);
-    const kNeed=Math.ceil(1/maxHiVal-1e-9); // минимум бумаг, чтобы добрать 100% максимумами
-    if(kNeed*minLo>1+1e-9)return 'Слишком жёсткий минимум: чтобы собрать 100%, нужно минимум '+kNeed+' бумаг, но их минимальные доли в сумме превышают 100%. Уменьшите мин. долю.';
-  }
+  if(sLo>1+1e-9)return 'Слишком жёсткий минимум: сумма минимальных долей всех бумаг = '+(sLo*100).toFixed(0)+'% (больше 100%). Уменьшите общий минимум или задайте части бумаг индивидуальный минимум пониже.';
+  if(sHi<1-1e-9)return 'Слишком жёсткий максимум: сумма максимальных долей всех бумаг = '+(sHi*100).toFixed(0)+'% (меньше 100%). Увеличьте макс. долю или добавьте бумаги.';
   return null;
 }
 
-// Сэмплер semi-continuous портфеля в коридорах [lo[i],hi[i]]. Возвращает веса (сумма=1) или null.
+// Сэмплер портфеля под КОРОБОЧНЫМИ лимитами: КАЖДАЯ бумага держится в [lo[i],hi[i]], сумма=1.
+// Нулей нет (если у бумаги lo>0 — она обязательно в портфеле). Индивидуальные лимиты уже
+// вшиты в lo/hi функцией getLimits (они перебивают общий). Возвращает веса или null, если недостижимо.
 function sampleConstrained(N,lo,hi){
-  // выбираем число бумаг k и какие включить так, чтобы коридор сходился
-  const idx=[...Array(N).keys()];
-  for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  // подбираем k: нужно, чтобы sum(hi выбранных)>=1 и sum(lo выбранных)<=1
-  const maxHiVal=Math.max(...hi);
-  const kMin=Math.max(1,Math.ceil(1/maxHiVal-1e-9));
-  let chosen=null;
-  for(let attempt=0;attempt<12;attempt++){
-    const k=kMin+Math.floor(Math.random()*(N-kMin+1));
-    const cand=idx.slice(0,k);
-    const sHi=cand.reduce((a,i)=>a+hi[i],0);
-    const sLo=cand.reduce((a,i)=>a+lo[i],0);
-    if(sHi>=1-1e-9 && sLo<=1+1e-9){chosen=cand;break;}
-  }
-  if(!chosen)return null;
-  const w=new Array(N).fill(0);
-  // каждому стартовый lo, остаток раздаём в рамках (hi-lo)
-  let remain=1-chosen.reduce((a,i)=>a+lo[i],0);
-  const caps=chosen.map(i=>hi[i]-lo[i]);
-  if(remain<-1e-9)return null;
-  for(let pass=0;pass<6 && remain>1e-9;pass++){
-    const live=caps.map((c,t)=>c>1e-9?t:-1).filter(t=>t>=0);
+  let sLo=0,sHi=0; for(let i=0;i<N;i++){sLo+=lo[i];sHi+=hi[i];}
+  if(sLo>1+1e-9 || sHi<1-1e-9) return null; // сумма минимумов >100% или максимумов <100% — недостижимо
+  const w=lo.slice();                        // старт: каждой её минимум
+  const caps=new Array(N); for(let i=0;i<N;i++)caps[i]=hi[i]-lo[i];
+  let remain=1-sLo;                          // остаток до 100% раздаём в рамках (hi-lo)
+  for(let pass=0; pass<8 && remain>1e-9; pass++){
+    const live=[]; for(let i=0;i<N;i++)if(caps[i]>1e-9)live.push(i);
     if(!live.length)break;
-    const rnd=live.map(()=>Math.random());const sr=rnd.reduce((a,b)=>a+b,0)||1;
+    const rnd=live.map(()=>Math.random()); const sr=rnd.reduce((a,b)=>a+b,0)||1;
     let added=0;
-    for(let q=0;q<live.length;q++){
-      const t=live[q];let give=remain*(rnd[q]/sr);give=Math.min(give,caps[t]);caps[t]-=give;added+=give;
-    }
+    for(let q=0;q<live.length;q++){const i=live[q];let give=Math.min(remain*(rnd[q]/sr),caps[i]);w[i]+=give;caps[i]-=give;added+=give;}
     remain-=added;
   }
-  if(remain>1e-6){for(let t=0;t<caps.length && remain>1e-9;t++){const g=Math.min(remain,caps[t]);caps[t]-=g;remain-=g;}}
-  chosen.forEach((origI,t)=>{w[origI]=lo[origI]+((hi[origI]-lo[origI])-caps[t]);});
-  const s=w.reduce((a,b)=>a+b,0);
-  return s>0?w.map(v=>v/s):null;
+  if(remain>1e-6){for(let i=0;i<N && remain>1e-9;i++){const g=Math.min(remain,caps[i]);w[i]+=g;caps[i]-=g;remain-=g;}}
+  if(remain>1e-6)return null;                 // не влезло в максимумы
+  return w;                                   // сумма ровно 1, каждая в [lo,hi], без нормировки
 }
 
 // Проекция произвольных весов на коридор [lo,hi] с суммой 1 (для hill-climb под лимитами).
