@@ -10,7 +10,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import sqlite3, datetime, hashlib
-from yandex_ai import call_model, _load, MODEL_IDEA
+from yandex_ai import call_model, _load, MODEL_IDEA, MODEL_REPORT
 
 router = APIRouter()
 
@@ -118,8 +118,8 @@ async def risk_check(payload: RiskIn):
 
     user_input = "<portfolio_snapshot>\n" + snap + "\n</portfolio_snapshot>"
     try:
-        result = call_model(PROMPT_RISK, user_input, model=MODEL_IDEA,
-                            max_output_tokens=3000, temperature=0.2)
+        result = call_model(PROMPT_RISK, user_input, model=MODEL_REPORT,
+                            max_output_tokens=3000, temperature=0.35)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
 
