@@ -17,7 +17,7 @@ router = APIRouter()
 PROMPT_RISK = _load("/opt/finance-api/prompts/risk_manager_stocks.txt")
 RISK_DB = "/opt/finance-api/risk_usage.db"      # свой счётчик, независимый от «Проверки идей»
 MAIN_DB = "/opt/finance-api/db.sqlite"          # та же база, что у бота/портфелей (таблица tokens)
-PERIOD_LIMIT = 15
+PERIOD_LIMIT = 10
 PERIOD_DAYS = 30
 MAX_INPUT_CHARS = 12000                          # снапшот — это числа (веса, VaR, матрица корреляций), не свободный текст
 # Мастер-пароль PRO (тот же, что в gate.js). Принимаем ТОЛЬКО сырой пароль по хешу.
@@ -118,7 +118,7 @@ async def risk_check(payload: RiskIn):
 
     user_input = "<portfolio_snapshot>\n" + snap + "\n</portfolio_snapshot>"
     try:
-        result = call_model(PROMPT_RISK, user_input, model=MODEL_REPORT,
+        result = call_model(PROMPT_RISK, user_input, model="deepseek-v4-flash/latest",
                             max_output_tokens=3000, temperature=0.35)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
