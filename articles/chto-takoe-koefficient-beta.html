@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Что такое коэффициент бета простыми словами</title>
+<meta name="description" content="Бета простыми словами: как измерить риск акции и портфеля относительно рынка, откуда берётся формула беты и почему при низком R² бета ненадёжна.">
+<meta name="keywords" content="коэффициент бета, бета акции, рыночный риск, волатильность, бета портфеля, бета простыми словами">
+<link rel="canonical" href="https://investtools.pro/articles/chto-takoe-koefficient-beta.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/articles/chto-takoe-koefficient-beta.html">
+<meta property="og:title" content="Что такое коэффициент бета">
+<meta property="og:description" content="Бета простыми словами: как измерить риск акции и портфеля относительно рынка, откуда берётся формула беты и почему при низком R² бета ненадёжна.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Article", "headline": "Что такое коэффициент бета", "author": {"@type": "Person", "name": "Екатерина Кутняк"}, "publisher": {"@type": "Organization", "name": "investtools.pro"}, "datePublished": "2026-07-31", "mainEntityOfPage": "https://investtools.pro/articles/chto-takoe-koefficient-beta.html", "description": "Бета простыми словами: как измерить риск акции и портфеля относительно рынка, откуда берётся формула беты и почему при низком R² бета ненадёжна."}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7}
+.container{max-width:720px;margin:0 auto;padding:1.6rem 1.5rem 3rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+.back-link:hover{color:var(--accent)}
+.art-h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.5rem;line-height:1.25}
+.art-meta{font-size:0.8rem;color:var(--text3);margin-bottom:1.8rem}
+.art p{font-size:1.02rem;color:var(--text);margin-bottom:1.1rem}
+.art h2{font-size:1.25rem;font-weight:700;margin:2rem 0 0.7rem;letter-spacing:-0.01em}
+.art ul{margin:0 0 1.1rem 1.1rem}
+.art li{font-size:1.02rem;margin-bottom:0.4rem}
+.art strong{font-weight:600}
+.cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:1.8rem 0;font-size:0.96rem;color:var(--text2)}
+.cta a{color:var(--accent);font-weight:600;text-decoration:none}
+.cta a:hover{text-decoration:underline}
+.footer{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
+.footer a{color:var(--text2)}
+
+.art img{max-width:100%;height:auto;border:1px solid var(--border);border-radius:10px;margin:.5rem 0 .3rem;display:block}
+.art figure{margin:1.2rem 0 1.4rem}
+.art figcaption{font-size:.8rem;color:var(--text3);margin-top:.35rem}
+.formula{font-family:var(--mono);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.75rem .95rem;margin:.4rem 0 .5rem;font-size:.95rem;overflow-x:auto;text-align:center}
+.vardef{font-size:.9rem;color:var(--text2);margin:0 0 1.1rem .2rem}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="../articles.html" class="back-link">← Все статьи</a>
+<h1 class="art-h1">Что такое коэффициент бета</h1>
+<div class="art-meta">Екатерина Кутняк · 31 июля 2026</div>
+<div class="art">
+<p>Мы часто слышим о рисках в инвестировании и даже примерно представляем, что такое риск. Но для большинства частных инвесторов риск — это абстракция, которой пугают новичков. А ведь риск — вполне измеримая величина, и профессионалы считают его постоянно.</p>
+<h2>Что такое рыночный риск</h2>
+<p>Рыночный риск — это риск потери стоимости актива в вашем портфеле. Купили акции Сбербанка по 250 рублей — и вместе с акцией приобрели риск, что цена упадёт, скажем, до 200, и позиция станет убыточной. Нельзя отделить доходность от риска: это аверс и реверс одной монеты. Или цена вырастет и вы получите доход, или упадёт — и вам достанется реализовавшийся риск и убыток.</p>
+<h2>Волатильность — мера риска</h2>
+<p>Характеристика риска любого актива — изменчивость его стоимости, или волатильность. Представьте две акции: одну «скучную», как Макдональдс, и одну «бешеную», как Тесла. Одна колеблется слабо, другая ходит ходуном.</p>
+<figure><img src="img/beta-volatility.png" alt="Схема: спокойная и волатильная бумага"><figcaption>Схема: у волатильной бумаги размах колебаний намного больше, чем у спокойной.</figcaption></figure>
+<p>Чем выше волатильность, тем выше потенциальный риск: масштаб падения в плохом сценарии предсказать очень сложно. Но справедливости ради — волатильные акции не только сильнее падают, но и растут лучше «скучных». Сравнивая волатильность двух активов, мы можем сказать, какой из них более рискованный.</p>
+<h2>Бета: риск акции против рынка</h2>
+<p>Иногда нужно сравнить волатильность не двух бумаг, а конкретной акции и фондового индекса — чтобы понять, эта акция рискованнее рынка или спокойнее. Фондовый индекс — это «корзина» акций, объединённых по какому-то признаку (в России — индекс Мосбиржи или РТС, в США — S&amp;P 500, Nasdaq, Dow Jones). Для такого сравнения используют коэффициент бета.</p>
+<p>Бета — мера рыночного риска: она показывает изменчивость доходности бумаги (или портфеля) по отношению к индексу. Считается так:</p>
+<div class="formula">&beta; = (&sigma;&#7522; &frasl; &sigma;&#8340;) &times; corr(i, m)</div>
+<div class="vardef">где &sigma;&#7522; — волатильность актива; &sigma;&#8340; — волатильность индекса; corr(i, m) — <a href="chto-takoe-korrelyaciya.html">корреляция</a> актива и индекса.</div>
+<p>Из формулы видно: бета завязана на корреляцию с рынком. Поэтому если связи с рынком почти нет (низкий R²), бета становится ненадёжной — <a href="koefficient-determinacii-r2.html">подробнее про R²</a>.</p>
+<p>Бета показывает, насколько актив более или менее рискован по сравнению с рынком в целом. У самого индекса бета всегда равна 1. Поэтому если бета акции больше 1 — актив рискованнее рынка, если меньше 1 — спокойнее. У разных бумаг бета разная: у одних заметно больше единицы, у других — меньше.</p>
+<h2>Бета портфеля</h2>
+<p>Бету считают не только для отдельной бумаги, но и для портфеля целиком — чтобы сравнить его риск с индексом и подстроить под свою стратегию. Считается она просто, если известна бета каждой бумаги: это взвешенная сумма бет по долям.</p>
+<div class="formula">&beta;&#8339; = &Sigma; &beta;&#7522; &middot; &theta;&#7522;</div>
+<div class="vardef">где &beta;&#8339; — бета портфеля; &beta;&#7522; — бета i-го актива; &theta;&#7522; — доля i-го актива в портфеле.</div>
+<p>Бету каждой бумаги и всего портфеля теперь считает оптимизатор на investtools.pro — без формул и вычислений вручную. Там же видно и R² — какая доля риска бумаги идёт от рынка, а сколько её собственного.</p>
+<div class="cta">Инструмент к статье: <a href="../pro/markowitz.html">бета и R² вашего портфеля и каждой бумаги →</a> (Мосбиржа, PRO).</div>
+</div>
+<a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:#E6F1FB;border:1px solid #1B6B9A;border-radius:14px;padding:1.2rem 1.4rem;margin:1.8rem 0 0">
+  <div style="font-size:1.05rem;font-weight:700;color:#1A1A18;margin-bottom:0.25rem">Telegram-канал «Екатерина Кутняк · инвестиции»</div>
+  <div style="font-size:0.93rem;color:#6B6A65;line-height:1.5">Разборы простым языком, новые посты и инструменты — первыми. <span style="color:#1B6B9A;font-weight:600">Подписаться →</span></div>
+</a>
+<div class="footer">
+Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a><br>
+<a href="https://t.me/+BqH4mvzCuMVlNDNk" target="_blank">Telegram-канал</a> · © 2025–2026
+</div>
+</div>
+</body>
+</html>
