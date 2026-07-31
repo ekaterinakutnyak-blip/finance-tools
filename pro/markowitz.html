@@ -1775,6 +1775,142 @@ async function run(){
   }finally{btn.disabled=false;}
 }
 </script>
+<button class="btn print-btn" id="riskBtn" style="bottom:72px;background:#8a3b3b" onclick="openRisk()">🛡️ Разобрать риски</button>
 <button class="btn print-btn" id="reportBtn" onclick="downloadReport()">📄 Скачать отчёт PDF</button>
+
+<div id="riskModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45)" onclick="if(event.target===this)closeRisk()">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(720px,92vw);max-height:88vh;background:var(--surface);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;font-size:1rem">🛡️ Мой риск-менеджер</div>
+      <button onclick="closeRisk()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text2);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div id="riskBody" style="padding:20px;overflow-y:auto;line-height:1.6;font-size:0.92rem;color:var(--text)"></div>
+    <div id="riskCodeBox" style="display:none;padding:0 20px 16px">
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:8px">Введите PRO-код или пароль:</div>
+      <input id="riskCode" type="text" autocomplete="off" placeholder="PRO-код или пароль" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:var(--mono);background:var(--surface2);color:var(--text)">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--border)">
+      <span id="riskLeft" style="font-size:0.78rem;color:var(--text2)"></span>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-sm" onclick="closeRisk()">Закрыть</button>
+        <button class="btn" id="riskGo" onclick="runRisk()">Разобрать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== «Мой риск-менеджер» — сборка снапшота и запрос к бэкенду =====
+function storedProCode(){
+  try{
+    const own=localStorage.getItem('idea_pro_code'); if(own)return own;
+    if(localStorage.getItem('pro_access_type')==='token')return localStorage.getItem('pro_access_token')||'';
+  }catch(e){}
+  return '';
+}
+function riskEsc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function riskRender(text){
+  const lines=(text||'').split('\n'); let html='';
+  for(const raw of lines){
+    const t=raw.trim(); if(!t)continue;
+    let l=riskEsc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    if(/^#{1,3}\s/.test(t)) html+='<h3 style="margin:16px 0 6px;font-size:0.95rem;color:var(--accent)">'+l.replace(/^#{1,3}\s/,'')+'</h3>';
+    else if(/^[-•]\s/.test(t)) html+='<div style="margin:3px 0 3px 6px">• '+l.replace(/^[-•]\s/,'')+'</div>';
+    else if(/^\d+[.)]\s/.test(t)) html+='<div style="margin:8px 0">'+l+'</div>';
+    else html+='<p style="margin:8px 0">'+l+'</p>';
+  }
+  return html;
+}
+function buildSnapshot(){
+  const R=window._reportData; if(!R||!R.cards)return null;
+  const {cards,tickers,userPort,stockStats,varStats,varLabel,retMap}=R;
+  const find=t=>cards.find(c=>c.title===t);
+  const pf=x=>(x*100).toFixed(1);
+  const your=find('Ваш портфель');
+  let s='Портфель акций (Московская биржа). Бенчмарк: IMOEX (цена), MCFTRR (полная доходность).\n';
+  if(your&&your.data.totalValue) s+='Стоимость портфеля: '+Math.round(your.data.totalValue).toLocaleString('ru-RU')+' руб.\n';
+  const ml=c=>{ if(!c)return ''; const d=c.data;
+    const b=(d.betaIMOEX!=null&&!isNaN(d.betaIMOEX))?d.betaIMOEX.toFixed(2):'—';
+    const r2=(d.r2!=null&&!isNaN(d.r2))?Math.round(d.r2*100)+'%':'—';
+    return '- '+c.title+': доходность '+pf(d.r)+'%, волатильность '+pf(d.v)+'%, макс. просадка -'+pf(d.d)+'%, Sharpe '+d.s.toFixed(2)+', бета(IMOEX) '+b+', R2 '+r2+'\n'; };
+  s+='\nМетрики (годовые):\n'+ml(your);
+  ['Max Sharpe','Min Volatility','Min Drawdown','Equal Weight'].forEach(t=>{s+=ml(find(t));});
+  const wref=userPort?userPort.w:null;
+  if(wref){
+    s+='\nСостав вашего портфеля:\n';
+    tickers.map((t,i)=>({t,w:wref[i]})).filter(x=>x.w>=0.0005).sort((a,b)=>b.w-a.w).forEach(x=>{s+='- '+x.t+': '+pf(x.w)+'%\n';});
+  }
+  if(stockStats){
+    s+='\nЗависимость бумаг от рынка (бета к IMOEX; R2 — доля рыночного/систематического риска, остальное собственный риск эмитента):\n';
+    const wr=userPort?userPort.w:null;
+    tickers.map((t,i)=>({t,w:wr?wr[i]:0})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w).forEach(x=>{
+      const st=stockStats[x.t];
+      const b=isNaN(st.betaIMOEX)?'—':st.betaIMOEX.toFixed(2);
+      const r2=isNaN(st.r2)?'—':Math.round(st.r2*100)+'%';
+      s+='- '+x.t+' (доля '+pf(x.w)+'%): бета '+b+', R2 '+r2+'\n';
+    });
+  }
+  if(varStats&&varStats.length){
+    const pv=(your&&your.data.totalValue)?your.data.totalValue:null;
+    s+='\nVaR/CVaR ('+(varLabel||'портфель')+'), возможный убыток за горизонт:\n';
+    varStats.forEach(m=>{
+      s+='  '+m.name+':\n';
+      m.rows.forEach(r=>{
+        const f=v=>'-'+(v*100).toFixed(2)+'%'+(pv?' (-'+Math.round(v*pv).toLocaleString('ru-RU')+' руб)':'');
+        s+='   - '+r.name+': VaR95 '+f(r.var95)+', CVaR95 '+f(r.cvar95)+', VaR99 '+f(r.var99)+', CVaR99 '+f(r.cvar99)+'\n';
+      });
+    });
+  }
+  if(retMap&&userPort){
+    const held=tickers.filter((t,i)=>userPort.w[i]>=0.0005);
+    const pairs=[];
+    for(let i=0;i<held.length;i++)for(let j=i+1;j<held.length;j++){
+      const c=pearson(retMap[held[i]],retMap[held[j]]);
+      if(!isNaN(c))pairs.push({a:held[i],b:held[j],c:+c.toFixed(2)});
+    }
+    if(pairs.length){
+      const avg=(pairs.reduce((a,p)=>a+p.c,0)/pairs.length).toFixed(2);
+      const sorted=[...pairs].sort((x,y)=>y.c-x.c);
+      s+='\nКорреляции бумаг портфеля. Средняя: '+avg+'.\n';
+      s+='Самые связанные пары: '+sorted.slice(0,5).map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
+      s+='Самые независимые пары: '+sorted.slice(-5).reverse().map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
+    }
+  }
+  return s;
+}
+function openRisk(){
+  const R=window._reportData;
+  if(!R||!R.cards){ alert('Сначала нажмите «Рассчитать»'); return; }
+  document.getElementById('riskBody').innerHTML='<p style="color:var(--text2)">Риск-менеджер объяснит простым языком, что посчитано и где риски вашего портфеля. Нажмите «Разобрать».</p>';
+  document.getElementById('riskLeft').textContent='';
+  document.getElementById('riskCodeBox').style.display='none';
+  document.getElementById('riskModal').style.display='block';
+}
+function closeRisk(){ document.getElementById('riskModal').style.display='none'; }
+async function runRisk(){
+  const snap=buildSnapshot();
+  if(!snap){ alert('Сначала рассчитайте портфель'); return; }
+  const typed=(document.getElementById('riskCode').value||'').trim();
+  const code=typed||storedProCode();
+  const body=document.getElementById('riskBody'), go=document.getElementById('riskGo');
+  if(!code){ document.getElementById('riskCodeBox').style.display='block'; document.getElementById('riskCode').focus(); return; }
+  go.disabled=true; const old=go.textContent; go.textContent='Разбираю…';
+  body.innerHTML='<p style="color:var(--text2)"><span class="loader"></span> Риск-менеджер думает…</p>';
+  try{
+    const r=await fetch('/api/risk-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code,snapshot:snap})});
+    const data=await r.json().catch(()=>({}));
+    if(r.status===403){ document.getElementById('riskCodeBox').style.display='block'; document.getElementById('riskCode').focus(); body.innerHTML='<p style="color:var(--red)">Код не подошёл. Введите PRO-код или пароль.</p>'; return; }
+    if(!r.ok){ body.innerHTML='<p style="color:var(--red)">'+(data.detail||'Не получилось выполнить разбор. Попробуйте позже.')+'</p>'; return; }
+    if(typed){ try{ localStorage.setItem('idea_pro_code',typed); }catch(e){} }
+    document.getElementById('riskCodeBox').style.display='none';
+    body.innerHTML=riskRender(data.analysis||'');
+    if(typeof data.left_this_month==='number'){ document.getElementById('riskLeft').textContent='Осталось разборов: '+data.left_this_month; }
+  }catch(e){
+    body.innerHTML='<p style="color:var(--red)">Сеть недоступна. Попробуйте ещё раз.</p>';
+  }finally{
+    go.disabled=false; go.textContent=old;
+  }
+}
+</script>
 </body>
 </html>
