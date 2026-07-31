@@ -258,6 +258,14 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
   </div>
 </div>
 
+<div class="card hidden" id="mktDepCard">
+  <div class="card-title">Зависимость бумаг от рынка · β и R²</div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem;line-height:1.5">R² — какая доля колебаний бумаги объясняется рынком (систематический риск, его не убрать диверсификацией). Остальное (100−R²) — собственный риск эмитента, он гасится при диверсификации несвязанными бумагами. β — сила движения относительно индекса.</div>
+  <div class="matrix-wrap">
+    <table class="weights" id="mktDepTable"></table>
+  </div>
+</div>
+
 <div class="card hidden" id="varCard">
   <div class="card-title">Value at Risk &amp; CVaR<span class="var-portfolio-tag" id="varPortTag"></span></div>
   <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">
@@ -1337,6 +1345,7 @@ async function run(){
     // retMap для бенчмарков — на benchCommon (где есть оба индекса)
     // Для расчёта беты строим отдельный retMapBench: ret-серии бумаг, выровненные по benchCommon
     let retBenchIMOEX=null,retBenchMCFTRR=null,retMapBench=null,benchTickers=null;
+    let stockStats=null; // β и R² каждой бумаги к рынку
     try{
       st.innerHTML='<span class="loader"></span>Загрузка бенчмарков (IMOEX, MCFTRR)...';
       const candIMOEX=await fetchIndex('IMOEX',fromStr,tillStr);
@@ -1566,6 +1575,16 @@ async function run(){
         c.data.betaMCFTRR=bM.beta;
         c.data.r2=bM.r2; // R² к total return — методологически точнее
       });
+      // R² и бета КАЖДОЙ бумаги к рынку: сколько её колебаний — рыночные (систематический риск),
+      // а сколько собственные (специфический). Тот же betaR2, что и для портфеля.
+      stockStats={};
+      benchTickers.forEach(t=>{
+        const sr=retMapBench[t];
+        if(!sr||sr.length<10)return;
+        const sI=betaR2(sr,retBenchIMOEX);
+        const sM=betaR2(sr,retBenchMCFTRR);
+        stockStats[t]={betaIMOEX:sI.beta, betaMCFTRR:sM.beta, r2:sM.r2};
+      });
     }
     cards.forEach(c=>{
       const el=document.createElement('div');el.className='opt-card '+c.cls;
@@ -1596,7 +1615,7 @@ async function run(){
     });
 
     // сохраняем данные для PDF-отчёта
-    window._reportData = {cards, tickers, retMap, userPort};
+    window._reportData = {cards, tickers, retMap, userPort, stockStats};
 
     // Weights table
     document.getElementById('weightsCard').classList.remove('hidden');
@@ -1640,6 +1659,33 @@ async function run(){
       userRow(userPort?userPort.s.toFixed(2):'')+'</tr>';
     html+='</tbody>';
     wt.innerHTML=html;
+
+    // ===== Таблица «Зависимость бумаг от рынка» (β и R² по каждой бумаге) =====
+    if(stockStats && Object.keys(stockStats).length){
+      document.getElementById('mktDepCard').classList.remove('hidden');
+      const mdt=document.getElementById('mktDepTable');
+      const shareHead=userPort?'Доля':'Доля (равн.)';
+      let mh='<thead><tr><th style="text-align:left">Тикер</th><th>'+shareHead+'</th><th>β</th><th>R² к рынку</th><th style="text-align:left">Риск в основном</th></tr></thead><tbody>';
+      const wref=userPort?userPort.w:eqW;
+      const ord=tickers.map((t,i)=>({t,w:wref[i]})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w);
+      ord.forEach(({t,w})=>{
+        const s=stockStats[t];
+        const bTxt=isNaN(s.betaIMOEX)?'—':s.betaIMOEX.toFixed(2);
+        if(isNaN(s.r2)){
+          mh+='<tr><td class="tk" style="text-align:left">'+t+'</td><td>'+(w*100).toFixed(1)+'%</td><td>'+bTxt+'</td><td>—</td><td style="text-align:left;color:var(--text2)">—</td></tr>';
+          return;
+        }
+        const r2p=Math.round(s.r2*100);
+        const mark=r2p>=60?'рыночный':(r2p<=30?'собственный':'смешанный');
+        mh+='<tr><td class="tk" style="text-align:left">'+t+'</td>'+
+          '<td>'+(w*100).toFixed(1)+'%</td>'+
+          '<td>'+bTxt+'</td>'+
+          '<td>'+r2p+'%</td>'+
+          '<td style="text-align:left;color:var(--text2)">'+mark+'</td></tr>';
+      });
+      mh+='</tbody>';
+      mdt.innerHTML=mh;
+    }
 
     // Equity chart (cumulative return)
     document.getElementById('equityCard').classList.remove('hidden');
