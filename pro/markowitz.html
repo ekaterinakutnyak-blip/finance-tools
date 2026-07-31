@@ -1761,6 +1761,18 @@ async function run(){
       <div style="font-weight:600;font-size:1rem">🛡️ Мой риск-менеджер</div>
       <button onclick="closeRisk()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text2);line-height:1;padding:0 4px">×</button>
     </div>
+    <div id="riskCtx" style="padding:12px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
+      <label style="font-size:0.82rem;color:var(--text2);display:flex;align-items:center;gap:6px">Горизонт:
+        <select id="riskHorizon" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem">
+          <option value="">не указан</option>
+          <option value="до 1 года">до 1 года</option>
+          <option value="1–3 года">1–3 года</option>
+          <option value="3–5 лет">3–5 лет</option>
+          <option value="более 5 лет">более 5 лет</option>
+        </select>
+      </label>
+      <input id="riskGoal" type="text" placeholder="Цель (необязательно): пенсия, подушка, рост…" style="flex:1;min-width:170px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem">
+    </div>
     <div id="riskBody" style="padding:20px;overflow-y:auto;line-height:1.6;font-size:0.92rem;color:var(--text)"></div>
     <div id="riskCodeBox" style="display:none;padding:0 20px 16px">
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:8px">Введите PRO-код или пароль:</div>
@@ -1852,6 +1864,11 @@ function buildSnapshot(){
       s+='Самые связанные пары: '+sorted.slice(0,5).map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
       s+='Самые независимые пары: '+sorted.slice(-5).reverse().map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
     }
+  }
+  const hz=(document.getElementById('riskHorizon')||{}).value||'';
+  const gl=((document.getElementById('riskGoal')||{}).value||'').trim();
+  if(hz||gl){
+    s+='\nЦель и горизонт инвестора: горизонт — '+(hz||'не указан')+(gl?('; цель — '+gl):'')+'.\n';
   }
   return s;
 }
