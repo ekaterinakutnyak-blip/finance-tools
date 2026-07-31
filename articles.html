@@ -36,16 +36,20 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 .card-date{font-size:0.72rem;color:var(--text3);font-family:var(--mono)}
 .footer{margin-top:2rem;font-size:0.78rem;color:var(--text3);line-height:1.7;text-align:center}
 .footer a{color:var(--text2)}
+
+.section-title{font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin:2rem 0 0.9rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border)}
+.section-title:first-of-type{margin-top:1.5rem}
 </style>
 </head>
 <body>
 <div class="container">
 <a href="index.html" class="back-link">← Все калькуляторы</a>
 <h1>Статьи об инвестициях</h1>
-<p class="intro">Инвестиции простым языком — без формул и воды. Как устроены облигации, что важнее цены, вклад или облигации, дюрация и риск. Пишу так, чтобы после статьи вы принимали решения осознанно, а не на веру.</p>
-<a class="card" href="articles/chto-takoe-oferta-obligacii.html">
-  <h3>Что такое оферта и почему это не страшно</h3>
-  <p>Пут-оферта — ваша защита, колл-оферта — защита эмитента. Проблема не в самой оферте, а в том, что про неё забывают. Разбираем на реальных примерах.</p>
+<p class="intro">Инвестиции простым языком — без формул и воды. Облигации, акции, вклады, риск портфеля. Пишу так, чтобы после статьи вы принимали решения осознанно, а не на веру.</p>
+<div class="section-title">Личные финансы</div>
+<a class="card" href="articles/vklad-16-procentov-podvoh.html">
+  <h3>Вклад под 16% на три года — а где подвох?</h3>
+  <p>Красивая ставка на витрине привязана к ключевой — это не обещание на три года. Считаем на честной фиксированной ставке: вклад или облигации выгоднее.</p>
   <div class="card-date">24 июля 2026</div>
 </a>
 <a class="card" href="articles/ipoteka-dosrochno-ili-obligacii.html">
@@ -53,24 +57,41 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
   <p>Досрочное погашение — самый популярный ответ и самый дорогой. Считаем четыре варианта: досрочка сроком и платежом против ОФЗ с купоном и дисконтом.</p>
   <div class="card-date">24 июля 2026</div>
 </a>
-<a class="card" href="articles/vklad-16-procentov-podvoh.html">
-  <h3>Вклад под 16% на три года — а где подвох?</h3>
-  <p>Красивая ставка на витрине привязана к ключевой — это не обещание на три года. Считаем на честной фиксированной ставке: вклад или облигации выгоднее.</p>
+<div class="section-title">Акции</div>
+<a class="card" href="articles/koefficient-determinacii-r2.html">
+  <h3>Коэффициент детерминации (R²): от чего зависит ваша акция</h3>
+  <p>Какая доля риска акции — рыночная, а какая её собственная. Почему при низком R² бета врёт и как это связано с диверсификацией.</p>
+  <div class="card-date">31 июля 2026</div>
+</a>
+<a class="card" href="articles/chto-takoe-korrelyaciya.html">
+  <h3>Что такое корреляция и почему она важна</h3>
+  <p>Как связаны активы и зачем это для диверсификации. Три вида корреляции на примерах Мосбиржи — и почему в кризис связи рушатся.</p>
+  <div class="card-date">31 июля 2026</div>
+</a>
+<a class="card" href="articles/chto-takoe-koefficient-beta.html">
+  <h3>Что такое коэффициент бета</h3>
+  <p>Как измерить риск акции и портфеля относительно рынка. Откуда берётся формула беты и почему при низком R² она ненадёжна.</p>
+  <div class="card-date">31 июля 2026</div>
+</a>
+<div class="section-title">Облигации</div>
+<a class="card" href="articles/chto-takoe-oferta-obligacii.html">
+  <h3>Что такое оферта и почему это не страшно</h3>
+  <p>Пут-оферта — ваша защита, колл-оферта — защита эмитента. Проблема не в самой оферте, а в том, что про неё забывают. Разбираем на реальных примерах.</p>
   <div class="card-date">24 июля 2026</div>
 </a>
 <a class="card" href="articles/dyuraciya-obligacii-prostymi-slovami.html">
   <h3>Дюрация: что это такое и зачем она нужна инвестору</h3>
-  <p>Что такое дюрация Маколея и модифицированная дюрация простыми словами, чем они отличаются и как их использовать: горизонт равновесия рисков и оценка и</p>
+  <p>Что такое дюрация Маколея и модифицированная дюрация простыми словами, чем они отличаются и как их использовать: горизонт равновесия рисков и оценка.</p>
   <div class="card-date">23 июля 2026</div>
 </a>
 <a class="card" href="articles/pochemu-odna-ofz-deshevle.html">
   <h3>Почему одна ОФЗ дешевле другой?</h3>
-  <p>Сегодня мне задали такой вопрос: две ОФЗ погашаются почти одновременно — почему одна стоит дешевле? И удивил меня не сам вопрос, он абсолютно нормальный.</p>
+  <p>Две ОФЗ погашаются почти одновременно — почему одна стоит дешевле? Вопрос абсолютно нормальный, а ответ показывает, что в облигации главное.</p>
   <div class="card-date">23 июля 2026</div>
 </a>
 <a class="card" href="articles/cena-obligacii-ne-glavnoe.html">
   <h3>Почему цена облигации — не главное</h3>
-  <p>Чтобы вы понимали, что покупаете и за что платите.</p>
+  <p>Чтобы вы понимали, что покупаете и за что платите. На рынке облигаций дешевле не значит выгоднее.</p>
   <div class="card-date">24 июля 2026</div>
 </a>
 
