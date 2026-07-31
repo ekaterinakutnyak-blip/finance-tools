@@ -1,0 +1,127 @@
+# risk_manager.py — эндпоинт «Мой риск-менеджер» (портфель акций, Markowitz).
+# ДОСТУП: как в idea_check — токен проверяем прямым запросом в таблицу tokens базы db.sqlite;
+#   мастер-пароль PRO принимаем ТОЛЬКО как сырой пароль (sha256 == PASS_HASH).
+#   Публичный хеш из gate.js НЕ принимаем.
+# ЛИМИТ: 15 разборов за 30 дней. У токена период — ОТ ДАТЫ ПОДПИСКИ (created_at токена);
+#   у мастер-пароля — скользящими 30-дневными окнами. Счётчик в своём risk_usage.db.
+# ВХОД: снапшот портфеля (готовые числа с фронта) — заворачиваем в <portfolio_snapshot> и отдаём модели.
+# ПРОМТ: приватный, лежит на сервере (в GitHub его нет). Модель — Alice (дёшево).
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import sqlite3, datetime, hashlib
+from yandex_ai import call_model, _load, MODEL_IDEA
+
+router = APIRouter()
+
+PROMPT_RISK = _load("/opt/finance-api/prompts/risk_manager_stocks.txt")
+RISK_DB = "/opt/finance-api/risk_usage.db"      # свой счётчик, независимый от «Проверки идей»
+MAIN_DB = "/opt/finance-api/db.sqlite"          # та же база, что у бота/портфелей (таблица tokens)
+PERIOD_LIMIT = 15
+PERIOD_DAYS = 30
+MAX_INPUT_CHARS = 12000                          # снапшот — это числа (веса, VaR, матрица корреляций), не свободный текст
+# Мастер-пароль PRO (тот же, что в gate.js). Принимаем ТОЛЬКО сырой пароль по хешу.
+PASS_HASH = "cadfe76d8624764d43fde9e741030aedb945ed221a928854dc4babda1c6eea89"
+
+
+class RiskIn(BaseModel):
+    token: str
+    snapshot: str
+
+
+def _is_master(code: str) -> bool:
+    # Только сырой пароль: его sha256 совпадает с PASS_HASH. Готовый хеш НЕ принимаем — он публичный.
+    return hashlib.sha256(code.encode("utf-8")).hexdigest() == PASS_HASH
+
+
+def _token_info(token: str):
+    """(user_id, created_at) если токен есть в таблице tokens и не истёк, иначе None.
+    Пробуем и как введено, и в верхнем регистре — токены выпускаются заглавными."""
+    try:
+        con = sqlite3.connect(MAIN_DB)
+        row = con.execute(
+            "SELECT user_id, expires_at, created_at FROM tokens WHERE token = ? OR token = ?",
+            (token, token.upper()),
+        ).fetchone()
+        con.close()
+    except Exception:
+        return None
+    if not row:
+        return None
+    try:
+        if datetime.datetime.fromisoformat(row[1]) < datetime.datetime.utcnow():
+            return None
+    except Exception:
+        return None
+    return row[0], row[2]
+
+
+def _period_token(created_at_str) -> str:
+    """Номер 30-дневного периода ОТ ДАТЫ ПОДПИСКИ (created_at токена)."""
+    try:
+        start = datetime.datetime.fromisoformat(str(created_at_str)).date()
+    except Exception:
+        start = datetime.date.today()
+    days = (datetime.date.today() - start).days
+    if days < 0:
+        days = 0
+    return "P" + str(days // PERIOD_DAYS)
+
+
+def _period_master() -> str:
+    """Скользящие 30-дневные окна для мастер-пароля (у него нет даты подписки)."""
+    return "M" + str(datetime.date.today().toordinal() // PERIOD_DAYS)
+
+
+def _used(key, period):
+    con = sqlite3.connect(RISK_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS risk_usage
+                   (token TEXT, month TEXT, cnt INTEGER, PRIMARY KEY(token, month))""")
+    row = con.execute("SELECT cnt FROM risk_usage WHERE token=? AND month=?",
+                      (key, period)).fetchone()
+    con.close()
+    return row[0] if row else 0
+
+
+def _bump(key, period):
+    con = sqlite3.connect(RISK_DB)
+    con.execute("""CREATE TABLE IF NOT EXISTS risk_usage
+                   (token TEXT, month TEXT, cnt INTEGER, PRIMARY KEY(token, month))""")
+    con.execute("""INSERT INTO risk_usage(token, month, cnt) VALUES(?,?,1)
+                   ON CONFLICT(token, month) DO UPDATE SET cnt = cnt + 1""",
+                (key, period))
+    con.commit(); con.close()
+
+
+@router.post("/api/risk-check")
+async def risk_check(payload: RiskIn):
+    code = (payload.token or "").strip()
+    snap = (payload.snapshot or "").strip()
+    if not snap:
+        raise HTTPException(status_code=400, detail="Сначала рассчитайте портфель")
+    if len(snap) > MAX_INPUT_CHARS:
+        snap = snap[:MAX_INPUT_CHARS]
+
+    if _is_master(code):
+        key, period = "MASTER", _period_master()
+    else:
+        info = _token_info(code)
+        if info is None:
+            raise HTTPException(status_code=403, detail="Разбор рисков доступен по подписке")
+        uid, created_at = info
+        key, period = f"U:{uid}", _period_token(created_at)
+
+    used = _used(key, period)
+    if used >= PERIOD_LIMIT:
+        raise HTTPException(status_code=402,
+                            detail=f"Лимит {PERIOD_LIMIT} разборов за 30 дней исчерпан")
+
+    user_input = "<portfolio_snapshot>\n" + snap + "\n</portfolio_snapshot>"
+    try:
+        result = call_model(PROMPT_RISK, user_input, model=MODEL_IDEA,
+                            max_output_tokens=3000, temperature=0.2)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
+
+    _bump(key, period)
+    return {"analysis": result, "left_this_month": max(0, PERIOD_LIMIT - (used + 1))}
