@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Облигации по сценариям ставки · investtools.pro</title>
+<meta name="description" content="Как поведут себя ваши облигации при росте или снижении ключевой ставки ЦБ. Считаем доходность по сценариям на данных Мосбиржи — наглядно и на цифрах.">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -90,8 +91,6 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
   </div>
   <div class="scen-grid" id="scenGrid"></div>
   <div class="note">База — среднесрочный прогноз Банка России + текущая ставка. RUONIA ≈ КС − 0.3 п.п. Значения меняйте под свой взгляд. Строка «Рынок (форвард)» заполняется из кривой ОФЗ. Ниже, в блоке сравнения с ЦБ, из этих форвардов вычитается премия за срок — так виден чистый рыночный взгляд на ставку.</div>
-  <div style="margin-top:1.1rem;font-size:0.82rem;color:var(--text2)"><strong>Инфляция по сценариям, % в год.</strong> Нужна только для ОФЗ-ИН — их номинал индексируется на инфляцию, а не на ставку. На фикс, флоатер, дисконт и ВЭБ-линкер на RUONIA не влияет. Дефолты — по прогнозу ЦБ; правьте под свой взгляд.</div>
-  <div class="scen-grid" id="inflGrid" style="margin-top:0.6rem"></div>
   <button class="btn-ghost btn" style="margin-top:0.8rem" onclick="loadForwards()">Подтянуть форвардные ставки из кривой ОФЗ</button>
   <div id="marketVsCbr" style="display:none;margin-top:1rem;padding:0.9rem 1.1rem;background:var(--surface2);border-radius:9px;font-size:0.82rem;line-height:1.6"></div>
   <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
@@ -251,8 +250,6 @@ async function loadBondData(isin){
     matDate: sec.MATDATE,
     offerDate,
     couponType: cls.type,
-    // ОФЗ-ИН индексирует номинал на инфляцию (CPI), а не на RUONIA. Ловим по имени бумаги.
-    inflLinker: /ОФЗ[-\s]?ИН|OFZ[-\s]?IN/i.test(String(sec.SECNAME||'')+' '+String(sec.LATNAME||'')+' '+String(shortname||'')),
     isDiscount: !!cls.isDiscount,
     couponValue: parseFloat(sec.COUPONVALUE||'0'),
     couponPercent: parseFloat(sec.COUPONPERCENT||'0'),
@@ -370,21 +367,12 @@ const scenNames=['Дезинфляция','База (ЦБ)','Плато','Рос
 const scenColors=['#5fb89a','#5B7FA6','#C89B3C','#c25a4a','#b56fd6'];
 const scenData={
   'Дезинфляция':{2026:13.5,2027:8.0,2028:7.5,2029:7.0},
-  'База (ЦБ)':{2026:14.0,2027:11.5,2028:9.5,2029:8.5},
-  'Плато':{2026:14.0,2027:14.0,2028:14.0,2029:14.0},
+  'База (ЦБ)':{2026:14.25,2027:9.5,2028:8.5,2029:8.0},
+  'Плато':{2026:14.25,2027:14.0,2028:14.0,2029:14.0},
   'Рост ставки':{2026:14.5,2027:16.0,2028:18.0,2029:18.0},
   'Рынок (форвард)':{2026:null,2027:null,2028:null,2029:null}
 };
 const scenProb={'Дезинфляция':15,'База (ЦБ)':35,'Плато':15,'Рост ставки':10,'Рынок (форвард)':25};
-// Инфляция по сценариям — нужна для ОФЗ-ИН (номинал индексируется на инфляцию, а не на ставку).
-// Дефолты по прогнозу ЦБ: 6–7% в 2026 с возвратом к цели 4% к 2027–2028; в жёстких сценариях выше.
-const scenInfl={
-  'Дезинфляция':{2026:6.0,2027:4.5,2028:4.0,2029:4.0},
-  'База (ЦБ)':{2026:6.5,2027:5.0,2028:4.0,2029:4.0},
-  'Плато':{2026:6.5,2027:6.0,2028:5.5,2029:5.5},
-  'Рост ставки':{2026:7.0,2027:7.5,2028:6.5,2029:6.0},
-  'Рынок (форвард)':{2026:6.5,2027:5.0,2028:4.5,2029:4.5}
-};
 const years=[2026,2027,2028,2029];
 const bondColors=['#5B8A72','#7a9e8c','#C89B3C','#B5763E','#5B7FA6','#8B6FA6','#a65b7f','#5b8ba6'];
 
@@ -395,8 +383,6 @@ const T0=new Date();
 function yrs(d){return (d-T0)/(365.25*24*3600*1000);}
 function rateAt(scn,d){const y=d.getFullYear(); const r=scn[y]!=null?scn[y]:scn[HORIZON]; return r!=null?r:8;}
 function ruonia(ks){return ks-0.3;}
-// Инфляция на дату по выбранному сценарию (для индексации номинала ОФЗ-ИН).
-function inflAt(inflScn,d){const y=d.getFullYear(); const r=inflScn&&inflScn[y]!=null?inflScn[y]:(inflScn?inflScn[HORIZON]:4); return r!=null?r:4;}
 function irr(flows){
   function npv(r){return flows.reduce((s,f)=>s+f.cf/Math.pow(1+r,f.t),0);}
   let lo=-0.95,hi=5;
@@ -407,7 +393,7 @@ function irr(flows){
 
 // IRR одной бумаги в одном сценарии.
 // Горизонт HORIZON: гасится до него → до погашения (номинал); позже → продажа по цене под ставку HORIZON.
-function calcBondIRR(b, scn, margin, inflScn){
+function calcBondIRR(b, scn, margin){
   const price=b.data.price, face=b.data.faceValue;
   const mat=new Date(b.data.matDate);
   const horizonDate=new Date(HORIZON+'-12-31');
@@ -420,7 +406,7 @@ function calcBondIRR(b, scn, margin, inflScn){
   const perYear=freq;
 
   if(b.data.couponType==='linker'){
-    // ЛИНКЕР: номинал капитализируется — у ОФЗ-ИН на ИНФЛЯЦИЮ, у прочих (ВЭБ и т.п.) на RUONIA; купон couponPercent% от растущего номинала.
+    // ЛИНКЕР: номинал индексируется на RUONIA (капитализация), купон couponPercent% от растущего номинала.
     // Погашение/продажа — проиндексированным номиналом.
     const couponPct=b.data.couponPercent>0?b.data.couponPercent:1.85;
     let nominal=b.data.currentFace||face; // текущий проиндексированный номинал
@@ -449,7 +435,7 @@ function calcBondIRR(b, scn, margin, inflScn){
     sched.forEach(cd=>{
       // индексация номинала от прошлой даты до этой
       const months=Math.max(1,Math.round((cd-pd)/(365.25*24*3600*1000)*12));
-      for(let m=0;m<months;m++){ const dd=new Date(pd); dd.setMonth(dd.getMonth()+m); const idx=b.data.inflLinker?(inflAt(inflScn,dd)/100):(ruonia(rateAt(scn,dd))/100); nominal*=(1+idx/12); }
+      for(let m=0;m<months;m++){ const dd=new Date(pd); dd.setMonth(dd.getMonth()+m); const ru=ruonia(rateAt(scn,dd))/100; nominal*=(1+ru/12); }
       const yearFrac=Math.max(0.02,(cd-pd)/(365.25*24*3600*1000));
       flowsL.push({t:yrs(cd), cf:nominal*(couponPct/100)*yearFrac});
       pd=cd;
@@ -593,16 +579,6 @@ function renderScen(){
   });
   g.innerHTML=h;
 }
-function renderInfl(){
-  const g=document.getElementById('inflGrid');
-  if(!g) return;
-  let h='<div class="hd" style="text-align:left">Год</div>'+scenNames.map((s,i)=>'<div class="hd" style="color:'+scenColors[i]+'">'+s+'</div>').join('');
-  years.forEach(y=>{
-    h+='<div class="yr">'+y+'</div>';
-    scenNames.forEach(s=>{const val=scenInfl[s][y]!=null?scenInfl[s][y]:'';h+='<div><input value="'+val+'" onchange="scenInfl[\''+s+'\']['+y+']=this.value===\'\'?null:(parseFloat(this.value.replace(\',\',\'.\'))||0)"></div>';});
-  });
-  g.innerHTML=h;
-}
 function renderProb(){
   const g=document.getElementById('probGrid');
   let h='<div class="yr" style="text-align:left">вероятн.</div>';
@@ -626,7 +602,7 @@ function recompute(){
   loadedBonds.forEach(b=>{
     results[b.rowId]={};
     const margin=(b.data.couponType==='float')?(parseFloat(document.getElementById(b.rowId).querySelector('.margin').value)||0):0;
-    activeScens.forEach(s=>{results[b.rowId][s]=calcBondIRR(b, scenData[s], margin, scenInfl[s]);});
+    activeScens.forEach(s=>{results[b.rowId][s]=calcBondIRR(b, scenData[s], margin);});
   });
   const probSum=activeScens.reduce((a,s)=>a+(scenProb[s]||0),0);
   // таблица
@@ -735,7 +711,7 @@ async function loadForwards(){
 }
 
 // init
-addBondRow(); renderScen(); renderInfl(); renderProb();
+addBondRow(); renderScen(); renderProb();
 </script>
 </body>
 </html>
