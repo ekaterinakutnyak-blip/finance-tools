@@ -17,6 +17,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Оптимизация портфеля · Markowitz · MOEX</title>
+<meta name="description" content="Оптимизация портфеля акций Мосбиржи по Марковицу: эффективная граница, максимум Шарпа, минимум риска. Волатильность, просадка, бета, R², VaR и ИИ-разбор рисков.">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1863,6 +1864,16 @@ function buildSnapshot(){
       s+='\nКорреляции бумаг портфеля. Средняя: '+avg+'.\n';
       s+='Самые связанные пары: '+sorted.slice(0,5).map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
       s+='Самые независимые пары: '+sorted.slice(-5).reverse().map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
+      // корреляции МЕЖДУ крупнейшими позициями — чтобы риск-менеджер мог оценить концентрацию по реальным числам
+      const big=tickers.map((t,i)=>({t,w:userPort.w[i]})).filter(x=>x.w>=0.03).sort((a,b)=>b.w-a.w).slice(0,8);
+      if(big.length>=2){
+        const bp=[];
+        for(let i=0;i<big.length;i++)for(let j=i+1;j<big.length;j++){
+          const c=pearson(retMap[big[i].t],retMap[big[j].t]);
+          if(!isNaN(c))bp.push(big[i].t+'-'+big[j].t+' '+(+c.toFixed(2)));
+        }
+        if(bp.length) s+='Корреляции между крупнейшими позициями (доля ≥3%): '+bp.join(', ')+'.\n';
+      }
     }
   }
   const hz=(document.getElementById('riskHorizon')||{}).value||'';
