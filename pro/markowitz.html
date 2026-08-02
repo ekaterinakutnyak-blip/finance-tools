@@ -706,7 +706,8 @@ async function downloadReport(){
       chart_drawdown: png(ddChart),
       corr_avg, corr_top, corr_low,
       var_stats: Array.isArray(varStats) ? varStats : [],
-      var_label: varLabel || null
+      var_label: varLabel || null,
+      analytics: (typeof buildAnalyticsPayload==='function' ? buildAnalyticsPayload() : null)
     };
 
     const resp = await fetch('/api/us/report', {
@@ -1820,10 +1821,16 @@ async function run(){
         // по каждой бумаге — её СОБСТВЕННАЯ полная история (для длинных колонок в таблице периодов)
         const perStock={};
         tickers.forEach(t=>{perStock[t]={dates:deepCandles[t].map(x=>x.date),closes:deepCandles[t].map(x=>x.close)};});
+        // полная история рынка MCFTRR (для строки «Рынок» в таблице периодов — своя история, как у бумаг)
+        let benchFullDates=null,benchFullCloses=null;
+        if(benchMapM){
+          const bd=Object.keys(benchMapM).filter(d=>benchMapM[d]!=null).sort();
+          if(bd.length>=30){benchFullDates=bd;benchFullCloses=bd.map(d=>benchMapM[d]);}
+        }
         anData={
           dates:deepCommon, refLabel, refDaily:refDailyDeep, refReturns:refReturnsDeep, refW,
           perStock, tickers, rf, yearsActual:deepYears, startDate:deepCommon[0],
-          benchDates, benchCloses, benchRet, benchYears
+          benchDates, benchCloses, benchRet, benchYears, benchFullDates, benchFullCloses
         };
       }
       window.__an=anData;
@@ -2032,7 +2039,7 @@ function rrEventTag(d){
     ['2014-06-01','2016-03-01','Крым, санкции, нефть 2014–15'],
     ['2020-02-15','2020-05-15','Обвал COVID 2020'],
     ['2022-01-01','2022-12-31','СВО, санкции 2022'],
-    ['2024-05-01','2025-01-31','Коррекция 2024'],
+    ['2024-05-01','2024-12-31','Коррекция 2024'],
   ];
   for(const a of R){if(t>=new Date(a[0]).getTime()&&t<=new Date(a[1]).getTime())return a[2];}
   return '';
@@ -2135,7 +2142,8 @@ function renderAnalytics(){
     const rowHtml=(name,p,bold)=>'<tr'+(bold?' style="font-weight:700"':'')+'><td class="tk" style="text-align:left">'+name+'</td>'+
       cell(p.d1)+cell(p.m1)+cell(p.m6)+cell(p.ytd)+cell(p.y1)+cell(p.y3)+cell(p.y5)+cell(p.y10)+cell(p.all)+'</tr>';
     let body='<tbody>';
-    if(benchCloses){ body+=rowHtml('Рынок (MCFTRR)',rrPeriods(benchDates,benchCloses),false); }
+    if(A.benchFullCloses){ body+=rowHtml('Рынок (MCFTRR)',rrPeriods(A.benchFullDates,A.benchFullCloses),false); }
+    else if(benchCloses){ body+=rowHtml('Рынок (MCFTRR)',rrPeriods(benchDates,benchCloses),false); }
     body+=rowHtml(refLabel,rrPeriods(dates,refDaily),true);
     // бумаги по убыванию доли — каждая по СВОЕЙ полной истории
     tickers.map((t,i)=>({t,w:refW[i]})).sort((a,b)=>b.w-a.w).forEach(({t})=>{
@@ -2226,6 +2234,40 @@ function renderAnalytics(){
     }
     document.getElementById('monthlyCard').classList.remove('hidden');
   })();
+}
+
+// Сборка данных аналитики для PDF-отчёта
+function _rrPayNum(x){return (x==null||isNaN(x)||!isFinite(x))?null:+x.toFixed(4);}
+function buildAnalyticsPayload(){
+  const A=window.__an; if(!A)return null;
+  const pr=(dates,closes)=>{const p=rrPeriods(dates,closes);const o={};['d1','m1','m6','ytd','y1','y3','y5','y10','all'].forEach(k=>o[k]=_rrPayNum(p[k]));return o;};
+  const per=[];
+  if(A.benchFullCloses) per.push(Object.assign({name:'Рынок (MCFTRR)',is_port:false,is_bench:true},pr(A.benchFullDates,A.benchFullCloses)));
+  per.push(Object.assign({name:A.refLabel,is_port:true,is_bench:false},pr(A.dates,A.refDaily)));
+  A.tickers.map((t,i)=>({t,w:A.refW[i]})).sort((a,b)=>b.w-a.w).forEach(({t})=>{
+    const ps=A.perStock[t]; per.push(Object.assign({name:t,is_port:false,is_bench:false},pr(ps.dates,ps.closes)));
+  });
+  let coeffs=null;
+  if(A._coeffs){
+    const clean=c=>c?{sharpe:_rrPayNum(c.sharpe),sortino:_rrPayNum(c.sortino),calmar:_rrPayNum(c.calmar),omega:_rrPayNum(c.omega),martin:_rrPayNum(c.martin)}:null;
+    coeffs={port:clean(A._coeffs.port),bench:clean(A._coeffs.bench)};
+  }
+  const lastD=A.dates[A.dates.length-1];
+  const dd=(A._dd||[]).map(e=>({depth:+e.depth.toFixed(4),trough:e.troughDate,fall_days:e.fallDays,
+    rec_days:e.recovered?e.recDays:null,recovered:!!e.recovered,
+    uw_days:e.recovered?rrDaysBetween(e.peakDate,e.recDate):rrDaysBetween(e.peakDate,lastD),event:e.event||''}));
+  const mm=rrMonthly(A.dates,A.refDaily);const years=Object.keys(mm).sort();
+  const MN=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  let pos=0,tot=0,best={v:-1e9},worst={v:1e9};
+  const myears=years.map(y=>{
+    const months=[];let yv=1,hasY=false;
+    for(let m=1;m<=12;m++){const r=mm[y][m];if(r==null){months.push(null);continue;}months.push(+r.toFixed(4));yv*=(1+r);hasY=true;tot++;if(r>0)pos++;if(r>best.v)best={v:r,y,m};if(r<worst.v)worst={v:r,y,m};}
+    return {year:y,months,total:hasY?+(yv-1).toFixed(4):null};
+  });
+  const monthly={years:myears,pos_pct:tot?Math.round(pos/tot*100):null,pos,tot,
+    best:tot?('+'+(best.v*100).toFixed(1)+'% ('+MN[best.m-1]+' '+best.y+')'):'',
+    worst:tot?((worst.v*100).toFixed(1)+'% ('+MN[worst.m-1]+' '+worst.y+')'):''};
+  return {start_date:A.startDate,coeffs,drawdowns:dd,periods:per,monthly};
 }
 </script>
 </body>
