@@ -180,7 +180,7 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
       <label style="font-size:0.74rem;color:var(--text2)">макс. доля, %
         <input type="text" id="globalMax" value="100" inputmode="decimal" style="width:70px;display:block;margin-top:3px">
       </label>
-      <span style="font-size:0.7rem;color:var(--text3);max-width:340px;line-height:1.4">Каждая бумага в портфеле — либо 0, либо в коридоре [мин; макс]. Применяется ко всем расчётным портфелям. Индивидуальные лимиты по бумагам (если заданы) перебивают общий.</span>
+      <span style="font-size:0.7rem;color:var(--text3);max-width:340px;line-height:1.4">Каждая бумага держится в коридоре [мин; макс] — доля не ниже минимума и не выше максимума, в ноль не уходит. Применяется ко всем расчётным портфелям. Индивидуальные лимиты по бумагам (если заданы) перебивают общий.</span>
     </div>
   </div>
 
@@ -872,53 +872,36 @@ function getLimits(N, tickers){
   return {lo,hi};
 }
 
+// Проверка собираемости под КОРОБОЧНЫМИ лимитами: каждая бумага в [lo,hi] → сумма минимумов ≤ 100% ≤ сумма максимумов.
 function validateLimits(lo,hi,N){
+  let sLo=0,sHi=0;
   for(let i=0;i<N;i++){
-    if(lo[i]>hi[i]+1e-9)return 'Минимальная доля больше максимальной.';
+    if(lo[i]>hi[i]+1e-9)return 'У одной из бумаг минимальная доля больше максимальной.';
+    sLo+=lo[i]; sHi+=hi[i];
   }
-  const sumHi=hi.reduce((a,b)=>a+b,0);
-  if(sumHi<1-1e-9)return 'Слишком жёсткий максимум: даже по всем бумагам сумма долей не достигает 100% (макс. сумма '+(sumHi*100).toFixed(0)+'%). Увеличьте макс. долю или добавьте бумаги.';
-  const minLo=Math.min(...lo);
-  if(minLo>0){
-    const maxHiVal=Math.max(...hi);
-    const kNeed=Math.ceil(1/maxHiVal-1e-9);
-    if(kNeed*minLo>1+1e-9)return 'Слишком жёсткий минимум: чтобы собрать 100%, нужно минимум '+kNeed+' бумаг, но их минимальные доли в сумме превышают 100%. Уменьшите мин. долю.';
-  }
+  if(sLo>1+1e-9)return 'Слишком жёсткий минимум: сумма минимальных долей всех бумаг = '+(sLo*100).toFixed(0)+'% (больше 100%). Уменьшите общий минимум или задайте части бумаг индивидуальный минимум пониже.';
+  if(sHi<1-1e-9)return 'Слишком жёсткий максимум: сумма максимальных долей всех бумаг = '+(sHi*100).toFixed(0)+'% (меньше 100%). Увеличьте макс. долю или добавьте бумаги.';
   return null;
 }
 
+// Сэмплер под КОРОБОЧНЫМИ лимитами: КАЖДАЯ бумага в [lo[i],hi[i]], сумма=1, нулей нет (если lo>0 — бумага в портфеле).
 function sampleConstrained(N,lo,hi){
-  const idx=[...Array(N).keys()];
-  for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  const maxHiVal=Math.max(...hi);
-  const kMin=Math.max(1,Math.ceil(1/maxHiVal-1e-9));
-  let chosen=null;
-  for(let attempt=0;attempt<12;attempt++){
-    const k=kMin+Math.floor(Math.random()*(N-kMin+1));
-    const cand=idx.slice(0,k);
-    const sHi=cand.reduce((a,i)=>a+hi[i],0);
-    const sLo=cand.reduce((a,i)=>a+lo[i],0);
-    if(sHi>=1-1e-9 && sLo<=1+1e-9){chosen=cand;break;}
-  }
-  if(!chosen)return null;
-  const w=new Array(N).fill(0);
-  let remain=1-chosen.reduce((a,i)=>a+lo[i],0);
-  const caps=chosen.map(i=>hi[i]-lo[i]);
-  if(remain<-1e-9)return null;
-  for(let pass=0;pass<6 && remain>1e-9;pass++){
-    const live=caps.map((c,t)=>c>1e-9?t:-1).filter(t=>t>=0);
+  let sLo=0,sHi=0; for(let i=0;i<N;i++){sLo+=lo[i];sHi+=hi[i];}
+  if(sLo>1+1e-9 || sHi<1-1e-9) return null;
+  const w=lo.slice();
+  const caps=new Array(N); for(let i=0;i<N;i++)caps[i]=hi[i]-lo[i];
+  let remain=1-sLo;
+  for(let pass=0; pass<8 && remain>1e-9; pass++){
+    const live=[]; for(let i=0;i<N;i++)if(caps[i]>1e-9)live.push(i);
     if(!live.length)break;
-    const rnd=live.map(()=>Math.random());const sr=rnd.reduce((a,b)=>a+b,0)||1;
+    const rnd=live.map(()=>Math.random()); const sr=rnd.reduce((a,b)=>a+b,0)||1;
     let added=0;
-    for(let q=0;q<live.length;q++){
-      const t=live[q];let give=remain*(rnd[q]/sr);give=Math.min(give,caps[t]);caps[t]-=give;added+=give;
-    }
+    for(let q=0;q<live.length;q++){const i=live[q];let give=Math.min(remain*(rnd[q]/sr),caps[i]);w[i]+=give;caps[i]-=give;added+=give;}
     remain-=added;
   }
-  if(remain>1e-6){for(let t=0;t<caps.length && remain>1e-9;t++){const g=Math.min(remain,caps[t]);caps[t]-=g;remain-=g;}}
-  chosen.forEach((origI,t)=>{w[origI]=lo[origI]+((hi[origI]-lo[origI])-caps[t]);});
-  const s=w.reduce((a,b)=>a+b,0);
-  return s>0?w.map(v=>v/s):null;
+  if(remain>1e-6){for(let i=0;i<N && remain>1e-9;i++){const g=Math.min(remain,caps[i]);w[i]+=g;caps[i]-=g;remain-=g;}}
+  if(remain>1e-6)return null;
+  return w;
 }
 
 function projectToLimits(w,lo,hi){
@@ -1391,7 +1374,7 @@ async function run(){
     const N=tickers.length;
     const eqW=new Array(N).fill(1/N);
 
-    // ===== Лимиты на доли (semi-continuous): общий + (далее) индивидуальные =====
+    // ===== Лимиты на доли (КОРОБОЧНЫЕ): каждая бумага в [min,max], индивидуальные перебивают общий =====
     const {lo:limLo,hi:limHi}=getLimits(N, tickers);
     const limitErr=validateLimits(limLo,limHi,N);
     if(limitErr){btn.disabled=false;st.className='status err';st.textContent=limitErr;return;}
@@ -2128,7 +2111,7 @@ async function runRisk(){
   go.disabled=true; const old=go.textContent; go.textContent='Разбираю…';
   body.innerHTML='<p style="color:var(--text2)"><span class="loader"></span> Риск-менеджер думает…</p>';
   try{
-    const r=await fetch('/api/risk-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code,snapshot:snap})});
+    const r=await fetch('/api/risk-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code,snapshot:snap,market:'us'})});
     const data=await r.json().catch(()=>({}));
     if(r.status===403){ document.getElementById('riskCodeBox').style.display='block'; document.getElementById('riskCode').focus(); body.innerHTML='<p style="color:var(--red)">Код не подошёл. Введите PRO-код или пароль.</p>'; return; }
     if(!r.ok){ body.innerHTML='<p style="color:var(--red)">'+(data.detail||'Не получилось выполнить разбор. Попробуйте позже.')+'</p>'; return; }
