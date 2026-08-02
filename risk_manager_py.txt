@@ -15,6 +15,11 @@ from yandex_ai import call_model, _load, MODEL_IDEA, MODEL_REPORT
 router = APIRouter()
 
 PROMPT_RISK = _load("/opt/finance-api/prompts/risk_manager_stocks.txt")
+try:
+    # Отдельный, более богатый промпт для рынка США. Пока файл не залит — используем общий.
+    PROMPT_RISK_US = _load("/opt/finance-api/prompts/risk_manager_stocks_us.txt")
+except Exception:
+    PROMPT_RISK_US = PROMPT_RISK
 RISK_DB = "/opt/finance-api/risk_usage.db"      # свой счётчик, независимый от «Проверки идей»
 MAIN_DB = "/opt/finance-api/db.sqlite"          # та же база, что у бота/портфелей (таблица tokens)
 PERIOD_LIMIT = 10
@@ -27,6 +32,7 @@ PASS_HASH = "cadfe76d8624764d43fde9e741030aedb945ed221a928854dc4babda1c6eea89"
 class RiskIn(BaseModel):
     token: str
     snapshot: str
+    market: str = "ru"          # "ru" (Мосбиржа) | "us" (NYSE/NASDAQ) — выбирает промпт
 
 
 def _is_master(code: str) -> bool:
@@ -117,8 +123,9 @@ async def risk_check(payload: RiskIn):
                             detail=f"Лимит {PERIOD_LIMIT} разборов за 30 дней исчерпан")
 
     user_input = "<portfolio_snapshot>\n" + snap + "\n</portfolio_snapshot>"
+    prompt = PROMPT_RISK_US if (payload.market or "ru").strip().lower() == "us" else PROMPT_RISK
     try:
-        result = call_model(PROMPT_RISK, user_input, model="deepseek-v4-flash/latest",
+        result = call_model(prompt, user_input, model="deepseek-v4-flash/latest",
                             max_output_tokens=3000, temperature=0.35)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
