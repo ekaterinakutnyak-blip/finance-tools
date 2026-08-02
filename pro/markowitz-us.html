@@ -251,6 +251,40 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
   <div class="chart-container tall"><canvas id="ddChart"></canvas></div>
 </div>
 
+<div class="card hidden" id="mktDepCard">
+  <div class="card-title">Зависимость бумаг от рынка · β и R²</div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem;line-height:1.5">R² — какая доля колебаний бумаги объясняется рынком (систематический риск, его не убрать диверсификацией). Остальное (100−R²) — собственный риск компании, он гасится при диверсификации несвязанными бумагами. β — сила движения относительно S&P 500.</div>
+  <div class="matrix-wrap"><table class="weights" id="mktDepTable"></table></div>
+</div>
+
+<div class="card hidden" id="periodsCard">
+  <div class="card-title">Доходность по периодам<span class="var-portfolio-tag" id="periodsTag"></span></div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Доходность портфеля, рынка и каждой бумаги за разные интервалы. Столбцы со <strong>*</strong> — среднегодовая доходность (CAGR). Прочерк — недостаточно истории на этом интервале (например, недавнее IPO).</div>
+  <div class="matrix-wrap"><table class="weights" id="periodsTable"></table></div>
+  <div id="periodsNote" style="font-size:0.72rem;color:var(--text3);margin-top:0.5rem;line-height:1.5"></div>
+</div>
+
+<div class="card hidden" id="coeffCard">
+  <div class="card-title">Доходность на риск · коэффициенты<span class="var-portfolio-tag" id="coeffTag"></span></div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Портфель против рынка (S&P 500). Чем выше коэффициент — тем лучше вознаграждение за риск. Нажмите на название, чтобы увидеть пояснение.</div>
+  <div class="matrix-wrap"><table class="weights" id="coeffTable"></table></div>
+  <div id="coeffDesc" style="font-size:0.78rem;color:var(--text2);margin-top:0.6rem;line-height:1.5;padding:0.6rem 0.8rem;background:var(--surface2);border-radius:var(--radius);display:none"></div>
+</div>
+
+<div class="card hidden" id="ddTableCard">
+  <div class="card-title">Крупнейшие просадки<span class="var-portfolio-tag" id="ddTableTag"></span></div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Пять самых глубоких падений от пика за период. Важна не только глубина, но и время восстановления — сколько портфель шёл обратно к прежнему уровню.</div>
+  <div class="matrix-wrap"><table class="weights" id="ddTable"></table></div>
+  <div id="ddTableNote" style="font-size:0.72rem;color:var(--text3);margin-top:0.5rem;line-height:1.5"></div>
+</div>
+
+<div class="card hidden" id="monthlyCard">
+  <div class="card-title">Доходность по месяцам<span class="var-portfolio-tag" id="monthlyTag"></span></div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Доходность портфеля помесячно и за год целиком. Зелёное — плюс, красное — минус.</div>
+  <div class="matrix-wrap"><table class="weights" id="monthlyTable"></table></div>
+  <div id="monthlyNote" style="font-size:0.72rem;color:var(--text3);margin-top:0.5rem"></div>
+</div>
+
 <div class="card hidden" id="corrCard">
   <div class="card-title">Матрица корреляций</div>
   <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem">Парные корреляции дневных доходностей за выбранный период. <span style="color:#B44040">&gt;0.7 высокая</span> · <span style="color:#A67A2E">0.35–0.7 средняя</span> · <span style="color:#2D7A4F">&lt;0.35 низкая</span></div>
@@ -656,7 +690,11 @@ async function downloadReport(){
       chart_frontier: png(frontierChart),
       chart_cumulative: png(equityChart),
       chart_drawdown: png(ddChart),
-      corr_avg, corr_top, corr_low
+      corr_avg, corr_top, corr_low,
+      market: "us",
+      var_stats: Array.isArray(R.varStats) ? R.varStats : [],
+      var_label: R.varLabel || null,
+      analytics: (typeof buildAnalyticsPayload==='function' ? buildAnalyticsPayload() : null)
     };
 
     const resp = await fetch('/api/us/report', {
@@ -1299,10 +1337,13 @@ async function run(){
     const today=new Date();const past=new Date(today);past.setFullYear(past.getFullYear()-years);
     const fromStr=past.toISOString().slice(0,10);const tillStr=today.toISOString().slice(0,10);
 
+    const DEEP_FROM='2005-01-01'; // глубокая история для аналитики (периоды, просадки, коэффициенты)
+    const deepCandles={};
     const allCandles={};
     for(let i=0;i<tickers.length;i++){
       st.className='status';st.innerHTML='<span class="loader"></span>Загрузка '+tickers[i]+' ('+(i+1)+'/'+tickers.length+')...';
-      allCandles[tickers[i]]=await fetchCandles(tickers[i],fromStr,tillStr);
+      deepCandles[tickers[i]]=await fetchCandles(tickers[i],DEEP_FROM,tillStr);
+      allCandles[tickers[i]]=deepCandles[tickers[i]].filter(c=>c.date>=fromStr);
       if(allCandles[tickers[i]].length<10)throw new Error(tickers[i]+': недостаточно данных');
     }
 
@@ -1325,10 +1366,10 @@ async function run(){
     const yearsActual=common.length/252;
 
     // ===== Загрузка бенчмарка SPY =====
-    let retBenchSPY=null,retMapBench=null,benchTickers=null;
+    let retBenchSPY=null,retMapBench=null,benchTickers=null,benchMapS=null;
     try{
       st.innerHTML='<span class="loader"></span>Загрузка бенчмарка (SPY)...';
-      const candSPY=await fetchCandles('SPY',fromStr,tillStr);
+      const candSPY=await fetchCandles('SPY',DEEP_FROM,tillStr);
       const mapS={};candSPY.forEach(c=>mapS[c.date]=c.close);
       const benchCommon=common.filter(d=>mapS[d]!=null);
       if(benchCommon.length>=60){
@@ -1340,6 +1381,7 @@ async function run(){
           retMapBench[t]=logReturns(closes);
         });
         benchTickers=tickers;
+        benchMapS=mapS;
       }
     }catch(eb){
       console.warn('SPY не загружен:',eb.message);
@@ -1538,12 +1580,20 @@ async function run(){
       cards.push({cls:'user',title:'Ваш портфель',data:userPort,extraLabel:'Sharpe'});
     }
     // Расчёт беты и R² для каждой карточки, если SPY загружен
+    let stockStats=null;
     if(retBenchSPY && retMapBench){
       cards.forEach(c=>{
         const pr=portReturns(c.data.w,retMapBench,benchTickers);
         const bS=betaR2(pr,retBenchSPY);
         c.data.betaSPY=bS.beta;
         c.data.r2=bS.r2;
+      });
+      stockStats={};
+      benchTickers.forEach(t=>{
+        const sr=retMapBench[t];
+        if(!sr||sr.length<10)return;
+        const sS=betaR2(sr,retBenchSPY);
+        stockStats[t]={betaSPY:sS.beta, r2:sS.r2};
       });
     }
     cards.forEach(c=>{
@@ -1573,7 +1623,7 @@ async function run(){
     });
 
     // сохраняем данные для PDF-отчёта
-    window._reportData = {cards, tickers, retMap, userPort};
+    window._reportData = {cards, tickers, retMap, userPort, stockStats};
 
     // Weights table
     document.getElementById('weightsCard').classList.remove('hidden');
@@ -1618,6 +1668,29 @@ async function run(){
     html+='</tbody>';
     wt.innerHTML=html;
 
+    // ===== Таблица «Зависимость бумаг от рынка» (β и R² по каждой бумаге к SPY) =====
+    if(stockStats && Object.keys(stockStats).length){
+      document.getElementById('mktDepCard').classList.remove('hidden');
+      const mdt=document.getElementById('mktDepTable');
+      const shareHead=userPort?'Доля':'Доля (равн.)';
+      let mh='<thead><tr><th style="text-align:left">Тикер</th><th>'+shareHead+'</th><th>β</th><th>R² к рынку</th><th style="text-align:left">Риск в основном</th></tr></thead><tbody>';
+      const wref2=userPort?userPort.w:eqW;
+      const ord=tickers.map((t,i)=>({t,w:wref2[i]})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w);
+      ord.forEach(({t,w})=>{
+        const stt=stockStats[t];
+        const bTxt=isNaN(stt.betaSPY)?'—':stt.betaSPY.toFixed(2);
+        if(isNaN(stt.r2)){
+          mh+='<tr><td class="tk" style="text-align:left">'+t+'</td><td>'+(w*100).toFixed(1)+'%</td><td>'+bTxt+'</td><td>—</td><td style="text-align:left;color:var(--text2)">—</td></tr>';
+          return;
+        }
+        const r2p=Math.round(stt.r2*100);
+        const mark=r2p>=60?'рыночный':(r2p<=30?'собственный':'смешанный');
+        mh+='<tr><td class="tk" style="text-align:left">'+t+'</td><td>'+(w*100).toFixed(1)+'%</td><td>'+bTxt+'</td><td>'+r2p+'%</td><td style="text-align:left;color:var(--text2)">'+mark+'</td></tr>';
+      });
+      mh+='</tbody>';
+      mdt.innerHTML=mh;
+    }
+
     // Equity chart (cumulative return)
     document.getElementById('equityCard').classList.remove('hidden');
     if(equityChart)equityChart.destroy();
@@ -1625,6 +1698,11 @@ async function run(){
     const labels=common;
     const stride=Math.max(1,Math.floor(common.length/120));
     const reduce=arr=>arr.filter((_,i)=>i%stride===0||i===arr.length-1);
+    let benchNorm=null;
+    if(benchMapS){
+      let base=null;
+      benchNorm=common.map(d=>{const v=benchMapS[d];if(v==null)return null;if(base==null)base=v;return v/base*100;});
+    }
     equityChart=new Chart(ctx2,{
       type:'line',
       data:{
@@ -1634,7 +1712,8 @@ async function run(){
           {label:'Min Volatility',data:reduce(minvolDaily),borderColor:'#1976D2',backgroundColor:'rgba(25,118,210,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
           {label:'Min Drawdown',data:reduce(minddDaily),borderColor:'#8E24AA',backgroundColor:'rgba(142,36,170,0.05)',borderWidth:2,pointRadius:0,tension:0.1},
           {label:'Equal Weight',data:reduce(eqDaily),borderColor:'#F9A825',backgroundColor:'rgba(249,168,37,0.05)',borderWidth:2,pointRadius:0,borderDash:[4,4],tension:0.1},
-          ...(userPort?[{label:'Ваш портфель',data:reduce(userPort.daily),borderColor:'#D32F2F',backgroundColor:'rgba(211,47,47,0.05)',borderWidth:3,pointRadius:0,tension:0.1}]:[])
+          ...(userPort?[{label:'Ваш портфель',data:reduce(userPort.daily),borderColor:'#D32F2F',backgroundColor:'rgba(211,47,47,0.05)',borderWidth:3,pointRadius:0,tension:0.1}]:[]),
+          ...(benchNorm?[{label:'Рынок (S&P 500)',data:reduce(benchNorm),borderColor:'#607D8B',backgroundColor:'rgba(96,125,139,0.05)',borderWidth:2,pointRadius:0,borderDash:[2,3],tension:0.1,spanGaps:true}]:[])
         ]
       },
       options:{
@@ -1643,7 +1722,7 @@ async function run(){
         plugins:{legend:{position:'top',labels:{font:{size:11}}}},
         scales:{
           x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
-          y:{title:{display:true,text:'Стоимость портфеля'},ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}}
+          y:{title:{display:true,text:'Стоимость портфеля (база = 100)'},ticks:{font:{size:10,family:'JetBrains Mono'}},grid:{color:'rgba(0,0,0,0.04)'}}
         }
       }
     });
@@ -1698,6 +1777,47 @@ async function run(){
     renderVarTable(varStats,userPort&&userPort.totalValue?userPort.totalValue:null);
     document.getElementById('varPortTag').textContent=varSrcLabel;
     document.getElementById('varCard').classList.remove('hidden');
+    if(window._reportData){ window._reportData.varStats=varStats; window._reportData.varLabel=varSrcLabel; }
+
+    // ===== АНАЛИТИКА ДОХОДНОСТИ (глубокая история) =====
+    try{
+      const refLabel=userPort?'Ваш портфель':'Max Sharpe';
+      const refW=userPort?userPort.w:bestSharpe.w;
+      const deepSets=tickers.map(t=>new Set(deepCandles[t].map(x=>x.date)));
+      let deepCommon=[...deepSets[0]];deepSets.slice(1).forEach(ds=>{deepCommon=deepCommon.filter(d=>ds.has(d));});
+      deepCommon.sort();
+      let anData=null;
+      if(deepCommon.length>=60){
+        const deepCloseMap={};
+        tickers.forEach(t=>{const m={};deepCandles[t].forEach(c=>m[c.date]=c.close);deepCloseMap[t]=deepCommon.map(d=>({date:d,close:m[d]}));});
+        const deepRetMap={};tickers.forEach(t=>{deepRetMap[t]=logReturns(deepCloseMap[t].map(x=>x.close));});
+        const deepYears=deepCommon.length/252;
+        const refDailyDeep=dailyValues(refW,deepCloseMap,tickers,deepCommon);
+        const refReturnsDeep=portReturns(refW,deepRetMap,tickers);
+        let benchDates=null,benchCloses=null,benchRet=null,benchYears=null;
+        if(benchMapS){
+          benchDates=[];benchCloses=[];
+          deepCommon.forEach(d=>{if(benchMapS[d]!=null){benchDates.push(d);benchCloses.push(benchMapS[d]);}});
+          if(benchCloses.length>=30){benchRet=logReturns(benchCloses);benchYears=benchDates.length/252;}
+          else {benchDates=null;benchCloses=null;}
+        }
+        const perStock={};
+        tickers.forEach(t=>{perStock[t]={dates:deepCandles[t].map(x=>x.date),closes:deepCandles[t].map(x=>x.close)};});
+        let benchFullDates=null,benchFullCloses=null;
+        if(benchMapS){
+          const bd=Object.keys(benchMapS).filter(d=>benchMapS[d]!=null).sort();
+          if(bd.length>=30){benchFullDates=bd;benchFullCloses=bd.map(d=>benchMapS[d]);}
+        }
+        anData={
+          dates:deepCommon, refLabel, refDaily:refDailyDeep, refReturns:refReturnsDeep, refW,
+          perStock, tickers, rf, yearsActual:deepYears, startDate:deepCommon[0],
+          benchLabel:'Рынок (S&P 500)',
+          benchDates, benchCloses, benchRet, benchYears, benchFullDates, benchFullCloses
+        };
+      }
+      window.__an=anData;
+      if(anData && typeof renderAnalytics==='function') renderAnalytics();
+    }catch(eAn){ console.warn('Аналитика доходности:',eAn.message); }
 
     st.className='status ok';st.textContent='Готово · '+common.length+' торговых дней · '+nsim.toLocaleString('ru')+' симуляций';
   }catch(e){
@@ -1705,6 +1825,321 @@ async function run(){
   }finally{btn.disabled=false;}
 }
 </script>
+<button class="btn print-btn" id="riskBtn" style="bottom:72px;background:#8a3b3b" onclick="openRisk()">🛡️ Разобрать риски</button>
 <button class="btn print-btn" id="reportBtn" onclick="downloadReport()">📄 Скачать отчёт PDF</button>
+
+<div id="riskModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45)" onclick="if(event.target===this)closeRisk()">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(720px,92vw);max-height:88vh;background:var(--surface);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;font-size:1rem">🛡️ Мой риск-менеджер</div>
+      <button onclick="closeRisk()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text2);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div id="riskCtx" style="padding:12px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
+      <label style="font-size:0.82rem;color:var(--text2);display:flex;align-items:center;gap:6px">Горизонт:
+        <select id="riskHorizon" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem">
+          <option value="">не указан</option>
+          <option value="до 1 года">до 1 года</option>
+          <option value="1–3 года">1–3 года</option>
+          <option value="3–5 лет">3–5 лет</option>
+          <option value="более 5 лет">более 5 лет</option>
+        </select>
+      </label>
+      <input id="riskGoal" type="text" placeholder="Цель (необязательно): пенсия, подушка, рост…" style="flex:1;min-width:170px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem">
+    </div>
+    <div id="riskBody" style="padding:20px;overflow-y:auto;line-height:1.6;font-size:0.92rem;color:var(--text)"></div>
+    <div id="riskCodeBox" style="display:none;padding:0 20px 16px">
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:8px">Введите PRO-код или пароль:</div>
+      <input id="riskCode" type="text" autocomplete="off" placeholder="PRO-код или пароль" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:var(--mono);background:var(--surface2);color:var(--text)">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--border)">
+      <span id="riskLeft" style="font-size:0.78rem;color:var(--text2)"></span>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-sm" onclick="closeRisk()">Закрыть</button>
+        <button class="btn" id="riskGo" onclick="runRisk()">Разобрать</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// ===================== АНАЛИТИКА ДОХОДНОСТИ (US) =====================
+function rrDaysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
+function rrEventTag(d){
+  const t=new Date(d).getTime();
+  const R=[
+    ['2008-05-01','2009-06-01','Кризис 2008'],
+    ['2011-07-01','2011-11-01','Долговой кризис 2011'],
+    ['2015-08-01','2016-02-15','Коррекция 2015–16'],
+    ['2018-10-01','2018-12-31','Обвал Q4 2018'],
+    ['2020-02-15','2020-05-15','Обвал COVID 2020'],
+    ['2022-01-01','2022-12-31','Медвежий рынок 2022'],
+  ];
+  for(const a of R){if(t>=new Date(a[0]).getTime()&&t<=new Date(a[1]).getTime())return a[2];}
+  return '';
+}
+function rrDownsideDev(ret,rfD){let s=0,n=0;for(const r of ret){if(r<=rfD){const d=r-rfD;s+=d*d;n++;}}return n?Math.sqrt(s/n):0;}
+function rrUlcer(daily){let peak=daily[0],s=0;for(const v of daily){if(v>peak)peak=v;const dd=(peak-v)/peak*100;s+=dd*dd;}return Math.sqrt(s/daily.length);}
+function rrOmega(ret,thrD){let G=0,L=0;for(const r of ret){const d=r-thrD;if(d>0)G+=d;else L+=-d;}return L>0?G/L:Infinity;}
+function rrCoeffs(daily,ret,rf,years){
+  const rfD=Math.pow(1+rf,1/252)-1;
+  const annR=annReturn(daily,years), annV=annVolFromReturns(ret), mdd=maxDrawdown(daily), ui=rrUlcer(daily);
+  const dd=rrDownsideDev(ret,rfD)*Math.sqrt(252);
+  return {sharpe:annV>0?(annR-rf)/annV:NaN, sortino:dd>0?(annR-rf)/dd:NaN, calmar:mdd>0?annR/mdd:NaN, omega:rrOmega(ret,rfD), martin:ui>0?(annR*100-rf*100)/ui:NaN};
+}
+function rrDrawdowns(dates,daily,topN){
+  const eps=[]; let peak=daily[0],peakI=0,inDD=false,troughV=daily[0],troughI=0;
+  for(let i=1;i<daily.length;i++){
+    if(daily[i]>=peak){ if(inDD){eps.push({peakI,troughI,recI:i,depth:(peak-troughV)/peak});inDD=false;} peak=daily[i];peakI=i; }
+    else{ if(!inDD){inDD=true;troughV=daily[i];troughI=i;} else if(daily[i]<troughV){troughV=daily[i];troughI=i;} }
+  }
+  if(inDD)eps.push({peakI,troughI,recI:null,depth:(peak-troughV)/peak});
+  eps.sort((a,b)=>b.depth-a.depth);
+  return eps.slice(0,topN).map(e=>({depth:e.depth, peakDate:dates[e.peakI], troughDate:dates[e.troughI], recDate:e.recI!=null?dates[e.recI]:null, fallDays:rrDaysBetween(dates[e.peakI],dates[e.troughI]), recDays:e.recI!=null?rrDaysBetween(dates[e.troughI],dates[e.recI]):null, recovered:e.recI!=null, event:rrEventTag(dates[e.troughI])}));
+}
+function rrMonthly(dates,daily){
+  const last={}; for(let i=0;i<dates.length;i++)last[dates[i].slice(0,7)]={v:daily[i]};
+  const yms=Object.keys(last).sort(); const rows={};
+  for(let k=0;k<yms.length;k++){ const [y,m]=yms[k].split('-'); const v=last[yms[k]].v; const base=k===0?daily[0]:last[yms[k-1]].v; if(!rows[y])rows[y]={}; rows[y][parseInt(m,10)]=v/base-1; }
+  return rows;
+}
+function rrPeriods(dates,closes){
+  const n=closes.length,end=closes[n-1],endDate=dates[n-1];
+  const idxDaysAgo=days=>{const tg=new Date(endDate).getTime()-days*86400000;let best=-1;for(let i=0;i<n;i++){if(new Date(dates[i]).getTime()<=tg)best=i;else break;}return best;};
+  const ytdIdx=()=>{const y=endDate.slice(0,4);let best=-1;for(let i=0;i<n;i++){if(dates[i]<y+'-01-01')best=i;else break;}return best;};
+  const cum=i=>i>=0?end/closes[i]-1:null;
+  const cagr=(i,yrs)=>{if(i<0)return null;const sp=rrDaysBetween(dates[i],endDate)/365.25;if(sp<yrs*0.8)return null;return Math.pow(end/closes[i],1/sp)-1;};
+  const spanAll=rrDaysBetween(dates[0],endDate)/365.25;
+  return {d1:n>=2?end/closes[n-2]-1:null, m1:cum(idxDaysAgo(30)), m6:cum(idxDaysAgo(182)), ytd:cum(ytdIdx()), y1:cum(idxDaysAgo(365)), y3:cagr(idxDaysAgo(1095),3), y5:cagr(idxDaysAgo(1825),5), y10:cagr(idxDaysAgo(3650),10), all:spanAll>=1?Math.pow(end/closes[0],1/spanAll)-1:end/closes[0]-1};
+}
+function rrHeat(r){
+  if(r==null||isNaN(r))return '';
+  const t=Math.max(-1,Math.min(1,r/0.15));
+  if(t>=0)return 'background:rgba(45,122,79,'+(0.10+0.45*t).toFixed(2)+');color:'+(t>0.4?'#fff':'#1d5b34');
+  return 'background:rgba(180,64,64,'+(0.10+0.45*(-t)).toFixed(2)+');color:'+(t<-0.4?'#fff':'#8a2f2f');
+}
+function rrPct(r,dec){return r==null||isNaN(r)?'—':(r>=0?'+':'')+(r*100).toFixed(dec==null?1:dec)+'%';}
+function rrNum(x){return (x==null||isNaN(x))?'—':(x===Infinity?'∞':x.toFixed(2));}
+const RR_DESC={
+  sharpe:'<strong>Коэффициент Шарпа</strong> = (доходность − безрисковая ставка) / волатильность. Связывает доходность и общий риск (волатильность). Самый известный коэффициент. Минус: штрафует за любые колебания — даже за рост.',
+  sortino:'<strong>Коэффициент Сортино</strong> = (доходность − ставка) / «волатильность вниз». Как Шарп, но в знаменателе учитывает только «плохие» дни, когда портфель не дотягивал до безрисковой доходности. Наказывает только за падения, а не за рост. Хорошо, когда положителен, ещё лучше — когда выше 1.',
+  calmar:'<strong>Коэффициент Кальмара</strong> = среднегодовая доходность / |макс. просадка|. Сколько доходности портфель приносит на единицу своего худшего падения от пика. Здесь риск — это глубина просадки, а не волатильность. Чем выше — тем щедрее портфель вознаграждает за пережитую глубину падения.',
+  omega:'<strong>Коэффициент Омега</strong> = сумма прибылей выше порога / сумма убытков ниже порога (порог = безрисковая ставка). Учитывает всю форму распределения доходностей, включая асимметрию, а не только среднее и волатильность. Поэтому два портфеля с одинаковым Шарпом могут заметно отличаться по Омеге.',
+  martin:'<strong>Коэффициент Мартина</strong> = (доходность − ставка) / индекс язвы (Ulcer). Похож на Кальмар, но риском считается не одна максимальная просадка, а «средняя болезненность» всех просадок за период.'
+};
+function rrShowDesc(key){
+  const box=document.getElementById('coeffDesc'); if(!box)return;
+  if(box.dataset.key===key && box.style.display!=='none'){box.style.display='none';box.dataset.key='';return;}
+  box.innerHTML=RR_DESC[key]||''; box.dataset.key=key; box.style.display='block';
+}
+function renderAnalytics(){
+  const A=window.__an; if(!A)return;
+  const {dates,refLabel,refDaily,refReturns,refW,perStock,tickers,rf,yearsActual,benchDates,benchCloses,benchRet,benchYears,startDate}=A;
+  const benchLabel=A.benchLabel||'Рынок';
+  const fmtRuDate=d=>{if(!d)return '';const p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0];};
+  (function(){
+    const head='<thead><tr><th style="text-align:left">Инструмент</th><th>1д</th><th>1мес</th><th>6мес</th><th>С нач. года</th><th>1год</th><th>3года*</th><th>5лет*</th><th>10лет*</th><th>Всё*</th></tr></thead>';
+    const cell=r=>'<td style="'+rrHeat(r)+'">'+rrPct(r)+'</td>';
+    const rowHtml=(name,p,bold)=>'<tr'+(bold?' style="font-weight:700"':'')+'><td class="tk" style="text-align:left">'+name+'</td>'+cell(p.d1)+cell(p.m1)+cell(p.m6)+cell(p.ytd)+cell(p.y1)+cell(p.y3)+cell(p.y5)+cell(p.y10)+cell(p.all)+'</tr>';
+    let body='<tbody>';
+    if(A.benchFullCloses){ body+=rowHtml(benchLabel,rrPeriods(A.benchFullDates,A.benchFullCloses),false); }
+    else if(benchCloses){ body+=rowHtml(benchLabel,rrPeriods(benchDates,benchCloses),false); }
+    body+=rowHtml(refLabel,rrPeriods(dates,refDaily),true);
+    tickers.map((t,i)=>({t,w:refW[i]})).sort((a,b)=>b.w-a.w).forEach(({t})=>{const ps=perStock[t];body+=rowHtml(t,rrPeriods(ps.dates,ps.closes),false);});
+    body+='</tbody>';
+    document.getElementById('periodsTable').innerHTML=head+body;
+    document.getElementById('periodsTag').textContent=refLabel;
+    document.getElementById('periodsNote').innerHTML='Портфель и рынок считаются с '+fmtRuDate(startDate)+' — с даты, когда все бумаги портфеля уже торговались (ограничено самой молодой бумагой). Каждая бумага в таблице — по своей полной истории, поэтому её длинные колонки могут быть длиннее портфельных.';
+    document.getElementById('periodsCard').classList.remove('hidden');
+  })();
+  (function(){
+    const cp=rrCoeffs(refDaily,refReturns,rf,yearsActual);
+    const cb=(benchCloses&&benchRet)?rrCoeffs(benchCloses,benchRet,rf,benchYears):null;
+    window.__an._coeffs={port:cp,bench:cb};
+    const rows=[['sharpe','Коэффициент Шарпа'],['sortino','Коэффициент Сортино'],['calmar','Коэффициент Кальмара'],['omega','Коэффициент Омега'],['martin','Коэффициент Мартина']];
+    let html='<thead><tr><th style="text-align:left">Коэффициент</th><th>'+refLabel+'</th><th>Рынок</th><th>Разница</th></tr></thead><tbody>';
+    rows.forEach(([k,name])=>{
+      const p=cp[k], b=cb?cb[k]:null;
+      let diffTxt='—',diffStyle='';
+      if(b!=null&&!isNaN(p)&&!isNaN(b)&&isFinite(p)&&isFinite(b)){const d=p-b; diffTxt=(d>=0?'+':'')+d.toFixed(2); diffStyle=d>=0?'color:#2D7A4F;font-weight:600':'color:#B44040;font-weight:600';}
+      html+='<tr><td class="tk" style="text-align:left;cursor:pointer;text-decoration:underline dotted" onclick="rrShowDesc(\''+k+'\')" title="Показать пояснение">'+name+' &#9432;</td><td style="font-weight:600">'+rrNum(p)+'</td><td>'+(cb?rrNum(b):'—')+'</td><td style="'+diffStyle+'">'+diffTxt+'</td></tr>';
+    });
+    html+='</tbody>';
+    document.getElementById('coeffTable').innerHTML=html;
+    document.getElementById('coeffTag').textContent=refLabel;
+    document.getElementById('coeffCard').classList.remove('hidden');
+  })();
+  (function(){
+    const eps=rrDrawdowns(dates,refDaily,5);
+    window.__an._dd=eps;
+    const fmtDate=d=>{const p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0];};
+    const dur=days=>{ if(days==null)return '—'; if(days<31)return days+' дн'; const mo=Math.round(days/30.4); if(mo<12)return mo+' мес'; const y=Math.floor(mo/12),rm=mo%12; return y+' г'+(rm?' '+rm+' мес':''); };
+    let html='<thead><tr><th>Глубина</th><th>Дно</th><th>Падение</th><th>Восстановление</th><th>Под водой</th><th style="text-align:left">Событие</th></tr></thead><tbody>';
+    eps.forEach(e=>{
+      const rec=e.recovered?dur(e.recDays):'<span style="color:#B44040">не восстановился</span>';
+      const uw=e.recovered?dur(rrDaysBetween(e.peakDate,e.recDate)):dur(rrDaysBetween(e.peakDate,dates[dates.length-1]))+'+';
+      html+='<tr><td style="'+rrHeat(-e.depth)+';font-weight:700">−'+(e.depth*100).toFixed(1)+'%</td><td>'+fmtDate(e.troughDate)+'</td><td>'+dur(e.fallDays)+'</td><td>'+rec+'</td><td>'+uw+'</td><td style="text-align:left;color:var(--text2)">'+(e.event||'—')+'</td></tr>';
+    });
+    html+='</tbody>';
+    document.getElementById('ddTable').innerHTML=html;
+    document.getElementById('ddTableTag').textContent=refLabel;
+    document.getElementById('ddTableNote').innerHTML='Просадки — по всей общей истории портфеля (с '+fmtRuDate(startDate)+'). Длительность считается по календарным дням.';
+    document.getElementById('ddTableCard').classList.remove('hidden');
+  })();
+  (function(){
+    const mm=rrMonthly(dates,refDaily);
+    const years=Object.keys(mm).sort();
+    const MN=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+    let html='<thead><tr><th style="text-align:left">Год</th>';
+    MN.forEach(m=>html+='<th>'+m+'</th>'); html+='<th>Год</th></tr></thead><tbody>';
+    let pos=0,tot=0,best={v:-1e9},worst={v:1e9};
+    years.forEach(y=>{
+      html+='<tr><td class="tk" style="text-align:left">'+y+'</td>';
+      let yearVal=1,hasY=false;
+      for(let m=1;m<=12;m++){const r=mm[y][m];if(r==null){html+='<td></td>';continue;}html+='<td style="'+rrHeat(r)+'">'+(r*100).toFixed(1)+'</td>';yearVal*=(1+r);hasY=true;tot++;if(r>0)pos++;if(r>best.v)best={v:r,y,m};if(r<worst.v)worst={v:r,y,m};}
+      const yr=hasY?yearVal-1:null;
+      html+='<td style="'+rrHeat(yr)+';font-weight:700">'+(yr==null?'—':(yr*100).toFixed(1))+'</td></tr>';
+    });
+    html+='</tbody>';
+    document.getElementById('monthlyTable').innerHTML=html;
+    document.getElementById('monthlyTag').textContent=refLabel;
+    if(tot>0){
+      const MN2=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+      document.getElementById('monthlyNote').innerHTML='Плюсовых месяцев: <strong>'+Math.round(pos/tot*100)+'%</strong> ('+pos+' из '+tot+'). Лучший: +'+(best.v*100).toFixed(1)+'% ('+MN2[best.m-1]+' '+best.y+'). Худший: '+(worst.v*100).toFixed(1)+'% ('+MN2[worst.m-1]+' '+worst.y+').';
+    }
+    document.getElementById('monthlyCard').classList.remove('hidden');
+  })();
+}
+function _rrPayNum(x){return (x==null||isNaN(x)||!isFinite(x))?null:+x.toFixed(4);}
+function buildAnalyticsPayload(){
+  const A=window.__an; if(!A)return null;
+  const pr=(dates,closes)=>{const p=rrPeriods(dates,closes);const o={};['d1','m1','m6','ytd','y1','y3','y5','y10','all'].forEach(k=>o[k]=_rrPayNum(p[k]));return o;};
+  const per=[];
+  const benchLabel=A.benchLabel||'Рынок';
+  if(A.benchFullCloses) per.push(Object.assign({name:benchLabel,is_port:false,is_bench:true},pr(A.benchFullDates,A.benchFullCloses)));
+  per.push(Object.assign({name:A.refLabel,is_port:true,is_bench:false},pr(A.dates,A.refDaily)));
+  A.tickers.map((t,i)=>({t,w:A.refW[i]})).sort((a,b)=>b.w-a.w).forEach(({t})=>{const ps=A.perStock[t]; per.push(Object.assign({name:t,is_port:false,is_bench:false},pr(ps.dates,ps.closes)));});
+  let coeffs=null;
+  if(A._coeffs){const clean=c=>c?{sharpe:_rrPayNum(c.sharpe),sortino:_rrPayNum(c.sortino),calmar:_rrPayNum(c.calmar),omega:_rrPayNum(c.omega),martin:_rrPayNum(c.martin)}:null; coeffs={port:clean(A._coeffs.port),bench:clean(A._coeffs.bench)};}
+  const lastD=A.dates[A.dates.length-1];
+  const dd=(A._dd||[]).map(e=>({depth:+e.depth.toFixed(4),trough:e.troughDate,fall_days:e.fallDays,rec_days:e.recovered?e.recDays:null,recovered:!!e.recovered,uw_days:e.recovered?rrDaysBetween(e.peakDate,e.recDate):rrDaysBetween(e.peakDate,lastD),event:e.event||''}));
+  const mm=rrMonthly(A.dates,A.refDaily);const years=Object.keys(mm).sort();
+  const MN=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  let pos=0,tot=0,best={v:-1e9},worst={v:1e9};
+  const myears=years.map(y=>{const months=[];let yv=1,hasY=false;for(let m=1;m<=12;m++){const r=mm[y][m];if(r==null){months.push(null);continue;}months.push(+r.toFixed(4));yv*=(1+r);hasY=true;tot++;if(r>0)pos++;if(r>best.v)best={v:r,y,m};if(r<worst.v)worst={v:r,y,m};}return {year:y,months,total:hasY?+(yv-1).toFixed(4):null};});
+  const monthly={years:myears,pos_pct:tot?Math.round(pos/tot*100):null,pos,tot,best:tot?('+'+(best.v*100).toFixed(1)+'% ('+MN[best.m-1]+' '+best.y+')'):'',worst:tot?((worst.v*100).toFixed(1)+'% ('+MN[worst.m-1]+' '+worst.y+')'):''};
+  return {start_date:A.startDate,coeffs,drawdowns:dd,periods:per,monthly};
+}
+</script>
+
+<script>
+// ===== «Мой риск-менеджер» (US) =====
+function storedProCode(){
+  try{ const own=localStorage.getItem('idea_pro_code'); if(own)return own; if(localStorage.getItem('pro_access_type')==='token')return localStorage.getItem('pro_access_token')||''; }catch(e){}
+  return '';
+}
+function riskEsc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function riskRender(text){
+  const lines=(text||'').split('\n'); let html='';
+  for(const raw of lines){
+    const t=raw.trim(); if(!t)continue;
+    let l=riskEsc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    if(/^#{1,3}\s/.test(t)) html+='<h3 style="margin:16px 0 6px;font-size:0.95rem;color:var(--accent)">'+l.replace(/^#{1,3}\s/,'')+'</h3>';
+    else if(/^[-•]\s/.test(t)) html+='<div style="margin:3px 0 3px 6px">• '+l.replace(/^[-•]\s/,'')+'</div>';
+    else if(/^\d+[.)]\s/.test(t)) html+='<div style="margin:8px 0">'+l+'</div>';
+    else html+='<p style="margin:8px 0">'+l+'</p>';
+  }
+  return html;
+}
+function buildSnapshot(){
+  const R=window._reportData; if(!R||!R.cards)return null;
+  const {cards,tickers,userPort,stockStats,varStats,varLabel,retMap}=R;
+  const find=t=>cards.find(c=>c.title===t);
+  const pf=x=>(x*100).toFixed(1);
+  const your=find('Ваш портфель');
+  let s='Портфель акций (США, NYSE/NASDAQ). Бенчмарк: S&P 500 (SPY). Все суммы в долларах США.\n';
+  if(your&&your.data.totalValue) s+='Стоимость портфеля: $'+Math.round(your.data.totalValue).toLocaleString('en-US')+'.\n';
+  const ml=c=>{ if(!c)return ''; const d=c.data;
+    const b=(d.betaSPY!=null&&!isNaN(d.betaSPY))?d.betaSPY.toFixed(2):'—';
+    const r2=(d.r2!=null&&!isNaN(d.r2))?Math.round(d.r2*100)+'%':'—';
+    return '- '+c.title+': доходность '+pf(d.r)+'%, волатильность '+pf(d.v)+'%, макс. просадка -'+pf(d.d)+'%, Sharpe '+d.s.toFixed(2)+', бета(SPY) '+b+', R2 '+r2+'\n'; };
+  s+='\nМетрики (годовые):\n'+ml(your);
+  ['Max Sharpe','Min Volatility','Min Drawdown','Equal Weight'].forEach(t=>{s+=ml(find(t));});
+  const wref=userPort?userPort.w:null;
+  if(wref){ s+='\nСостав вашего портфеля:\n'; tickers.map((t,i)=>({t,w:wref[i]})).filter(x=>x.w>=0.0005).sort((a,b)=>b.w-a.w).forEach(x=>{s+='- '+x.t+': '+pf(x.w)+'%\n';}); }
+  if(stockStats){
+    s+='\nЗависимость бумаг от рынка (бета к SPY; R2 — доля рыночного/систематического риска, остальное собственный риск компании):\n';
+    const wr=userPort?userPort.w:null;
+    tickers.map((t,i)=>({t,w:wr?wr[i]:0})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w).forEach(x=>{
+      const st=stockStats[x.t]; const b=isNaN(st.betaSPY)?'—':st.betaSPY.toFixed(2); const r2=isNaN(st.r2)?'—':Math.round(st.r2*100)+'%';
+      s+='- '+x.t+' (доля '+pf(x.w)+'%): бета '+b+', R2 '+r2+'\n';
+    });
+  }
+  if(varStats&&varStats.length){
+    const pv=(your&&your.data.totalValue)?your.data.totalValue:null;
+    s+='\nVaR/CVaR ('+(varLabel||'портфель')+'), возможный убыток за горизонт:\n';
+    varStats.forEach(m=>{ s+='  '+m.name+':\n'; m.rows.forEach(r=>{ const f=v=>'-'+(v*100).toFixed(2)+'%'+(pv?' (-$'+Math.round(v*pv).toLocaleString('en-US')+')':''); s+='   - '+r.name+': VaR95 '+f(r.var95)+', CVaR95 '+f(r.cvar95)+', VaR99 '+f(r.var99)+', CVaR99 '+f(r.cvar99)+'\n'; }); });
+  }
+  if(retMap&&userPort&&typeof pearson==='function'){
+    const held=tickers.filter((t,i)=>userPort.w[i]>=0.0005); const pairs=[];
+    for(let i=0;i<held.length;i++)for(let j=i+1;j<held.length;j++){ const c=pearson(retMap[held[i]],retMap[held[j]]); if(!isNaN(c))pairs.push({a:held[i],b:held[j],c:+c.toFixed(2)}); }
+    if(pairs.length){
+      const avg=(pairs.reduce((a,p)=>a+p.c,0)/pairs.length).toFixed(2); const sorted=[...pairs].sort((x,y)=>y.c-x.c);
+      s+='\nКорреляции бумаг портфеля. Средняя: '+avg+'.\n';
+      s+='Самые связанные пары: '+sorted.slice(0,5).map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
+      s+='Самые независимые пары: '+sorted.slice(-5).reverse().map(p=>p.a+'-'+p.b+' '+p.c).join(', ')+'.\n';
+      const big=tickers.map((t,i)=>({t,w:userPort.w[i]})).filter(x=>x.w>=0.03).sort((a,b)=>b.w-a.w).slice(0,8);
+      if(big.length>=2){ const bp=[]; for(let i=0;i<big.length;i++)for(let j=i+1;j<big.length;j++){ const c=pearson(retMap[big[i].t],retMap[big[j].t]); if(!isNaN(c))bp.push(big[i].t+'-'+big[j].t+' '+(+c.toFixed(2))); } if(bp.length) s+='Корреляции между крупнейшими позициями (доля ≥3%): '+bp.join(', ')+'.\n'; }
+    }
+  }
+  const an=window.__an;
+  if(an&&an._coeffs){
+    const cp=an._coeffs.port, cb=an._coeffs.bench; const nn=x=>(x==null||isNaN(x))?'—':(x===Infinity?'∞':x.toFixed(2));
+    s+='\nКоэффициенты доходность-на-риск (портфель'+(cb?' / рынок S&P 500':'')+'). Чем выше — тем лучше вознаграждение за риск:\n';
+    s+='- Шарп (риск = общая волатильность): '+nn(cp.sharpe)+(cb?' / '+nn(cb.sharpe):'')+'\n';
+    s+='- Сортино (риск = только волатильность вниз): '+nn(cp.sortino)+(cb?' / '+nn(cb.sortino):'')+'\n';
+    s+='- Кальмар (доходность / макс. просадка): '+nn(cp.calmar)+(cb?' / '+nn(cb.calmar):'')+'\n';
+    s+='- Омега (учитывает асимметрию распределения): '+nn(cp.omega)+(cb?' / '+nn(cb.omega):'')+'\n';
+    s+='- Мартин (доходность / индекс язвы): '+nn(cp.martin)+(cb?' / '+nn(cb.martin):'')+'\n';
+  }
+  if(an&&an._dd&&an._dd.length){
+    s+='\nКрупнейшие просадки портфеля (глубина; время восстановления; событие):\n';
+    an._dd.slice(0,5).forEach(e=>{ const rec=e.recovered?('восстановление '+(e.recDays<31?e.recDays+' дн':Math.round(e.recDays/30.4)+' мес')):'ещё не восстановился'; s+='- -'+(e.depth*100).toFixed(1)+'%, дно '+e.troughDate+', '+rec+(e.event?', '+e.event:'')+'\n'; });
+  }
+  const hz=(document.getElementById('riskHorizon')||{}).value||'';
+  const gl=((document.getElementById('riskGoal')||{}).value||'').trim();
+  if(hz||gl){ s+='\nЦель и горизонт инвестора: горизонт — '+(hz||'не указан')+(gl?('; цель — '+gl):'')+'.\n'; }
+  return s;
+}
+function openRisk(){
+  const R=window._reportData;
+  if(!R||!R.cards){ alert('Сначала нажмите «Рассчитать»'); return; }
+  document.getElementById('riskBody').innerHTML='<p style="color:var(--text2)">Риск-менеджер объяснит простым языком, что посчитано и где риски вашего портфеля. Нажмите «Разобрать».</p>';
+  document.getElementById('riskLeft').textContent='';
+  document.getElementById('riskCodeBox').style.display='none';
+  document.getElementById('riskModal').style.display='block';
+}
+function closeRisk(){ document.getElementById('riskModal').style.display='none'; }
+async function runRisk(){
+  const snap=buildSnapshot();
+  if(!snap){ alert('Сначала рассчитайте портфель'); return; }
+  const typed=(document.getElementById('riskCode').value||'').trim();
+  const code=typed||storedProCode();
+  const body=document.getElementById('riskBody'), go=document.getElementById('riskGo');
+  if(!code){ document.getElementById('riskCodeBox').style.display='block'; document.getElementById('riskCode').focus(); return; }
+  go.disabled=true; const old=go.textContent; go.textContent='Разбираю…';
+  body.innerHTML='<p style="color:var(--text2)"><span class="loader"></span> Риск-менеджер думает…</p>';
+  try{
+    const r=await fetch('/api/risk-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code,snapshot:snap})});
+    const data=await r.json().catch(()=>({}));
+    if(r.status===403){ document.getElementById('riskCodeBox').style.display='block'; document.getElementById('riskCode').focus(); body.innerHTML='<p style="color:var(--red)">Код не подошёл. Введите PRO-код или пароль.</p>'; return; }
+    if(!r.ok){ body.innerHTML='<p style="color:var(--red)">'+(data.detail||'Не получилось выполнить разбор. Попробуйте позже.')+'</p>'; return; }
+    if(typed){ try{ localStorage.setItem('idea_pro_code',typed); }catch(e){} }
+    document.getElementById('riskCodeBox').style.display='none';
+    body.innerHTML=riskRender(data.analysis||'');
+    if(typeof data.left_this_month==='number'){ document.getElementById('riskLeft').textContent='Осталось разборов: '+data.left_this_month; }
+  }catch(e){ body.innerHTML='<p style="color:var(--red)">Сеть недоступна. Попробуйте ещё раз.</p>'; }
+  finally{ go.disabled=false; go.textContent=old; }
+}
+</script>
+
 </body>
 </html>
