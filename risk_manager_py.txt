@@ -126,7 +126,7 @@ async def risk_check(payload: RiskIn):
     prompt = PROMPT_RISK_US if (payload.market or "ru").strip().lower() == "us" else PROMPT_RISK
     try:
         result = call_model(prompt, user_input, model="deepseek-v4-flash/latest",
-                            max_output_tokens=3000, temperature=0.35)
+                            max_output_tokens=5000, temperature=0.35)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
 
