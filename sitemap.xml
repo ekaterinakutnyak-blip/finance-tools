@@ -2,10 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://investtools.pro/</loc>
-    <lastmod>2026-07-05</lastmod>
+    <lastmod>2026-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- ===== Калькуляторы ===== -->
   <url>
     <loc>https://investtools.pro/bond-vs-deposit.html</loc>
     <lastmod>2026-07-23</lastmod>
@@ -36,27 +38,17 @@
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- ===== Статьи ===== -->
   <url>
     <loc>https://investtools.pro/articles.html</loc>
-    <lastmod>2026-07-24</lastmod>
+    <lastmod>2026-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://investtools.pro/articles/pochemu-odna-ofz-deshevle.html</loc>
-    <lastmod>2026-07-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/articles/cena-obligacii-ne-glavnoe.html</loc>
-    <lastmod>2026-07-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/articles/dyuraciya-obligacii-prostymi-slovami.html</loc>
-    <lastmod>2026-07-23</lastmod>
+    <loc>https://investtools.pro/articles/inflyacionnyj-risk.html</loc>
+    <lastmod>2026-08-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -73,11 +65,75 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://investtools.pro/articles/dohodnost-na-risk.html</loc>
+    <lastmod>2026-08-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/koefficient-determinacii-r2.html</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/chto-takoe-korrelyaciya.html</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/chto-takoe-koefficient-beta.html</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/procentnyj-risk-obligacij.html</loc>
+    <lastmod>2026-08-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://investtools.pro/articles/chto-takoe-oferta-obligacii.html</loc>
     <lastmod>2026-07-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://investtools.pro/articles/dyuraciya-obligacii-prostymi-slovami.html</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/pochemu-odna-ofz-deshevle.html</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/cena-obligacii-ne-glavnoe.html</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ===== Новости и обзоры ===== -->
+  <url>
+    <loc>https://investtools.pro/novosti.html</loc>
+    <lastmod>2026-08-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/novosti/obzor-razmeshcheniy-3-14-avgusta-2026.html</loc>
+    <lastmod>2026-08-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ===== PRO-калькуляторы ===== -->
   <url>
     <loc>https://investtools.pro/pro/pd-calculator.html</loc>
     <lastmod>2026-05-04</lastmod>
