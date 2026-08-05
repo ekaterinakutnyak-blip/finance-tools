@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ИИ-аналитик отчётности · investtools.pro</title>
+<meta name="description" content="Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком, насколько бизнес устойчив. Методология Екатерины Кутняк.">
+<script src="../gate.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--surface3:#ECEAE4;
+--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;
+--accent:#2D5A3D;--accent-light:#E8F0EB;
+--accent2:#1B6B9A;--accent2-light:#E6F1FB;
+--red:#B44040;--red-bg:#FDF0F0;
+--orange:#C46A2E;--orange-bg:#FDF4EC;
+--yellow:#A67A2E;--yellow-bg:#FDF7ED;
+--green:#2D7A4F;--green-bg:#EDF7F1;
+--border:#E5E4DF;--border2:#D1D0CB;
+--radius:10px;--radius-lg:14px;
+--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:920px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+.back-link:hover{color:var(--accent)}
+h1{font-size:1.55rem;font-weight:700;letter-spacing:-0.02em;margin:0.7rem 0 0.3rem}
+.subtitle{font-size:0.95rem;color:var(--text2);margin-bottom:1.6rem;max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.8rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem}
+
+/* dropzone */
+.drop{border:2px dashed var(--border2);border-radius:var(--radius-lg);background:var(--surface);padding:2.2rem 1.5rem;text-align:center;transition:border-color .2s,background .2s;cursor:pointer}
+.drop.hover{border-color:var(--accent);background:var(--accent-light)}
+.drop-ico{font-size:1.9rem;line-height:1;margin-bottom:0.5rem}
+.drop-main{font-size:1.03rem;font-weight:600;margin-bottom:0.2rem}
+.drop-sub{font-size:0.84rem;color:var(--text2)}
+.fname{font-size:0.85rem;color:var(--accent);font-weight:600;margin-top:0.6rem}
+details.manual{margin-top:0.9rem}
+details.manual summary{font-size:0.84rem;color:var(--text2);cursor:pointer}
+textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;padding:0.7rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);resize:vertical;margin-top:0.7rem}
+.tokrow{display:none;margin-top:0.9rem}
+.tokrow label{font-size:0.82rem;color:var(--text2)}
+.tokrow input{font-family:var(--mono);font-size:0.9rem;padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);width:280px;max-width:100%;margin-top:0.35rem}
+.btn{font-family:var(--sans);font-size:0.9rem;font-weight:600;padding:0.65rem 1.7rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;transition:opacity .2s;margin-top:1rem}
+.btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:default}
+.hint{font-size:0.78rem;color:var(--text3);margin-top:0.6rem;line-height:1.5}
+.err{color:var(--red);font-size:0.88rem;margin-top:0.7rem;min-height:1em}
+
+/* examples strip */
+.tryblock{margin:0.2rem 0 1.25rem}
+.try-lead{font-size:0.85rem;color:var(--text2);margin-bottom:0.6rem}
+.examples{display:flex;gap:10px;flex-wrap:wrap}
+.ex-btn{font-family:var(--sans);font-size:0.85rem;font-weight:600;padding:0.55rem 1.1rem;border:1px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--accent);cursor:pointer;transition:all .15s}
+.ex-btn:hover{background:var(--accent);color:#fff}
+.divider{display:flex;align-items:center;gap:12px;color:var(--text3);font-size:0.78rem;margin:1.4rem 0 1rem}
+.divider::before,.divider::after{content:'';height:1px;background:var(--border);flex:1}
+
+/* reading animation */
+.reading{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem}
+.reading.on{display:block}
+.read-line{display:flex;align-items:center;gap:10px;font-size:0.9rem;color:var(--text2);padding:0.35rem 0;opacity:0.25;transition:opacity .3s}
+.read-line.done{opacity:1;color:var(--text)}
+.read-line .tick{width:18px;height:18px;border-radius:50%;background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;color:var(--text3);flex-shrink:0}
+.read-line.done .tick{background:var(--green-bg);color:var(--green)}
+.read-line.active .tick{background:var(--accent-light);color:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.results{display:none}
+.results.on{display:block}
+
+/* verdict / светофор */
+.verdict{display:flex;align-items:center;gap:14px;padding:1.15rem 1.35rem;border-radius:var(--radius-lg);margin-bottom:1.25rem;border:1px solid rgba(0,0,0,0.06)}
+.sf{display:inline-flex;gap:6px;align-items:center;flex-shrink:0}
+.dot{width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08)}
+.dot.r{background:var(--red)}.dot.y{background:var(--yellow)}.dot.g{background:var(--green)}.dot.off{background:#DAD8D2}
+.v-emoji{font-size:1.5rem;flex-shrink:0}
+.v-text{font-size:1.05rem;font-weight:700}
+.v-sub{font-size:0.84rem;color:var(--text2);margin-top:1px}
+
+/* поддержка */
+.support{background:var(--accent2-light);border:1px solid var(--accent2);border-radius:var(--radius);padding:0.8rem 1rem;font-size:0.9rem;color:var(--text2);margin-bottom:1.25rem}
+.support b{color:var(--text)}
+
+/* разбор */
+.razbor{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.25rem;position:relative}
+.razbor .badge{position:absolute;top:1.1rem;right:1.35rem;font-family:var(--mono);font-size:0.6rem;font-weight:600;letter-spacing:0.06em;color:var(--accent);background:var(--accent-light);padding:3px 8px;border-radius:5px}
+.razbor h3{font-size:0.8rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.9rem;padding-right:9rem}
+.razbor .prose{font-size:1.0rem;line-height:1.7}
+.razbor .prose p{margin-bottom:0.85rem}.razbor .prose p:last-child{margin-bottom:0}
+.razbor .prose h1,.razbor .prose h2{font-size:1.2rem;font-weight:700;margin:1.4rem 0 0.5rem}
+.razbor .prose h3{font-size:1.0rem;font-weight:700;color:var(--accent);margin:1.2rem 0 0.4rem;text-transform:none;letter-spacing:0;padding:0}
+.razbor .prose ul{margin:0 0 1rem 1.2rem}.razbor .prose li{margin-bottom:0.35rem}
+.razbor .prose strong{font-weight:600}
+.razbor .prose table{width:100%;border-collapse:collapse;margin:0.4rem 0 1.1rem;font-size:0.9rem}
+.razbor .prose th,.razbor .prose td{padding:0.42rem 0.6rem;border-bottom:1px solid var(--border);text-align:left}
+.razbor .prose thead th{background:var(--accent-light);color:var(--accent)}
+.razbor .flag{background:var(--yellow-bg);border-left:3px solid var(--yellow);padding:0.6rem 0.85rem;border-radius:6px;font-size:0.92rem;color:var(--text2);margin:0.4rem 0 0.85rem}
+
+/* metric tiles */
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:0.4rem}
+@media(max-width:700px){.results-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.results-grid{grid-template-columns:1fr}}
+.metric{border-radius:var(--radius);padding:0.8rem 0.95rem;display:flex;flex-direction:column;gap:2px;border:1px solid transparent;position:relative}
+.metric-label{font-size:0.66rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.metric-value{font-family:var(--mono);font-size:1.25rem;font-weight:600;letter-spacing:-0.02em}
+.metric-sub{font-size:0.66rem;color:var(--text3)}
+.z-green{background:var(--green-bg);border-color:rgba(45,122,79,0.15)}.z-green .metric-value{color:var(--green)}
+.z-yellow{background:var(--yellow-bg);border-color:rgba(166,122,46,0.15)}.z-yellow .metric-value{color:var(--yellow)}
+.z-orange{background:var(--orange-bg);border-color:rgba(196,106,46,0.15)}.z-orange .metric-value{color:var(--orange)}
+.z-red{background:var(--red-bg);border-color:rgba(180,64,64,0.15)}.z-red .metric-value{color:var(--red)}
+.z-neutral{background:var(--surface2);border-color:var(--border)}
+.metric .warn{position:absolute;top:0.55rem;right:0.6rem;font-size:0.66rem;color:var(--orange);font-weight:600}
+
+/* extracted */
+.extracted table{width:100%;border-collapse:collapse;font-size:0.88rem}
+.extracted td{padding:0.42rem 0.5rem;border-bottom:1px solid var(--border)}
+.extracted td:last-child{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.extracted .src{font-size:0.72rem;color:var(--text3)}
+.extracted-note{font-size:0.8rem;color:var(--text2);margin-top:0.8rem;line-height:1.55}
+.gaps li{font-size:0.88rem;color:var(--text2);margin-bottom:0.3rem}
+
+/* disclaimer */
+.disclaimer{background:#FDF7ED;border:1px solid var(--yellow);border-radius:var(--radius);padding:0.9rem 1.1rem;font-size:0.85rem;color:var(--text2);line-height:1.6;margin-bottom:1rem}
+.disclaimer b{color:var(--text)}
+.reset{font-size:0.82rem;color:var(--accent2);cursor:pointer;text-decoration:none;display:inline-block;margin-top:0.4rem}
+.remain{font-size:0.78rem;color:var(--text3);margin-top:0.5rem}
+.footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="../index.html" class="back-link">← Все инструменты</a>
+<h1>ИИ-аналитик отчётности</h1>
+<p class="subtitle">Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его за вас, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком: насколько бизнес устойчив и где риск. Работает по лизингу, девелоперам, банкам и финсектору. Методология Екатерины Кутняк.</p>
+
+<div id="intake">
+  <div class="card">
+    <div class="drop" id="drop">
+      <div class="drop-ico">📄</div>
+      <div class="drop-main">Перетащите PDF отчёта или нажмите, чтобы выбрать</div>
+      <div class="drop-sub">Консолидированная МСФО или РСБУ · годовая или промежуточная</div>
+      <div class="fname" id="fname"></div>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf,.txt" style="display:none">
+    <details class="manual"><summary>или вставить текст отчёта вручную</summary>
+      <textarea id="textInput" placeholder="Вставьте текст финансовой отчётности…"></textarea>
+    </details>
+    <div class="tokrow" id="tokrow">
+      <label>PRO-код или пароль (вводится один раз, дальше запомнится):</label><br>
+      <input type="text" id="tokInput" placeholder="PRO-код или пароль">
+    </div>
+    <button class="btn" id="goBtn">Разобрать мой отчёт</button>
+    <div class="err" id="err"></div>
+    <div class="hint">ИИ читает отчёт и пишет разбор — это занимает до минуты. Загрузка своего отчёта доступна по PRO-подписке; число оставшихся разборов показывается после разбора.</div>
+  </div>
+
+  <div class="tryblock">
+    <div class="divider">или посмотрите готовый разбор — бесплатно, без подписки</div>
+    <div class="try-lead">Два реальных разбора по отчётности МСФО 2025 — так выглядит результат:</div>
+    <div class="examples">
+      <button class="ex-btn" onclick="runDemo('akron')">▶ Пример: Акрон 🟡🟢</button>
+      <button class="ex-btn" onclick="runDemo('poli')">▶ Пример: Полипласт 🟡</button>
+    </div>
+  </div>
+</div>
+
+<!-- reading animation -->
+<div class="reading" id="reading">
+  <div class="read-line" data-i="0"><span class="tick">1</span><span>Читаю отчёт: нахожу отчёт о прибылях, баланс, движение денежных средств…</span></div>
+  <div class="read-line" data-i="1"><span class="tick">2</span><span>Извлекаю показатели: выручка, EBITDA, долг, проценты, денежный поток…</span></div>
+  <div class="read-line" data-i="2"><span class="tick">3</span><span>Считаю коэффициенты и раскладываю по цветовым зонам…</span></div>
+  <div class="read-line" data-i="3"><span class="tick">4</span><span>Пишу разбор и ставлю светофор кредитного качества…</span></div>
+</div>
+
+<!-- results -->
+<div class="results" id="results">
+  <div class="verdict" id="verdict"></div>
+  <div class="support" id="support" style="display:none"></div>
+
+  <div class="razbor">
+    <span class="badge">РАЗБОР ИИ · голос Екатерины</span>
+    <h3 id="razborName">Что видно в отчёте</h3>
+    <div class="prose" id="razborBody"></div>
+  </div>
+
+  <div class="card" id="chartCard" style="display:none"><div class="card-title">Ключевые показатели</div><canvas id="chart" height="150"></canvas></div>
+
+  <div class="card" id="gridCard" style="display:none">
+    <div class="card-title">Коэффициенты из отчёта</div>
+    <div class="results-grid" id="grid"></div>
+  </div>
+
+  <div class="card extracted" id="extractedCard" style="display:none">
+    <div class="card-title">Что ИИ взял из отчёта — сверьте с первоисточником</div>
+    <table id="extracted"></table>
+    <div class="extracted-note" id="extractedNote"></div>
+  </div>
+
+  <div class="card" id="gapsCard" style="display:none"><div class="card-title">Чего не хватило в отчёте</div><ul class="gaps" id="gaps"></ul></div>
+
+  <div class="disclaimer">
+    <b>Разбор делает ИИ по вашему файлу.</b> Он умён, но может ошибиться в цифре или прочтении — поэтому выше показаны значения, которые он взял из отчёта. Сверяйтесь с первоисточником, особенно перед сделкой. Это не индивидуальная инвестиционная рекомендация.
+  </div>
+
+  <a class="reset" id="resetBtn">← разобрать другой отчёт</a>
+  <div class="remain" id="remain"></div>
+</div>
+
+<p class="footer-note">Два примера выше — реальные разборы отчётности за 2025 год, вшиты для демонстрации. Когда вы загружаете свой PDF, ИИ читает именно его и считает цифры из вашего файла.</p>
+</div>
+
+<script>
+var API = 'https://investtools.pro/api/analyze';
+var chosenFile = null, chartObj = null;
+var cssv = function(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
+
+/* ===================== ДОСТУП (как в idea-check/risk-check) ===================== */
+function storedCode(){
+  try{
+    var own = localStorage.getItem('idea_pro_code');
+    if(own) return own;
+    if(localStorage.getItem('pro_access_type') === 'token') return localStorage.getItem('pro_access_token') || '';
+  }catch(e){}
+  return '';
+}
+if(!storedCode()){ document.getElementById('tokrow').style.display = 'block'; }
+
+/* ===================== ВЫБОР ФАЙЛА ===================== */
+var drop = document.getElementById('drop'), fileInput = document.getElementById('fileInput');
+drop.onclick = function(){ fileInput.click(); };
+fileInput.onchange = function(){ if(fileInput.files[0]){ chosenFile = fileInput.files[0]; document.getElementById('fname').textContent = '📎 ' + chosenFile.name; } };
+['dragenter','dragover'].forEach(function(e){ drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('hover');}); });
+['dragleave','drop'].forEach(function(e){ drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.remove('hover');}); });
+drop.addEventListener('drop',function(ev){ if(ev.dataTransfer.files[0]){ chosenFile = ev.dataTransfer.files[0]; document.getElementById('fname').textContent = '📎 ' + chosenFile.name; } });
+
+document.getElementById('goBtn').onclick = analyze;
+document.getElementById('resetBtn').onclick = function(){
+  document.getElementById('results').classList.remove('on');
+  document.getElementById('intake').style.display = 'block';
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+/* ===================== АНИМАЦИЯ ЧТЕНИЯ ===================== */
+function startReading(loop){
+  var rd = document.getElementById('reading'); rd.classList.add('on');
+  var lines = rd.querySelectorAll('.read-line');
+  lines.forEach(function(l){ l.classList.remove('done','active'); });
+  var i = 0;
+  function step(){
+    if(i < lines.length){
+      if(i>0) lines[i-1].classList.remove('active');
+      lines[i].classList.add('done');
+      if(i < lines.length-1){ lines[i+1].classList.add('active'); }
+      i++;
+      setTimeout(step, 640);
+    } else if(loop){
+      lines[lines.length-1].classList.add('active');   // ждём ответ сервера
+    }
+  }
+  setTimeout(step, 300);
+  return rd;
+}
+function stopReading(){ document.getElementById('reading').classList.remove('on'); }
+
+/* ===================== ЦВЕТ СВЕТОФОРА ===================== */
+function svetBg(level){
+  if(!level) return cssv('--surface2');
+  if(level.indexOf('🔴')>=0) return cssv('--red-bg');
+  if(level.indexOf('🟠')>=0) return cssv('--orange-bg');
+  if(level.indexOf('🟡')>=0) return cssv('--yellow-bg');
+  if(level.indexOf('🟢')>=0) return cssv('--green-bg');
+  return cssv('--surface2');
+}
+function zoneClass(z){ return 'z-' + (z || 'neutral'); }
+
+/* ===================== РЕАЛЬНЫЙ РАЗБОР (бэкенд) ===================== */
+function analyze(){
+  var err = document.getElementById('err'); err.textContent = '';
+  var text = document.getElementById('textInput').value.trim();
+  if(!chosenFile && !text){ err.textContent = 'Загрузите PDF или вставьте текст отчёта.'; return; }
+  var typed = document.getElementById('tokInput').value.trim();
+  var code = typed || storedCode();
+  if(!code){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Введите PRO-код или пароль.'; return; }
+
+  var fd = new FormData();
+  fd.append('token', code);
+  if(chosenFile) fd.append('file', chosenFile);
+  else fd.append('text', text);
+
+  document.getElementById('intake').style.display = 'none';
+  startReading(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+
+  fetch(API, { method:'POST', body: fd })
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, status:r.status, j:j}; }); })
+    .then(function(res){
+      stopReading();
+      if(!res.ok){
+        document.getElementById('intake').style.display = 'block';
+        if(res.status === 403){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Код не подошёл. Введите PRO-код или пароль.'; return; }
+        err.textContent = (res.j && res.j.detail) ? res.j.detail : ('Ошибка ' + res.status);
+        return;
+      }
+      if(typed){ try{ localStorage.setItem('idea_pro_code', typed); }catch(e){} }
+      renderReal(res.j);
+    })
+    .catch(function(e){
+      stopReading();
+      document.getElementById('intake').style.display = 'block';
+      err.textContent = 'Сеть недоступна или сервер не ответил. Попробуйте ещё раз.';
+    });
+}
+
+function renderReal(res){
+  var data = res.data || {};
+
+  // светофор
+  var v = document.getElementById('verdict');
+  if(data.svetofor && data.svetofor.level){
+    v.style.background = svetBg(data.svetofor.level);
+    v.innerHTML = '<span class="v-emoji">'+data.svetofor.level+'</span><div><div class="v-text">'+(data.company||'Разбор')+'</div><div class="v-sub">'+(data.svetofor.summary||'')+'</div></div>';
+    v.style.display = 'flex';
+  } else { v.style.display = 'none'; }
+
+  // внешняя поддержка
+  var sup = document.getElementById('support');
+  if(data.support && (data.support.systemic === true || (data.support.likely_uplift && data.support.likely_uplift !== 'нет'))){
+    sup.innerHTML = '<b>Внешняя поддержка:</b> ' + (data.support.note || '');
+    sup.style.display = 'block';
+  } else { sup.style.display = 'none'; }
+
+  // разбор (проза от ИИ)
+  document.getElementById('razborName').textContent = 'Разбор' + (data.company ? ' · ' + data.company : '');
+  document.getElementById('razborBody').innerHTML = marked.parse(res.prose || '');
+
+  // график core_metrics
+  var cm = (data.core_metrics || []).filter(function(m){ return m.current !== null && m.current !== undefined; });
+  var chartCard = document.getElementById('chartCard');
+  if(cm.length){
+    chartCard.style.display = 'block';
+    if(chartObj) chartObj.destroy();
+    var pr = data.period || {};
+    chartObj = new Chart(document.getElementById('chart'), {
+      type:'bar',
+      data:{ labels: cm.map(function(m){return m.label;}),
+        datasets:[
+          { label: pr.prior || 'прошлый', data: cm.map(function(m){return m.prior;}), backgroundColor:'#1B6B9A' },
+          { label: pr.current || 'текущий', data: cm.map(function(m){return m.current;}), backgroundColor:'#2D7A4F' }
+        ]},
+      options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } }
+    });
+  } else { chartCard.style.display = 'none'; }
+
+  // коэффициенты
+  var ratios = data.ratios || [];
+  var gridCard = document.getElementById('gridCard');
+  if(ratios.length){
+    gridCard.style.display = 'block';
+    document.getElementById('grid').innerHTML = ratios.map(function(x){
+      var unit = x.unit ? (' ' + x.unit).replace(' x','×') : '';
+      var val = (x.value===null||x.value===undefined) ? '—' : (x.value + unit);
+      return '<div class="metric '+zoneClass(x.zone)+'"><span class="metric-label">'+x.label+'</span><span class="metric-value">'+val+'</span><span class="metric-sub">'+(x.approx?'≈ ориентир':'')+'</span></div>';
+    }).join('');
+  } else { gridCard.style.display = 'none'; }
+
+  // извлечённые цифры
+  var extracted = data.extracted || [];
+  var exCard = document.getElementById('extractedCard');
+  if(extracted.length){
+    exCard.style.display = 'block';
+    document.getElementById('extracted').innerHTML = extracted.map(function(r){
+      return '<tr><td>'+r.label+'<div class="src">'+(r.source||'')+'</div></td><td>'+r.value+'</td></tr>';
+    }).join('');
+    document.getElementById('extractedNote').textContent = '';
+  } else { exCard.style.display = 'none'; }
+
+  // пробелы
+  var gaps = data.data_gaps || [];
+  var gapsCard = document.getElementById('gapsCard');
+  if(gaps.length){
+    gapsCard.style.display = 'block';
+    document.getElementById('gaps').innerHTML = gaps.map(function(g){ return '<li>'+g+'</li>'; }).join('');
+  } else { gapsCard.style.display = 'none'; }
+
+  var remain = document.getElementById('remain');
+  remain.textContent = '';
+  if(res.left_this_month !== undefined && res.left_this_month !== null){
+    remain.textContent = 'Осталось разборов в этом месяце: ' + res.left_this_month;
+  }
+  if(res.report_truncated){
+    remain.textContent += ' · отчёт был длинным, часть текста усечена — проверьте, что ключевые формы попали в разбор.';
+  }
+
+  document.getElementById('results').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ===================== ДЕМО-ПРИМЕРЫ (открыто, без пароля) ===================== */
+var DEMO = {
+  akron: {
+    name: 'ПАО «Акрон»',
+    emoji: '🟡🟢', vText: 'Светофор: жёлто-зелёный', vSub: 'Крепкий кредит инвестиционного уровня', vBg:'--green-bg',
+    razbor: [
+      {t:'p', v:'Акрон и Полипласт дают почти одинаковую EBITDA — около 61 млрд. Но за этой цифрой стоят две разные истории. У Акрона под долгом стоит капитал: он равен половине баланса, а чистый долг — меньше двух EBITDA. Это компания, которая в 2025-м долг не наращивала, а гасила.'},
+      {t:'p', v:'Одну вещь в его отчёте важно прочитать правильно. ICR классический 13× выглядит роскошно, но это иллюзия: часть процентов капитализируется в стройку калийного проекта и не попадает в прибыль. Честнее смотреть кассовый ICR — 3,3×: комфортно, но не «двузначно-безопасно».'},
+      {t:'p', v:'По сути — качественный кредит для базовой части портфеля: умеренный долг, сильный поток, валютная выручка как естественный хедж. На радаре держим обесценение калийного актива и просевшую подушку кэша (была 68 → стала 26 млрд).'}
+    ],
+    metrics: [
+      {l:'Net Debt / EBITDA', v:'1,9×', z:'yellow', s:'чистый долг'},
+      {l:'Debt / EBITDA', v:'2,3×', z:'yellow', s:'финансовый долг'},
+      {l:'D / E', v:'0,9×', z:'green', s:'обяз-ва / капитал'},
+      {l:'ICR классический', v:'13,1×', z:'green', s:'EBIT / % (иллюзия)'},
+      {l:'ICR кассовый', v:'3,3×', z:'yellow', s:'EBITDA / % уплач.'},
+      {l:'Current Ratio', v:'0,88', z:'orange', s:'ОА / КО'},
+      {l:'Бивер по CFO', v:'0,40', z:'green', s:'поток / долг'},
+      {l:'ROE', v:'18%', z:'green', s:'на капитале 52%'},
+      {l:'EBITDA margin', v:'26%', z:'green', s:'EBITDA / выручка'}
+    ],
+    extracted: [
+      ['Выручка', '237,6 млрд ₽','ОПУ, стр. «Выручка»'],
+      ['EBITDA','61,3 млрд ₽','ОПУ + примечания (D&A)'],
+      ['Чистая прибыль','39,8 млрд ₽','ОПУ'],
+      ['Финансовый долг','142,9 млрд ₽','Баланс: кредиты + облигации + аренда'],
+      ['Денежные средства','26,0 млрд ₽','Баланс'],
+      ['Чистый долг','117,1 млрд ₽','расчёт: долг − кэш'],
+      ['Капитал','52% баланса','Баланс'],
+      ['Проценты уплаченные','18,5 млрд ₽','ОДДС (не 3,6 из ОПУ — часть капитализирована)']
+    ],
+    note: 'Ключевой нюанс, который ИИ поймал: проценты в ОПУ (3,6 млрд) занижены из-за капитализации в стройку — реальная нагрузка на кэш 18,5 млрд. Поэтому вердикт опирается на кассовый ICR, а не классический.'
+  },
+  poli: {
+    name: 'АО «Полипласт»',
+    emoji: '🟡', vText: 'Светофор: жёлтый', vSub: 'Прибыльный рост на пределе долговой конструкции', vBg:'--yellow-bg',
+    razbor: [
+      {t:'p', v:'Та же EBITDA, что у Акрона, — около 61 млрд. Но дальше всё расходится. Капитал здесь лишь 12% баланса, долг больше капитала в семь раз, чистый долг — четыре EBITDA. Это история агрессивного роста в долг: за год компания почти удвоила основные средства и нарастила выручку на 70%.'},
+      {t:'p', v:'Где ломается картина — на процентах. Реальный кэш на обслуживание долга (43,7 млрд) съедает больше двух третей EBITDA, кассовый ICR всего 1,4×. После процентов от операционного потока остаётся почти ноль. Это карусель рефинансирования: модель работает, пока рынок готов рефинансировать выпуски.'},
+      {t:'flag', v:'ROE 37% здесь мог бы засветиться зелёным — но это не признак качества, а следствие тонкого капитала. Высокая отдача на капитал, которого мало. Считать это силой — ошибка.'},
+      {t:'p', v:'Бизнес прибыльный и растёт — риск не операционный, а рефинансный. Облигации — только в спекулятивную часть портфеля, под понимание этого риска и с прицелом на короткий конец кривой.'}
+    ],
+    metrics: [
+      {l:'Net Debt / EBITDA', v:'4,0×', z:'orange', s:'чистый долг'},
+      {l:'Debt / EBITDA', v:'4,1×', z:'orange', s:'финансовый долг'},
+      {l:'D / E', v:'7,3×', z:'red', s:'обяз-ва / капитал'},
+      {l:'ICR классический', v:'1,7×', z:'orange', s:'EBIT / % расходы'},
+      {l:'ICR кассовый', v:'1,4×', z:'red', s:'EBITDA / % уплач.'},
+      {l:'Current Ratio', v:'0,70', z:'red', s:'ОА / КО'},
+      {l:'Бивер по CFO', v:'0,01', z:'red', s:'поток / долг'},
+      {l:'ROE', v:'37%', z:'green', s:'рычаговый', warn:'⚠'},
+      {l:'EBITDA margin', v:'26%', z:'green', s:'EBITDA / выручка'}
+    ],
+    extracted: [
+      ['Выручка', '236,4 млрд ₽','ОПУ'],
+      ['EBITDA','60,7 млрд ₽','ОПУ + примечания (D&A)'],
+      ['Чистая прибыль','17,3 млрд ₽','ОПУ'],
+      ['Финансовый долг','245,7 млрд ₽','Баланс: кредиты + облигации + аренда'],
+      ['Денежные средства','4,5 млрд ₽','Баланс'],
+      ['Чистый долг','241,2 млрд ₽','расчёт: долг − кэш'],
+      ['Капитал','12% баланса','Баланс'],
+      ['Проценты уплаченные','43,7 млрд ₽','ОДДС: % по займам + факторинг + аренда']
+    ],
+    note: 'ИИ отдельно отметил рычаговый ROE (высокий из-за тонкого капитала, а не качества) и посчитал проценты по кэшу, включая факторинг — скрытый долг вне строки «кредиты».'
+  }
+};
+
+function runDemo(key){
+  document.getElementById('intake').style.display = 'none';
+  startReading(false);
+  var wait = 300 + 4*640 + 400;
+  setTimeout(function(){ stopReading(); renderDemo(key); }, wait);
+}
+
+function renderDemo(key){
+  var d = DEMO[key];
+
+  var v = document.getElementById('verdict');
+  v.style.background = cssv(d.vBg);
+  v.style.borderColor = 'rgba(0,0,0,0.06)';
+  v.innerHTML = '<span class="v-emoji">'+d.emoji+'</span><div><div class="v-text">'+d.vText+'</div><div class="v-sub">'+d.name+' · '+d.vSub+'</div></div>';
+  v.style.display = 'flex';
+
+  document.getElementById('support').style.display = 'none';
+
+  document.getElementById('razborName').textContent = 'Что видно в отчёте · ' + d.name;
+  document.getElementById('razborBody').innerHTML = d.razbor.map(function(x){ return x.t==='flag' ? '<div class="flag">'+x.v+'</div>' : '<p>'+x.v+'</p>'; }).join('');
+
+  document.getElementById('chartCard').style.display = 'none';
+
+  document.getElementById('gridCard').style.display = 'block';
+  document.getElementById('grid').innerHTML = d.metrics.map(function(m){
+    return '<div class="metric z-'+m.z+'">'+(m.warn?'<span class="warn">'+m.warn+'</span>':'')+'<span class="metric-label">'+m.l+'</span><span class="metric-value">'+m.v+'</span><span class="metric-sub">'+m.s+'</span></div>';
+  }).join('');
+
+  document.getElementById('extractedCard').style.display = 'block';
+  document.getElementById('extracted').innerHTML = d.extracted.map(function(r){
+    return '<tr><td>'+r[0]+'<div class="src">'+r[2]+'</div></td><td>'+r[1]+'</td></tr>';
+  }).join('');
+  document.getElementById('extractedNote').textContent = d.note;
+
+  document.getElementById('gapsCard').style.display = 'none';
+  document.getElementById('remain').textContent = 'Это готовый пример. Загрузите свой отчёт (PRO), чтобы ИИ разобрал его так же.';
+
+  document.getElementById('results').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
