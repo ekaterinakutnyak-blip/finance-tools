@@ -71,6 +71,18 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://investtools.pro/articles/chto-takoe-short-squeeze.html</loc>
+    <lastmod>2026-08-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/articles/rynok-nikomu-nichego-ne-obeshchal.html</loc>
+    <lastmod>2026-08-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://investtools.pro/articles/pochemu-rynok-padaet-bez-novostej.html</loc>
     <lastmod>2026-08-04</lastmod>
     <changefreq>monthly</changefreq>
@@ -137,6 +149,12 @@
     <lastmod>2026-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/novosti/akron-vs-poliplast.html</loc>
+    <lastmod>2026-08-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://investtools.pro/novosti/obzor-razmeshcheniy-3-14-avgusta-2026.html</loc>
