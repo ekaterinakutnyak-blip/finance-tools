@@ -143,6 +143,35 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 .reset{font-size:0.82rem;color:var(--accent2);cursor:pointer;text-decoration:none;display:inline-block;margin-top:0.4rem}
 .remain{font-size:0.78rem;color:var(--text3);margin-top:0.5rem}
 .footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.55}
+
+/* шапка результата: название компании + кнопки */
+.res-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:1rem;flex-wrap:wrap}
+#companyTitle{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;line-height:1.15;flex:1;min-width:180px}
+.res-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pbtn{font-family:var(--sans);font-size:0.8rem;font-weight:600;padding:0.5rem 0.9rem;border:1px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--accent);cursor:pointer;transition:all .15s}
+.pbtn:hover{background:var(--accent);color:#fff}
+.saved-ok{font-size:0.78rem;color:var(--green);margin-top:0.4rem}
+
+/* Мои разборы (на устройстве) */
+.saved{margin-top:1.6rem}
+.saved-title{font-size:0.85rem;font-weight:600;color:var(--text2);margin-bottom:0.6rem}
+.saved-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.7rem 0.9rem;margin-bottom:0.5rem}
+.saved-item .si-open{flex:1;cursor:pointer;text-decoration:none;color:var(--text)}
+.saved-item .si-open:hover .si-name{color:var(--accent)}
+.si-name{font-size:0.92rem;font-weight:600}
+.si-meta{font-size:0.72rem;color:var(--text3);font-family:var(--mono);margin-top:1px}
+.si-del{font-size:0.85rem;color:var(--text3);cursor:pointer;border:none;background:none;padding:4px 8px;border-radius:6px}
+.si-del:hover{color:var(--red);background:var(--red-bg)}
+
+/* печать / сохранение в PDF */
+@media print{
+  .back-link,#intake,.reading,.res-actions,.reset,.remain,.footer-note,.saved{display:none !important}
+  .results{display:block !important}
+  body{background:#fff}
+  .container{max-width:100%;padding:0}
+  .card,.razbor,.verdict,.support{border:1px solid #ddd !important;box-shadow:none;break-inside:avoid}
+  h1{font-size:1.2rem}
+}
 </style>
 </head>
 <body>
@@ -180,6 +209,11 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
       <button class="ex-btn" onclick="runDemo('gaz')">▶ Газпром · МСФО 2025 🟡</button>
     </div>
   </div>
+
+  <div class="saved" id="savedBlock" style="display:none">
+    <div class="saved-title">Мои разборы <span style="font-weight:400;color:var(--text3)">· хранятся на этом устройстве</span></div>
+    <div id="savedList"></div>
+  </div>
 </div>
 
 <!-- reading animation -->
@@ -192,6 +226,14 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 
 <!-- results -->
 <div class="results" id="results">
+  <div class="res-head">
+    <h2 id="companyTitle"></h2>
+    <div class="res-actions">
+      <button class="pbtn" id="saveBtn" style="display:none">💾 Сохранить на устройство</button>
+      <button class="pbtn" id="printBtn">🖨 Печать / Сохранить в PDF</button>
+    </div>
+  </div>
+  <div class="saved-ok" id="saveOk" style="display:none">Сохранено. Разбор появится в списке «Мои разборы» на этом устройстве.</div>
   <div class="verdict" id="verdict"></div>
   <div class="support" id="support" style="display:none"></div>
 
@@ -329,8 +371,47 @@ function analyze(){
     });
 }
 
-function renderReal(res){
+/* ===================== СОХРАНЕНИЕ РАЗБОРОВ НА УСТРОЙСТВЕ ===================== */
+var SAVED_KEY = 'analyst_saved_v1';
+var currentRazbor = null;
+function todayStr(){ var d=new Date(); function p(n){return (n<10?'0':'')+n;} return p(d.getDate())+'.'+p(d.getMonth()+1)+'.'+d.getFullYear(); }
+function loadSaved(){ try{ return JSON.parse(localStorage.getItem(SAVED_KEY)||'[]'); }catch(e){ return []; } }
+function persistSaved(a){ try{ localStorage.setItem(SAVED_KEY, JSON.stringify(a)); }catch(e){} }
+function esc(s){ return String(s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];}); }
+function renderSavedList(){
+  var arr = loadSaved();
+  var block = document.getElementById('savedBlock'), list = document.getElementById('savedList');
+  if(!arr.length){ block.style.display='none'; return; }
+  block.style.display='block';
+  list.innerHTML = arr.map(function(e){
+    var sf = (e.data && e.data.svetofor && e.data.svetofor.level) ? e.data.svetofor.level+' ' : '';
+    return '<div class="saved-item"><a class="si-open" onclick="openSaved(\''+e.id+'\')"><div class="si-name">'+sf+esc(e.company)+'</div><div class="si-meta">'+e.date+'</div></a><button class="si-del" onclick="deleteSaved(\''+e.id+'\')" title="Удалить">✕</button></div>';
+  }).join('');
+}
+function saveCurrent(){
+  if(!currentRazbor) return;
+  var arr = loadSaved();
+  arr.unshift({ id:'r'+Date.now(), company:currentRazbor.company, date:currentRazbor.date, prose:currentRazbor.prose, data:currentRazbor.data });
+  if(arr.length>50) arr = arr.slice(0,50);
+  persistSaved(arr);
+  document.getElementById('saveBtn').style.display='none';
+  document.getElementById('saveOk').style.display='block';
+  renderSavedList();
+}
+function openSaved(id){
+  var e = loadSaved().filter(function(x){return x.id===id;})[0];
+  if(!e) return;
+  document.getElementById('intake').style.display='none';
+  renderReal({ prose:e.prose, data:e.data, left_this_month:null }, true);
+}
+function deleteSaved(id){ persistSaved(loadSaved().filter(function(x){return x.id!==id;})); renderSavedList(); }
+document.getElementById('saveBtn').onclick = saveCurrent;
+document.getElementById('printBtn').onclick = function(){ window.print(); };
+renderSavedList();
+
+function renderReal(res, fromSaved){
   var data = res.data || {};
+  document.getElementById('companyTitle').textContent = data.company || 'Разбор отчётности';
 
   // светофор
   var v = document.getElementById('verdict');
@@ -348,8 +429,8 @@ function renderReal(res){
   } else { sup.style.display = 'none'; }
 
   // разбор (проза от ИИ)
-  document.getElementById('razborName').textContent = 'Разбор' + (data.company ? ' · ' + data.company : '');
-  document.getElementById('razborBody').innerHTML = marked.parse(res.prose || '');
+  document.getElementById('razborName').textContent = 'Разбор';
+  document.getElementById('razborBody').innerHTML = marked.parse((res.prose || '').split(/```json/i)[0]);
 
   // график core_metrics
   var cm = (data.core_metrics || []).filter(function(m){ return m.current !== null && m.current !== undefined; });
@@ -409,6 +490,16 @@ function renderReal(res){
     remain.textContent += ' · отчёт был длинным, часть текста усечена — проверьте, что ключевые формы попали в разбор.';
   }
 
+  // сохранение на устройство
+  var saveBtn = document.getElementById('saveBtn');
+  document.getElementById('saveOk').style.display = 'none';
+  if(fromSaved){
+    currentRazbor = null; saveBtn.style.display = 'none';
+  } else {
+    currentRazbor = { company: data.company || 'Разбор отчётности', prose: (res.prose||'').split(/```json/i)[0], data: data, date: todayStr() };
+    saveBtn.style.display = 'inline-block';
+  }
+
   document.getElementById('results').classList.add('on');
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -426,6 +517,11 @@ function runDemo(key){
 function renderDemo(key){
   var d = DEMO[key];
 
+  document.getElementById('companyTitle').textContent = d.name;
+  document.getElementById('saveBtn').style.display = 'none';
+  document.getElementById('saveOk').style.display = 'none';
+  currentRazbor = null;
+
   var v = document.getElementById('verdict');
   v.style.background = cssv(d.vBg);
   v.style.borderColor = 'rgba(0,0,0,0.06)';
@@ -434,7 +530,7 @@ function renderDemo(key){
 
   document.getElementById('support').style.display = 'none';
 
-  document.getElementById('razborName').textContent = 'Разбор · ' + d.name;
+  document.getElementById('razborName').textContent = 'Разбор';
   document.getElementById('razborBody').innerHTML = marked.parse(d.prose || '');
 
   document.getElementById('chartCard').style.display = 'none';
