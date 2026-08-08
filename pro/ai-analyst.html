@@ -469,8 +469,15 @@ function computeModels(mi){
 }
 function chipLabel(z){ return z==='green'?'🟢 низкий':z==='yellow'?'🟡 умеренный':z==='orange'?'🟠 повышенный':'🔴 высокий'; }
 function mrowHTML(name,sub,val,right,zone){ return '<div class="mrow"><div class="mname"><b>'+name+'</b><span>'+sub+'</span></div><div class="mnums"><div class="mval">'+val+'</div><div class="mpd">'+right+'</div><span class="mchip '+zone+'">'+chipLabel(zone)+'</span></div></div>'; }
-function renderModels(mi){
+function renderModels(mi, industry){
   var card=document.getElementById('modelsCard');
+  var FIN=['лизинг','банк','мфо','коллектор','ломбард','микрофинанс'];
+  var isFin = industry && FIN.some(function(k){ return String(industry).toLowerCase().indexOf(k)>-1; });
+  if(isFin){
+    document.getElementById('modelsBody').innerHTML='<div class="mrow" style="border-top:none;align-items:flex-start"><div class="mname"><b>Модели банкротства для этой отрасли не применяются</b><span>лизинг · банк · МФО</span><div style="font-size:0.86rem;color:var(--text2);margin-top:5px;line-height:1.5">Альтман, Таффлер и ИГЭА построены на обычном корпоративном балансе (оборотный капитал, выручка). У финансовых компаний риск оценивается иначе — через достаточность капитала, качество портфеля и покрытие; смотрите коэффициенты выше.</div></div></div>';
+    document.getElementById('modelsFoot').innerHTML='';
+    card.style.display='block'; return;
+  }
   if(!mi||typeof mi!=='object'){ card.style.display='none'; return; }
   var m=computeModels(mi), rows='';
   if(m.altman&&m.altman.value!==null){ var a=m.altman; var r=a.rating?('≈ '+a.rating+' · PD '+a.pd):('PD '+a.pd); rows+=mrowHTML('Альтман '+a.version,a.note,a.value,r,a.zone); }
@@ -535,7 +542,7 @@ function renderReal(res, fromSaved){
     }).join('');
   } else { gridCard.style.display = 'none'; }
 
-  renderModels(data.model_inputs);
+  renderModels(data.model_inputs, data.industry);
 
   // извлечённые цифры
   var extracted = data.extracted || [];
@@ -621,7 +628,7 @@ function renderDemo(key){
   }).join('');
   document.getElementById('extractedNote').textContent = d.note;
 
-  renderModels(d.model_inputs || null);
+  renderModels(d.model_inputs || null, null);
 
   document.getElementById('gapsCard').style.display = 'none';
   document.getElementById('remain').textContent = 'Это готовый пример. Загрузите свой отчёт (PRO), чтобы ИИ разобрал его так же.';
