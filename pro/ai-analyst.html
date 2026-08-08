@@ -172,6 +172,22 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
   .card,.razbor,.verdict,.support{border:1px solid #ddd !important;box-shadow:none;break-inside:avoid}
   h1{font-size:1.2rem}
 }
+/* Скоринговые модели */
+#modelsCard .card-sub{font-size:0.8rem;color:var(--text2);margin:-0.3rem 0 0.6rem}
+#modelsCard .mrow{display:flex;align-items:center;gap:12px;padding:0.8rem 0;border-top:1px solid var(--border)}
+#modelsCard .mrow:first-of-type{border-top:none}
+#modelsCard .mname{flex:1;min-width:0}
+#modelsCard .mname b{font-size:0.92rem;font-weight:600;display:block}
+#modelsCard .mname span{font-size:0.74rem;color:var(--text3)}
+#modelsCard .mnums{text-align:right;min-width:120px}
+#modelsCard .mval{font-family:var(--mono);font-size:1.1rem;font-weight:600;line-height:1.1}
+#modelsCard .mpd{font-family:var(--mono);font-size:0.76rem;color:var(--text2);margin-top:2px}
+#modelsCard .mchip{display:inline-block;margin-top:5px;font-size:0.7rem;font-weight:600;padding:3px 9px;border-radius:20px}
+#modelsCard .mchip.green{background:rgba(46,158,91,0.12);color:#1e7a44}
+#modelsCard .mchip.yellow{background:rgba(230,161,0,0.14);color:#8a6d00}
+#modelsCard .mchip.orange{background:rgba(230,126,34,0.14);color:#a85a17}
+#modelsCard .mchip.red{background:rgba(192,57,43,0.12);color:#a3271c}
+#modelsCard .models-foot{font-size:0.74rem;color:var(--text3);line-height:1.5;margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -248,6 +264,13 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
   <div class="card" id="gridCard" style="display:none">
     <div class="card-title">Коэффициенты из отчёта</div>
     <div class="results-grid" id="grid"></div>
+  </div>
+
+  <div class="card" id="modelsCard" style="display:none">
+    <div class="card-title">Скоринговые модели риска банкротства</div>
+    <div class="card-sub">По цифрам одного отчёта. Скрининг — «посмотреть внимательнее», а не приговор и не индивидуальный PD.</div>
+    <div id="modelsBody"></div>
+    <div class="models-foot" id="modelsFoot"></div>
   </div>
 
   <div class="card extracted" id="extractedCard" style="display:none">
@@ -357,7 +380,11 @@ function analyze(){
       stopReading();
       if(!res.ok){
         document.getElementById('intake').style.display = 'block';
-        if(res.status === 403){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Код не подошёл. Введите PRO-код или пароль.'; return; }
+        if(res.status === 403){
+          if(!storedCode()){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); }
+          err.textContent = (res.j && res.j.detail) ? res.j.detail : 'Доступ по подписке. Введите PRO-код или пароль.';
+          return;
+        }
         err.textContent = (res.j && res.j.detail) ? res.j.detail : ('Ошибка ' + res.status);
         return;
       }
@@ -408,6 +435,52 @@ function deleteSaved(id){ persistSaved(loadSaved().filter(function(x){return x.i
 document.getElementById('saveBtn').onclick = saveCurrent;
 document.getElementById('printBtn').onclick = function(){ window.print(); };
 renderSavedList();
+
+/* ===== Скоринговые модели банкротства (считаем в коде) ===== */
+var ALT_LADDER=[[8.15,'AAA'],[7.60,'AA+'],[7.30,'AA'],[7.00,'AA-'],[6.85,'A+'],[6.65,'A'],[6.40,'A-'],[6.25,'BBB+'],[5.85,'BBB'],[5.65,'BBB-'],[5.25,'BB+'],[4.95,'BB'],[4.75,'BB-'],[4.50,'B+'],[4.15,'B'],[3.75,'B-'],[3.20,'CCC+'],[2.50,'CCC'],[1.75,'CCC-'],[-1e9,'D']];
+var SP_PD={AAA:0.00,AA:0.02,A:0.05,BBB:0.14,BB:0.56,B:2.93,CCC:26.12,D:null};
+function ratGroup(r){ if(r==='D')return 'D'; return r.replace(/[+-]/g,''); }
+function zoneByRating(r){ var g=ratGroup(r); if(['AAA','AA','A','BBB'].indexOf(g)>-1)return 'green'; if(g==='BB')return 'yellow'; if(g==='B')return 'orange'; return 'red'; }
+function mnum(x){ return (typeof x==='number' && isFinite(x)) ? x : null; }
+function computeModels(mi){
+  var TA=mnum(mi.total_assets),CA=mnum(mi.current_assets),CL=mnum(mi.current_liabilities),TL=mnum(mi.total_liabilities),
+      E=mnum(mi.equity),RE=mnum(mi.retained_earnings),EBIT=mnum(mi.ebit),PBT=mnum(mi.pretax_profit),
+      NI=mnum(mi.net_income),REV=mnum(mi.revenue),TC=mnum(mi.total_costs),MC=mnum(mi.market_cap);
+  var WC=(CA!=null&&CL!=null)?CA-CL:null; var o={};
+  if(MC!=null&&TA&&TL&&WC!=null&&RE!=null&&EBIT!=null&&REV!=null){
+    var Z5=1.2*(WC/TA)+1.4*(RE/TA)+3.3*(EBIT/TA)+0.6*(MC/TL)+1.0*(REV/TA);
+    o.altman={version:'Z (5ф)',value:+Z5.toFixed(2),zone:Z5>2.99?'green':(Z5>=1.81?'yellow':'red'),pd:Z5>2.99?'низкая':(Z5>=1.81?'30–50%':'80–100%'),note:'публичная · X4 = рыночный капитал/обязательства'};
+  } else if(TA&&TL&&WC!=null&&RE!=null&&EBIT!=null&&E!=null){
+    var Z2=3.25+6.56*(WC/TA)+3.26*(RE/TA)+6.72*(EBIT/TA)+1.05*(E/TL);
+    var rating='D'; for(var i=0;i<ALT_LADDER.length;i++){ if(Z2>=ALT_LADDER[i][0]){rating=ALT_LADDER[i][1];break;} }
+    var pdv=SP_PD[ratGroup(rating)];
+    o.altman={version:'Z″',value:+Z2.toFixed(2),rating:rating,pd:(pdv==null?'высокая (D)':(String(pdv).replace('.',',')+'%/год')),zone:zoneByRating(rating),note:'непубличная · рейтинг-proxy PD (S&P по классу)'};
+  } else o.altman={value:null};
+  if(TA&&CL&&TL&&PBT!=null&&CA!=null&&REV!=null){
+    var Zt=0.53*(PBT/CL)+0.13*(CA/TL)+0.18*(CL/TA)+0.16*(REV/TA);
+    o.taffler={value:+Zt.toFixed(3),zone:Zt>0.3?'green':(Zt>=0.2?'yellow':'red'),verdict:Zt>0.3?'устойчиво':(Zt>=0.2?'погранично':'зона риска')};
+  } else o.taffler={value:null};
+  if(TA&&E&&TC&&WC!=null&&NI!=null&&REV!=null){
+    var R=8.38*(WC/TA)+1.0*(NI/E)+0.054*(REV/TA)+0.63*(NI/TC); var pd,zn;
+    if(R<0){pd='90–100%';zn='red';}else if(R<0.18){pd='60–80%';zn='red';}else if(R<0.32){pd='35–50%';zn='orange';}else if(R<0.42){pd='15–20%';zn='yellow';}else{pd='< 10%';zn='green';}
+    o.igea={value:+R.toFixed(2),pd:pd,zone:zn};
+  } else o.igea={value:null};
+  return o;
+}
+function chipLabel(z){ return z==='green'?'🟢 низкий':z==='yellow'?'🟡 умеренный':z==='orange'?'🟠 повышенный':'🔴 высокий'; }
+function mrowHTML(name,sub,val,right,zone){ return '<div class="mrow"><div class="mname"><b>'+name+'</b><span>'+sub+'</span></div><div class="mnums"><div class="mval">'+val+'</div><div class="mpd">'+right+'</div><span class="mchip '+zone+'">'+chipLabel(zone)+'</span></div></div>'; }
+function renderModels(mi){
+  var card=document.getElementById('modelsCard');
+  if(!mi||typeof mi!=='object'){ card.style.display='none'; return; }
+  var m=computeModels(mi), rows='';
+  if(m.altman&&m.altman.value!==null){ var a=m.altman; var r=a.rating?('≈ '+a.rating+' · PD '+a.pd):('PD '+a.pd); rows+=mrowHTML('Альтман '+a.version,a.note,a.value,r,a.zone); }
+  if(m.taffler&&m.taffler.value!==null){ var t=m.taffler; rows+=mrowHTML('Таффлер','порог 0,3 / 0,2',t.value,t.verdict+' · PD — нужна калибровка',t.zone); }
+  if(m.igea&&m.igea.value!==null){ var g=m.igea; rows+=mrowHTML('ИГЭА (Иркутская)','авторские бэнды',g.value,'вероятность '+g.pd,g.zone); }
+  if(!rows){ card.style.display='none'; return; }
+  document.getElementById('modelsBody').innerHTML=rows;
+  document.getElementById('modelsFoot').innerHTML='Считается в коде по строкам, извлечённым ИИ. <b>Альтман</b>: Z″ → эквивалентный рейтинг → историческая частота дефолта S&P (рейтинг-proxy, не индивидуальная PD). <b>Таффлер</b>: ранжирует риск, точная PD требует локальной калибровки. <b>ИГЭА</b>: авторские вероятностные бэнды. Модели расходятся — это сигнал, а не приговор.';
+  card.style.display='block';
+}
 
 function renderReal(res, fromSaved){
   var data = res.data || {};
@@ -461,6 +534,8 @@ function renderReal(res, fromSaved){
       return '<div class="metric '+zoneClass(x.zone)+'"><span class="metric-label">'+x.label+'</span><span class="metric-value">'+val+'</span><span class="metric-sub">'+(x.approx?'≈ ориентир':'')+'</span></div>';
     }).join('');
   } else { gridCard.style.display = 'none'; }
+
+  renderModels(data.model_inputs);
 
   // извлечённые цифры
   var extracted = data.extracted || [];
@@ -545,6 +620,8 @@ function renderDemo(key){
     return '<tr><td>'+r[0]+'<div class="src">'+r[2]+'</div></td><td>'+r[1]+'</td></tr>';
   }).join('');
   document.getElementById('extractedNote').textContent = d.note;
+
+  renderModels(d.model_inputs || null);
 
   document.getElementById('gapsCard').style.display = 'none';
   document.getElementById('remain').textContent = 'Это готовый пример. Загрузите свой отчёт (PRO), чтобы ИИ разобрал его так же.';
