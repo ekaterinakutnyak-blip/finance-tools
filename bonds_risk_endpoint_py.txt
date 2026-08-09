@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+"""
+Эндпоинт риск-разбора ОБЛИГАЦИОННОГО портфеля — /api/bonds-risk
+Зеркало /api/risk-check (акции): та же авторизация token/master, тот же тип счётчика,
+тот же call_model. Отличия — свой промт (облигации) и свой ключ счётчика "BND:".
+
+Философия та же, что у акций: числа УЖЕ посчитаны на странице портфеля (дюрация,
+стресс-тест, спреды, PD, структура). Модель их НЕ пересчитывает — только объясняет
+человеческим языком. Снапшот приходит с фронта как готовый текст.
+
+Установка:
+  1) положить файл в /opt/finance-api/
+  2) положить промт: /opt/finance-api/prompts/risk_manager_bonds.txt
+  3) в main.py внизу:
+        from bonds_risk_endpoint import bonds_risk_router
+        app.include_router(bonds_risk_router)
+  4) перезапустить сервис
+"""
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+# ← вся авторизация/лимит/вызов модели берём из уже работающего риск-менеджера акций
+from risk_manager import (
+    _is_master, _token_info, _period_token, _period_master,
+    _used, _bump, call_model,
+)
+from yandex_ai import _load
+
+PROMPT_PATH   = "/opt/finance-api/prompts/risk_manager_bonds.txt"
+try:
+    PROMPT_BONDS = _load(PROMPT_PATH)
+except Exception:
+    PROMPT_BONDS = "Ты — риск-менеджер облигаций. Объясни риски портфеля простым языком по числам из снапшота."
+
+BONDS_MODEL     = "deepseek-v4-flash/latest"   # тот же «живой» голос, что у риск-менеджера акций
+PERIOD_LIMIT    = 10                            # свой лимит, отдельное окно от акций и от аналитика
+MAX_INPUT_CHARS = 16000                         # снапшот облигаций крупнее акций (позиции + кредитные строки)
+
+bonds_risk_router = APIRouter(tags=["bonds-risk"])
+
+
+class BondsRiskIn(BaseModel):
+    token: str
+    snapshot: str
+
+
+@bonds_risk_router.post("/api/bonds-risk")
+async def bonds_risk(payload: BondsRiskIn):
+    code = (payload.token or "").strip()
+    snap = (payload.snapshot or "").strip()
+    if not snap:
+        raise HTTPException(status_code=400, detail="Сначала рассчитайте портфель")
+    if len(snap) > MAX_INPUT_CHARS:
+        snap = snap[:MAX_INPUT_CHARS]
+
+    # доступ — как в /api/risk-check: мастер-пароль ИЛИ действующий токен. Свой ключ "BND:".
+    if _is_master(code):
+        key, period = "BND:MASTER", _period_master()
+    else:
+        info = _token_info(code)
+        if info is None:
+            raise HTTPException(status_code=403, detail="Разбор рисков доступен по подписке")
+        uid, created_at = info
+        key, period = f"BND:U:{uid}", _period_token(created_at)
+
+    used = _used(key, period)
+    if used >= PERIOD_LIMIT:
+        raise HTTPException(status_code=402,
+                            detail=f"Лимит {PERIOD_LIMIT} разборов за 30 дней исчерпан")
+
+    user_input = "<portfolio_snapshot>\n" + snap + "\n</portfolio_snapshot>"
+    try:
+        result = call_model(PROMPT_BONDS, user_input, model=BONDS_MODEL,
+                            max_output_tokens=5000, temperature=0.35)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
+
+    _bump(key, period)
+    return {"analysis": result, "left_this_month": max(0, PERIOD_LIMIT - (used + 1))}
