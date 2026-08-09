@@ -133,6 +133,7 @@ body.printing-compare #cmpPdfBtn{display:none!important}
     <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Рассчитать</button>
     <button class="btn-sm" id="bondReportBtn" onclick="downloadBondReport()">📄 Скачать отчёт PDF</button>
+    <button class="btn-sm" id="bondRiskBtn" onclick="openBondRisk()" style="background:#8a3b3b;color:#fff;border-color:#8a3b3b">🛡️ Разобрать риски ИИ</button>
     <span class="weight-total" id="weightTotal">Итого: 0%</span>
   </div>
   <div id="manualPanel" style="display:none;margin-top:0.6rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2)">
@@ -2039,5 +2040,133 @@ function runOptimizer(){
   </div>
   <div id="optResult"></div>
 </div>
+
+<!-- ===== Риск-менеджер облигаций: модалка ИИ-разбора ===== -->
+<div id="bondRiskModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(26,26,24,0.55)">
+  <div style="max-width:680px;margin:5vh auto;max-height:90vh;overflow:auto;background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,0.25)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.3rem;border-bottom:1px solid var(--border)">
+      <div style="font-weight:700;font-size:1.02rem">🛡️ Разбор рисков портфеля</div>
+      <button onclick="closeBondRisk()" style="border:none;background:none;font-size:1.4rem;line-height:1;color:var(--text3);cursor:pointer">×</button>
+    </div>
+    <div style="padding:1.1rem 1.3rem">
+      <label style="font-size:0.74rem;color:var(--text2);display:block;margin-bottom:0.8rem">Горизонт (когда понадобятся деньги) — необязательно, но уточнит оценку
+        <input type="text" id="bondRiskHorizon" placeholder="например: 2 года" style="width:200px;display:block;margin-top:4px;font-size:0.85rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
+      </label>
+      <div id="bondRiskCodeBox" style="display:none;margin-bottom:0.8rem">
+        <div style="font-size:0.74rem;color:var(--text2);margin-bottom:4px">Введите PRO-код или пароль:</div>
+        <input type="password" id="bondRiskCode" style="width:220px;font-size:0.85rem;padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text)">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:0.9rem">
+        <button class="btn" id="bondRiskGo" onclick="runBondRisk()">Разобрать</button>
+        <span id="bondRiskLeft" style="font-size:0.74rem;color:var(--text3)"></span>
+      </div>
+      <div id="bondRiskBody" style="font-size:0.9rem;line-height:1.6;color:var(--text)"></div>
+      <div style="font-size:0.68rem;color:var(--text3);margin-top:1rem;padding-top:0.8rem;border-top:1px solid var(--border)">Разбор построен на числах, которые страница уже посчитала (дюрация, стресс-тест, спреды, PD, структура). ИИ их объясняет, а не пересчитывает. Это образовательный разбор, не индивидуальная инвестиционная рекомендация.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== «Мой риск-менеджер» для облигаций — сборка снапшота и запрос к бэкенду =====
+function bondStoredCode(){
+  try{
+    const own=localStorage.getItem('idea_pro_code'); if(own)return own;
+    if(localStorage.getItem('pro_access_type')==='token')return localStorage.getItem('pro_access_token')||'';
+  }catch(e){}
+  return '';
+}
+function bondRiskEsc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function bondRiskRender(text){
+  const lines=(text||'').split('\n'); let html='';
+  for(const raw of lines){
+    const t=raw.trim(); if(!t)continue;
+    let l=bondRiskEsc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    if(/^#{1,3}\s/.test(t)) html+='<h3 style="margin:16px 0 6px;font-size:0.95rem;color:var(--accent)">'+l.replace(/^#{1,3}\s/,'')+'</h3>';
+    else if(/^[-•]\s/.test(t)) html+='<div style="margin:3px 0 3px 6px">• '+l.replace(/^[-•]\s/,'')+'</div>';
+    else if(/^\d+[.)]\s/.test(t)) html+='<div style="margin:8px 0">'+l+'</div>';
+    else html+='<p style="margin:8px 0">'+l+'</p>';
+  }
+  return html;
+}
+function buildBondSnapshot(){
+  const R=window._bondReport; if(!R)return null;
+  let s='Портфель облигаций.\n';
+  s+='Стоимость портфеля: '+Math.round(R.totalValue).toLocaleString('ru-RU')+' руб.\n';
+  s+='Взвешенная доходность к погашению (YTM): '+(+R.wYTM).toFixed(2)+'%.\n';
+  s+='Взвешенная дюрация: '+(+R.wDuration).toFixed(2)+' лет.\n';
+  if(Array.isArray(R.metrics)&&R.metrics.length){
+    s+='\nКлючевые метрики портфеля:\n';
+    R.metrics.forEach(m=>{ s+='- '+m.label+': '+m.value+(m.sub?(' ('+m.sub+')'):'')+'\n'; });
+  }
+  if(Array.isArray(R.struct_type)&&R.struct_type.length){
+    s+='\nСтруктура по типу купона (важно для чувствительности к ставке):\n';
+    R.struct_type.forEach(x=>{ s+='- '+x.label+': '+x.pct+'% ('+x.amount+')\n'; });
+  }
+  if(Array.isArray(R.struct_ccy)&&R.struct_ccy.length){
+    s+='\nСтруктура по валютам:\n';
+    R.struct_ccy.forEach(x=>{ s+='- '+x.label+': '+x.pct+'% ('+x.amount+')\n'; });
+  }
+  if(Array.isArray(R.stress)&&R.stress.length){
+    s+='\nСтресс-тест: изменение стоимости портфеля при сдвиге ключевой ставки (по дюрации и выпуклости):\n';
+    R.stress.forEach(x=>{ s+='- сдвиг '+(x.shift>0?'+':'')+x.shift+' бп: '+(x.pct>0?'+':'')+x.pct+'% ('+x.rub+')\n'; });
+  }
+  if(R.credit_summary){
+    const c=R.credit_summary;
+    s+='\nКредитный риск (сводно): средний Z-spread '+c.z_spread+', средний G-spread '+c.g_spread+', средняя вероятность дефолта в год (PD) '+c.pd_year+'.\n';
+    if(c.note) s+='Охват кредитного разбора: '+c.note+'\n';
+  }
+  if(Array.isArray(R.credit_zones)&&R.credit_zones.length){
+    s+='Распределение по зонам качества (по спреду):\n';
+    R.credit_zones.forEach(z=>{ s+='- '+z.label+': '+z.pct+'% ('+z.amount+')\n'; });
+  }
+  if(Array.isArray(R.positions)&&R.positions.length){
+    s+='\nСостав портфеля (по каждой бумаге):\n';
+    R.positions.forEach(p=>{
+      s+='- '+p.name+' ['+p.ccy+', '+p.ctype+']: доля '+p.weight+'%, стоимость '+p.value+' ₽, YTM '+p.ytm+'%, купон/год '+p.coupon_year+' ₽, дюрация '+p.duration+' лет'+(p.convexity!=null?', выпуклость '+p.convexity:'')+', погашение '+p.maturity+'\n';
+    });
+  }
+  if(Array.isArray(R.credit_rows)&&R.credit_rows.length){
+    s+='\nКредитные метрики по бумагам со спредом:\n';
+    R.credit_rows.forEach(r=>{
+      s+='- '+r.name+': Z-spread '+r.z_spread+', G-spread '+r.g_spread+', PD/год '+r.pd_year+', PD накопл. '+r.pd_cum+', ожидаемые потери (EL) '+r.el+', зона '+r.zone+', горизонт '+r.horizon+'\n';
+    });
+  }
+  const hz=((document.getElementById('bondRiskHorizon')||{}).value||'').trim();
+  if(hz) s+='\nЦель и горизонт инвестора: горизонт — '+hz+'.\n';
+  return s;
+}
+function openBondRisk(){
+  if(!window._bondReport){ alert('Сначала нажмите «Рассчитать»'); return; }
+  document.getElementById('bondRiskBody').innerHTML='<p style="color:var(--text2)">Риск-менеджер объяснит простым языком, что посчитано и где риски вашего портфеля облигаций. Нажмите «Разобрать».</p>';
+  document.getElementById('bondRiskLeft').textContent='';
+  document.getElementById('bondRiskCodeBox').style.display='none';
+  document.getElementById('bondRiskModal').style.display='block';
+}
+function closeBondRisk(){ document.getElementById('bondRiskModal').style.display='none'; }
+async function runBondRisk(){
+  const snap=buildBondSnapshot();
+  if(!snap){ alert('Сначала рассчитайте портфель'); return; }
+  const typed=(document.getElementById('bondRiskCode').value||'').trim();
+  const code=typed||bondStoredCode();
+  const body=document.getElementById('bondRiskBody'), go=document.getElementById('bondRiskGo');
+  if(!code){ document.getElementById('bondRiskCodeBox').style.display='block'; document.getElementById('bondRiskCode').focus(); return; }
+  go.disabled=true; const old=go.textContent; go.textContent='Разбираю…';
+  body.innerHTML='<p style="color:var(--text2)"><span class="loader"></span> Риск-менеджер думает…</p>';
+  try{
+    const r=await fetch('/api/bonds-risk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:code,snapshot:snap})});
+    const data=await r.json().catch(()=>({}));
+    if(r.status===403){ document.getElementById('bondRiskCodeBox').style.display='block'; document.getElementById('bondRiskCode').focus(); body.innerHTML='<p style="color:var(--red)">Код не подошёл. Введите PRO-код или пароль.</p>'; return; }
+    if(!r.ok){ body.innerHTML='<p style="color:var(--red)">'+(data.detail||'Не получилось выполнить разбор. Попробуйте позже.')+'</p>'; return; }
+    if(typed){ try{ localStorage.setItem('idea_pro_code',typed); }catch(e){} }
+    document.getElementById('bondRiskCodeBox').style.display='none';
+    body.innerHTML=bondRiskRender(data.analysis||'');
+    if(typeof data.left_this_month==='number'){ document.getElementById('bondRiskLeft').textContent='Осталось разборов: '+data.left_this_month; }
+  }catch(e){
+    body.innerHTML='<p style="color:var(--red)">Сеть недоступна. Попробуйте ещё раз.</p>';
+  }finally{
+    go.disabled=false; go.textContent=old;
+  }
+}
+</script>
 </body>
 </html>
