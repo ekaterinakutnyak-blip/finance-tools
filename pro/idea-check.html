@@ -47,6 +47,13 @@ textarea:focus{outline:none;border-color:var(--accent2)}
 .divider{height:1px;background:var(--border);margin:40px 0 30px}
 .disc{margin-top:34px;font-size:13px;color:var(--text2);border-top:1px solid var(--border);padding-top:16px}
 .spin{display:none;margin-top:16px;color:var(--text2);font-size:15px}
+@media print{body.printing-idea .wrap{display:none!important}body.printing-idea #ideaPrint{display:block!important}}
+#ideaPrint{display:none}
+#ideaPrint .brp-h{font-size:1.15rem;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+#ideaPrint .brp-meta{font-size:0.8rem;color:#555;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a1a2e}
+#ideaPrint .brp-idea{font-size:0.85rem;color:#333;background:#f6f6f4;border-left:3px solid #1a1a2e;padding:8px 12px;margin-bottom:14px;line-height:1.5}
+#ideaPrint .brp-body{font-size:0.9rem;line-height:1.6;color:#1a1a18}
+#ideaPrint .brp-foot{font-size:0.72rem;color:#888;margin-top:16px;padding-top:10px;border-top:1px solid #ccc}
 </style>
 </head>
 <body>
@@ -67,7 +74,12 @@ textarea:focus{outline:none;border-color:var(--accent2)}
 
   <div class="spin" id="spin">Разбираю вашу идею… это занимает 10–30 секунд.</div>
   <div class="msg err" id="err"></div>
+  <div class="msg pro" id="codebox" style="display:none">
+    <div>Введите ваш PRO-код или пароль — <b>один раз</b>, дальше запомним на этом компьютере:</div>
+    <input id="procode" type="text" autocomplete="off" placeholder="PRO-код или пароль" style="margin-top:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:15px;background:#fff">
+  </div>
 
+  <button class="btn" id="ideaPdfBtn" onclick="saveIdeaPdf()" style="display:none;margin-top:12px">📄 Сохранить в PDF</button>
   <div class="result" id="result"></div>
 
   <div class="divider"></div>
@@ -167,10 +179,17 @@ const DEMO = `## Предмет проверки
 Анализ показывает, что защитные свойства физического золота могут обосновывать его присутствие в портфеле, но представленный запрос не содержит аргументов, достаточных для обоснования именно доли 30%.`;
 document.getElementById('demo').innerHTML = renderAnalysis(DEMO);
 
-// Страницу уже открыл gate.js — значит вход выполнен и код лежит в localStorage.
-// pro_access_token — это токен подписки ИЛИ хеш пароля; бэкенд принимает оба.
-function proCode(){
-  try{ return localStorage.getItem('pro_access_token') || ''; }catch(e){ return ''; }
+// Код доступа для бэкенда.
+// - Вход по ТОКЕНУ (калькулятор): pro_access_token — настоящий токен, его и шлём.
+// - Вход по ПАРОЛЮ: gate.js хранит только ХЕШ, а бэкенд его не принимает (хеш публичный).
+//   Поэтому пароль спрашиваем один раз здесь и храним локально (idea_pro_code) бессрочно.
+function storedCode(){
+  try{
+    const own = localStorage.getItem('idea_pro_code');
+    if(own) return own;
+    if(localStorage.getItem('pro_access_type')==='token') return localStorage.getItem('pro_access_token')||'';
+  }catch(e){}
+  return '';
 }
 
 const goBtn = document.getElementById('go');
@@ -178,13 +197,17 @@ const err = document.getElementById('err');
 const spin = document.getElementById('spin');
 const result = document.getElementById('result');
 const leftNote = document.getElementById('left');
+const codebox = document.getElementById('codebox');
+const codeInput = document.getElementById('procode');
 
 goBtn.addEventListener('click', async () => {
   err.style.display='none'; result.style.display='none';
+  document.getElementById('ideaPdfBtn').style.display='none';
   const text = document.getElementById('idea').value.trim();
   if(!text){ err.textContent='Опишите свою идею.'; err.style.display='block'; return; }
-  const code = proCode();
-  if(!code){ err.textContent='Похоже, PRO-доступ не активен. Обновите страницу и войдите заново.'; err.style.display='block'; return; }
+  const typed = codeInput.value.trim();
+  const code = typed || storedCode();
+  if(!code){ codebox.style.display='block'; codeInput.focus(); return; }
 
   goBtn.disabled = true; spin.style.display='block';
   try{
@@ -193,10 +216,27 @@ goBtn.addEventListener('click', async () => {
       body: JSON.stringify({ token: code, text: text })
     });
     const data = await r.json().catch(()=>({}));
+    if(r.status===403){ codebox.style.display='block'; codeInput.focus(); err.textContent='Код не подошёл. Введите PRO-код или пароль.'; err.style.display='block'; return; }
     if(!r.ok){ err.textContent = data.detail || 'Не получилось выполнить разбор. Попробуйте позже.'; err.style.display='block'; return; }
-    result.innerHTML = renderAnalysis(data.analysis||'');
+    // код подошёл — если вводили вручную, запомним навсегда на этом компьютере
+    if(typed){ try{ localStorage.setItem('idea_pro_code', typed); }catch(e){} }
+    codebox.style.display='none';
+    const analysisHtml = renderAnalysis(data.analysis||'');
+    result.innerHTML = analysisHtml;
     result.style.display='block';
-    if(typeof data.left_this_month==='number'){ leftNote.textContent = 'Осталось разборов в этом месяце: '+data.left_this_month; }
+    // печатный вид для PDF
+    const dstr=new Date().toLocaleDateString('ru-RU');
+    const ideaEsc=String(text).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const printEl=document.getElementById('ideaPrint');
+    if(printEl){
+      printEl.innerHTML='<div class="brp-h">🔍 Проверка гипотезы — оптимист против пессимиста</div>'+
+        '<div class="brp-meta">разбор от '+dstr+'</div>'+
+        '<div class="brp-idea"><b>Ваша идея:</b> '+ideaEsc+'</div>'+
+        '<div class="brp-body">'+analysisHtml+'</div>'+
+        '<div class="brp-foot">investtools.pro · методология Екатерины Кутняк · образовательный разбор достаточности аргументов, не индивидуальная инвестиционная рекомендация</div>';
+    }
+    document.getElementById('ideaPdfBtn').style.display='inline-block';
+    if(typeof data.left_this_month==='number'){ leftNote.textContent = 'Осталось разборов: '+data.left_this_month; }
     result.scrollIntoView({behavior:'smooth', block:'start'});
   }catch(e){
     err.textContent='Сеть недоступна. Попробуйте ещё раз.'; err.style.display='block';
@@ -204,7 +244,16 @@ goBtn.addEventListener('click', async () => {
     goBtn.disabled=false; spin.style.display='none';
   }
 });
+function saveIdeaPdf(){
+  const printEl=document.getElementById('ideaPrint');
+  if(!printEl || !printEl.innerHTML.trim()){ alert('Сначала получите разбор'); return; }
+  document.body.classList.add('printing-idea');
+  window.print();
+  setTimeout(()=>{ document.body.classList.remove('printing-idea'); }, 300);
+}
 </script>
+
+<div id="ideaPrint"></div>
 
 <!-- Яндекс.Метрика -->
 <script type="text/javascript">
@@ -212,5 +261,6 @@ goBtn.addEventListener('click', async () => {
 ym(109013741,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
 </script>
 <noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute;left:-9999px" alt=""/></div></noscript>
+<script src="/nav.js" defer></script>
 </body>
 </html>

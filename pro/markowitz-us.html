@@ -125,6 +125,12 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 .cmp-good{color:#2E7D32;font-weight:700}
 .cmp-bad{color:#C62828;font-weight:700}
 @media print{body.printing-compare .container>*{display:none!important}body.printing-compare #cmpCard{display:block!important}body.printing-compare #cmpCard>div:first-child,body.printing-compare #cmpStatus,body.printing-compare #cmpBtn,body.printing-compare #cmpSelA,body.printing-compare #cmpSelB,body.printing-compare #cmpPdfBtn{display:none!important}body.printing-compare #cmpResultCard{display:block!important}body.printing-compare #cmpPrintHead{display:block!important;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a1a2e}}
+@media print{body.printing-riskstocks .container,body.printing-riskstocks #riskModal{display:none!important}body.printing-riskstocks #riskStocksPrint{display:block!important}}
+#riskStocksPrint{display:none}
+#riskStocksPrint .brp-h{font-size:1.15rem;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+#riskStocksPrint .brp-meta{font-size:0.8rem;color:#555;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #1a1a2e}
+#riskStocksPrint .brp-body{font-size:0.9rem;line-height:1.6;color:#1a1a18}
+#riskStocksPrint .brp-foot{font-size:0.72rem;color:#888;margin-top:16px;padding-top:10px;border-top:1px solid #ccc}
 </style>
 </head>
 <body>
@@ -1829,6 +1835,7 @@ async function run(){
       </label>
       <input id="riskGoal" type="text" placeholder="Цель (необязательно): пенсия, подушка, рост…" style="flex:1;min-width:170px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:0.82rem">
     </div>
+    <div id="riskHead" style="display:none;padding:0 20px;font-size:0.82rem;color:var(--text2)"></div>
     <div id="riskBody" style="padding:20px;overflow-y:auto;line-height:1.6;font-size:0.92rem;color:var(--text)"></div>
     <div id="riskCodeBox" style="display:none;padding:0 20px 16px">
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:8px">Введите PRO-код или пароль:</div>
@@ -1838,6 +1845,7 @@ async function run(){
       <span id="riskLeft" style="font-size:0.78rem;color:var(--text2)"></span>
       <div style="display:flex;gap:10px">
         <button class="btn btn-sm" onclick="closeRisk()">Закрыть</button>
+        <button class="btn btn-sm" id="riskPdfBtn" onclick="saveRiskStocksPdf()" style="display:none">📄 Сохранить в PDF</button>
         <button class="btn" id="riskGo" onclick="runRisk()">Разобрать</button>
       </div>
     </div>
@@ -2098,6 +2106,8 @@ function openRisk(){
   document.getElementById('riskBody').innerHTML='<p style="color:var(--text2)">Риск-менеджер объяснит простым языком, что посчитано и где риски вашего портфеля. Нажмите «Разобрать».</p>';
   document.getElementById('riskLeft').textContent='';
   document.getElementById('riskCodeBox').style.display='none';
+  document.getElementById('riskPdfBtn').style.display='none';
+  document.getElementById('riskHead').style.display='none';
   document.getElementById('riskModal').style.display='block';
 }
 function closeRisk(){ document.getElementById('riskModal').style.display='none'; }
@@ -2117,12 +2127,37 @@ async function runRisk(){
     if(!r.ok){ body.innerHTML='<p style="color:var(--red)">'+(data.detail||'Не получилось выполнить разбор. Попробуйте позже.')+'</p>'; return; }
     if(typed){ try{ localStorage.setItem('idea_pro_code',typed); }catch(e){} }
     document.getElementById('riskCodeBox').style.display='none';
-    body.innerHTML=riskRender(data.analysis||'');
+    const analysisHtml=riskRender(data.analysis||'');
+    body.innerHTML=analysisHtml;
+    const sel=document.getElementById('pfSelect');
+    const pname=(sel&&sel.value)?sel.value:'';
+    const dstr=new Date().toLocaleDateString('ru-RU');
+    const headEl=document.getElementById('riskHead');
+    headEl.innerHTML=(pname?('<strong>'+riskEsc(pname)+'</strong> · '):'')+'разбор рисков от '+dstr;
+    headEl.style.display='block';
+    const printEl=document.getElementById('riskStocksPrint');
+    if(printEl){
+      printEl.innerHTML='<div class="brp-h">🛡️ Разбор рисков портфеля акций (США)</div>'+
+        '<div class="brp-meta">'+(pname?(riskEsc(pname)+' · '):'')+dstr+'</div>'+
+        '<div class="brp-body">'+analysisHtml+'</div>'+
+        '<div class="brp-foot">investtools.pro · методология Екатерины Кутняк · образовательный разбор, не индивидуальная инвестиционная рекомендация</div>';
+    }
+    document.getElementById('riskPdfBtn').style.display='inline-block';
     if(typeof data.left_this_month==='number'){ document.getElementById('riskLeft').textContent='Осталось разборов: '+data.left_this_month; }
   }catch(e){ body.innerHTML='<p style="color:var(--red)">Сеть недоступна. Попробуйте ещё раз.</p>'; }
   finally{ go.disabled=false; go.textContent=old; }
 }
+function saveRiskStocksPdf(){
+  const printEl=document.getElementById('riskStocksPrint');
+  if(!printEl || !printEl.innerHTML.trim()){ alert('Сначала получите разбор'); return; }
+  document.body.classList.add('printing-riskstocks');
+  window.print();
+  setTimeout(()=>{ document.body.classList.remove('printing-riskstocks'); }, 300);
+}
 </script>
 
+<div id="riskStocksPrint"></div>
+
+<script src="/nav.js" defer></script>
 </body>
 </html>
