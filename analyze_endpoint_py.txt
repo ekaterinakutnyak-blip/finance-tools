@@ -1,0 +1,193 @@
+# -*- coding: utf-8 -*-
+"""
+Эндпоинт ИИ-аналитика отчётности — /api/analyze
+Переиспользует ГОТОВУЮ инфраструктуру risk_manager.py (как /api/risk-check):
+авторизацию под паролем/токеном, счётчик 30-дневного лимита и вызов модели call_model.
+Пароль остаётся внутри risk_manager._is_master — сюда НЕ копируется.
+
+Установка:
+  1) положить этот файл в /opt/finance-api/
+  2) pip install pdfplumber      (httpx/ключ модели НЕ нужны — берём твой call_model)
+  3) положить промпт: /opt/finance-api/analyst_prompt.md
+  4) в main.py в самом низу:
+        from analyze_endpoint import analyze_router
+        app.include_router(analyze_router)
+  5) перезапустить сервис
+"""
+
+import io, re, json, sqlite3, datetime
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from typing import Optional
+
+# ← вся авторизация/лимит/вызов модели берём из уже работающего риск-менеджера
+from risk_manager import (
+    _is_master, _token_info, _period_token, _period_master,
+    _used, _bump, call_model,
+)
+
+PROMPT_PATH   = "/opt/finance-api/analyst_prompt.md"
+ANALYZE_LIMIT = 5           # разборов отчётов за 30 дней на код доступа (своё окно, отдельно от risk-check)
+MAX_REPORT_CHARS = 300_000
+
+# ← модель аналитика: Qwen (сильнее флеша, держит большой промпт + структурный JSON).
+#   ПОДСТАВЬ точный идентификатор Qwen из своего Yandex AI Studio, формат как у deepseek-v4-flash/latest.
+ANALYZE_MODEL = "qwen3.6-35b-a3b/latest"
+
+# ← доступ к разбору только для длинных подписок (от полугода).
+#   Длину считаем из дат токена (expires_at − created_at): месяц ≈30 дн, полгода ≈180, год ≈365.
+MAIN_DB_PATH  = "/opt/finance-api/db.sqlite"   # та же база, что у бота (таблица tokens)
+MIN_PLAN_DAYS = 175
+
+analyze_router = APIRouter(tags=["ai-analyst"])
+
+
+def _load_prompt() -> str:
+    with open(PROMPT_PATH, encoding="utf-8") as f:
+        return f.read()
+
+
+def _ocr_pdf(raw: bytes, max_pages: int = 40) -> str:
+    """OCR отсканированного PDF (tesseract, русский). Вызывается, когда текстового слоя нет."""
+    try:
+        import fitz  # pymupdf
+        import pytesseract
+        from PIL import Image
+    except Exception:
+        return ""
+    out = []
+    try:
+        doc = fitz.open(stream=raw, filetype="pdf")
+        for i in range(min(len(doc), max_pages)):
+            pix = doc[i].get_pixmap(dpi=200)
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
+            out.append(pytesseract.image_to_string(img, lang="rus"))
+    except Exception:
+        pass
+    return "\n".join(out)
+
+
+def _extract_pdf_text(raw: bytes):
+    """Вернёт (текст, число_страниц, использован_ли_OCR). Если текстового слоя нет (скан) — OCR."""
+    import pdfplumber
+    parts = []
+    npages = 0
+    with pdfplumber.open(io.BytesIO(raw)) as pdf:
+        npages = len(pdf.pages)
+        for page in pdf.pages:
+            t = page.extract_text() or ""
+            if t.strip():
+                parts.append(t)
+    text = "\n".join(parts)
+    ocr_used = False
+    if len(text.strip()) < 200 and npages > 0:      # мало текста при наличии страниц → скан
+        ocr = _ocr_pdf(raw)
+        if len(ocr.strip()) > len(text.strip()):
+            text, ocr_used = ocr, True
+    return text, npages, ocr_used
+
+
+def _split_prose_and_json(answer: str):
+    # полный блок ```json ... ``` — забираем данные, прозу берём до него
+    matches = list(re.finditer(r"```json\s*(.*?)```", answer, re.DOTALL | re.IGNORECASE))
+    if matches:
+        m = matches[-1]
+        prose = answer[:m.start()].strip()
+        try:
+            data = json.loads(m.group(1).strip())
+        except Exception:
+            data = None
+        return prose, data
+    # незакрытый / оборванный блок ```json — данных нет, но «хвост» из прозы вырезаем
+    cut = re.search(r"```json", answer, re.IGNORECASE)
+    if cut:
+        return answer[:cut.start()].strip(), None
+    return answer.strip(), None
+
+
+def _plan_days(code: str):
+    """Длина подписки по токену в днях (expires_at − created_at), либо None если токен не найден."""
+    try:
+        con = sqlite3.connect(MAIN_DB_PATH)
+        row = con.execute(
+            "SELECT created_at, expires_at FROM tokens WHERE token=? OR token=? LIMIT 1",
+            (code, code.upper()),
+        ).fetchone()
+        con.close()
+        if not row:
+            return None
+        c = datetime.datetime.fromisoformat(row[0])
+        e = datetime.datetime.fromisoformat(row[1])
+        return (e - c).days
+    except Exception:
+        return None
+
+
+@analyze_router.post("/api/analyze")
+async def analyze(
+    token: str = Form(...),                 # PRO-код/пароль ИЛИ токен — как в risk-check
+    text: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+):
+    code = (token or "").strip()
+
+    # 1) доступ — ровно как в /api/risk-check, но со своим ключом-префиксом "AN:" (свой лимит)
+    if _is_master(code):
+        key, period = "AN:MASTER", _period_master()
+    else:
+        info = _token_info(code)
+        if info is None:
+            raise HTTPException(status_code=403, detail="Разбор отчётности доступен по подписке")
+        # доступ к аналитику — только для подписок от полугода
+        if (_plan_days(code) or 0) < MIN_PLAN_DAYS:
+            raise HTTPException(status_code=403, detail="Разбор отчётности доступен на тарифе от 6 месяцев")
+        uid, created_at = info
+        key, period = f"AN:U:{uid}", _period_token(created_at)
+
+    # 2) лимит (30-дневное окно, как у риск-менеджера)
+    used = _used(key, period)
+    if used >= ANALYZE_LIMIT:
+        raise HTTPException(status_code=402, detail=f"Лимит {ANALYZE_LIMIT} разборов за 30 дней исчерпан")
+
+    # 3) текст отчёта (PDF или вставленный текст)
+    report_text = ""
+    is_pdf = False
+    pdf_pages = 0
+    ocr_used = False
+    if file is not None:
+        raw = await file.read()
+        is_pdf = (file.filename or "").lower().endswith(".pdf")
+        if is_pdf:
+            try:
+                report_text, pdf_pages, ocr_used = _extract_pdf_text(raw)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Не смог прочитать PDF: {e}")
+        else:
+            report_text = raw.decode("utf-8", errors="ignore")
+    elif text:
+        report_text = text
+    if not report_text.strip():
+        if is_pdf and pdf_pages > 0:
+            raise HTTPException(status_code=422, detail="Не удалось прочитать отчёт: похоже, это скан плохого качества. Попробуйте более чёткий PDF, текстовую версию отчёта (обычно МСФО) или вставьте текст вручную.")
+        raise HTTPException(status_code=400, detail="Пустая отчётность: загрузите PDF или вставьте текст")
+
+    truncated = len(report_text) > MAX_REPORT_CHARS
+    if truncated:
+        report_text = report_text[:MAX_REPORT_CHARS]
+
+    # 4) вызов модели — твой же call_model (DeepSeek уже настроен на сервере)
+    system_prompt = _load_prompt()
+    user_input = "<отчётность>\n" + report_text + "\n</отчётность>"
+    try:
+        answer = call_model(system_prompt, user_input,
+                            model=ANALYZE_MODEL,
+                            max_output_tokens=16000, temperature=0)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
+
+    # 5) списываем разбор и делим ответ на прозу + JSON
+    _bump(key, period)
+    prose, data = _split_prose_and_json(answer)
+    return {"prose": prose, "data": data,
+            "left_this_month": max(0, ANALYZE_LIMIT - (used + 1)),
+            "report_truncated": truncated,
+            "ocr_used": ocr_used}
