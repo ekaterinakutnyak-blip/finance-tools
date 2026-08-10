@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой капитал — единый портфель · InvestTools</title>
+<link rel="canonical" href="https://investtools.pro/pro/wealth.html">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent2:#1B6B9A;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;--green:#2E9E5B;--yellow:#E6A100;--orange:#E67E22;--red:#C0392B}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;padding:2rem 1.2rem}
+.wrap{max-width:820px;margin:0 auto}
+h1{font-size:1.5rem;font-weight:700;margin-bottom:0.2rem}
+.sub{color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.4rem 1.5rem;margin-bottom:1.2rem}
+.card-h{font-size:0.78rem;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem}
+.total{font-family:var(--mono);font-size:2.2rem;font-weight:600;line-height:1.1}
+.total-sub{color:var(--text2);font-size:0.82rem;margin-top:0.3rem}
+.bar{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:1rem 0 0.9rem;background:var(--surface2)}
+.bar span{display:block;height:100%}
+.seg-ru{background:var(--accent)}.seg-us{background:var(--accent2)}.seg-bonds{background:var(--orange)}
+.alloc-row{display:flex;align-items:center;gap:10px;padding:0.55rem 0;border-top:1px solid var(--border);font-size:0.9rem}
+.alloc-row:first-of-type{border-top:none}
+.dot{width:11px;height:11px;border-radius:3px;flex:none}
+.alloc-name{flex:1}
+.alloc-name b{font-weight:600}.alloc-name .pn{color:var(--text3);font-size:0.78rem}
+.alloc-val{font-family:var(--mono);font-weight:600}
+.alloc-pct{font-family:var(--mono);color:var(--text2);min-width:52px;text-align:right}
+.combo{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:0.4rem}
+.combo .m{flex:1;min-width:150px}
+.combo .m .lbl{font-size:0.76rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.03em}
+.combo .m .big{font-family:var(--mono);font-size:1.8rem;font-weight:600;line-height:1.15;margin-top:2px}
+.combo .m .hint{font-size:0.76rem;color:var(--text2);margin-top:2px}
+.caveat{background:#FFF7E6;border:1px dashed #E6A100;border-radius:var(--radius);padding:0.8rem 1rem;font-size:0.84rem;color:#8a6d00;margin-top:0.9rem}
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:620px){.risk-grid{grid-template-columns:1fr}}
+.risk-card{border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;background:var(--surface2)}
+.risk-card h4{font-size:0.95rem;font-weight:700;margin-bottom:0.1rem}
+.risk-card .cls-sub{font-size:0.76rem;color:var(--text3);margin-bottom:0.7rem}
+.rm{display:flex;justify-content:space-between;font-size:0.85rem;padding:0.3rem 0;border-top:1px dashed var(--border)}
+.rm:first-of-type{border-top:none}
+.rm .v{font-family:var(--mono);font-weight:600}
+.empty{color:var(--text3);font-size:0.86rem;padding:0.6rem 0}
+.cta{display:inline-block;margin:0.3rem 0.5rem 0 0;padding:0.5rem 0.9rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--accent);text-decoration:none;font-size:0.82rem;font-weight:500}
+.cta:hover{border-color:var(--accent)}
+.disc{font-size:0.74rem;color:var(--text3);margin-top:0.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Мой капитал</h1>
+  <div class="sub">Все ваши портфели в одном месте. Объединяем только то, что честно складывается — ожидаемую доходность и волатильность. <b>Это вишенка, а не замена разборам по классам.</b></div>
+
+  <div id="content"></div>
+
+  <div class="card">
+    <div class="card-h">Пополнить картину</div>
+    <div style="font-size:0.86rem;color:var(--text2);margin-bottom:0.6rem">Данные берутся из ваших расчётов в калькуляторах. Рассчитайте портфель — и он появится здесь.</div>
+    <a class="cta" href="/pro/markowitz.html">Акции РФ →</a>
+    <a class="cta" href="/pro/markowitz-us.html">Акции США →</a>
+    <a class="cta" href="/pro/bond-portfolio.html">Облигации →</a>
+    <div class="disc">Данные хранятся только в этом браузере (localStorage). Это образовательный обзор, не индивидуальная инвестиционная рекомендация.</div>
+  </div>
+</div>
+
+<script>
+// ===== История классов активов (УК «Доход», доходность.рф): миксы акции/облигации по годам + инфляция =====
+const HR={0:[22.5,13.2,11.2,8.2,7.0,-7.1,28.8,12.2,6.0,9.1,8.9,0.1,17.6,12.7,12.2,4.4,15.0,11.1,4.3,11.8,6.0,5.1,27.5],10:[25.9,12.6,18.6,14.4,7.6,-13.0,38.5,13.5,4.0,9.1,8.7,-0.1,19.1,14.7,10.9,5.9,17.3,11.5,6.1,6.9,10.8,4.7,25.0],20:[29.3,12.0,26.0,20.5,8.2,-19.0,48.3,14.8,1.9,9.0,8.4,-0.3,20.5,16.7,9.7,7.3,19.7,11.8,7.8,2.0,15.6,4.4,22.6],30:[32.7,11.4,33.3,26.7,8.7,-24.9,58.0,16.1,-0.1,9.0,8.1,-0.5,22.0,18.7,8.5,8.8,22.0,12.2,9.6,-2.9,20.4,4.0,20.1],40:[36.1,10.8,40.7,32.8,9.3,-30.9,67.7,17.4,-2.2,9.0,7.9,-0.6,23.5,20.7,7.2,10.3,24.4,12.6,11.3,-7.8,25.2,3.7,17.7],50:[39.5,10.2,48.0,39.0,9.8,-36.8,77.5,18.7,-4.2,8.9,7.6,-0.8,24.9,22.7,6.0,11.7,26.7,13.0,13.1,-12.7,29.9,3.4,15.2],60:[43.0,9.6,55.4,45.2,10.4,-42.8,87.2,20.0,-6.3,8.9,7.4,-1.0,26.4,24.7,4.8,13.2,29.1,13.3,14.8,-17.6,34.7,3.0,12.8],70:[46.4,9.0,62.8,51.3,11.0,-48.7,96.9,21.3,-8.3,8.9,7.1,-1.2,27.9,26.7,3.5,14.7,31.4,13.7,16.6,-22.5,39.5,2.7,10.3],80:[49.8,8.5,70.1,57.5,11.5,-54.7,106.6,22.7,-10.4,8.8,6.8,-1.4,29.3,28.8,2.3,17.6,33.8,14.1,18.3,-27.4,44.3,2.3,7.8],90:[53.2,7.9,77.5,63.6,12.1,-60.7,116.4,24.0,-12.4,8.8,6.6,-1.6,30.8,30.8,1.1,17.6,36.1,14.5,20.0,-32.4,49.1,2.0,5.4],100:[56.6,7.3,84.9,69.8,12.7,-66.6,126.1,25.3,-14.5,8.8,6.3,-1.8,32.3,32.8,-0.2,19.1,38.5,14.8,21.8,-37.3,53.8,1.6,2.9]};
+const HI=[12.0,11.7,10.9,9.0,11.9,13.3,8.8,8.8,6.1,6.6,6.5,11.4,12.9,5.4,2.5,4.3,3.0,4.9,8.4,11.9,7.4,9.5,6.1];
+function _gm(a){let p=1;a.forEach(x=>p*=(1+x/100));return (Math.pow(p,1/a.length)-1)*100;}
+function _std(a){const m=a.reduce((s,x)=>s+x,0)/a.length;return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/a.length);}
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+function pct(part,total){ return total>0 ? +(part/total*100).toFixed(1) : 0; }
+
+const CLS = [
+  {key:'stocks_ru', label:'Акции РФ',   seg:'seg-ru',    color:'var(--accent)',  kind:'stocks', cur:'RUB'},
+  {key:'bonds',     label:'Облигации',  seg:'seg-bonds', color:'var(--orange)',  kind:'bonds',  cur:'RUB'},
+  {key:'stocks_us', label:'Акции США',  seg:'seg-us',    color:'var(--accent2)', kind:'stocks', cur:'USD'},
+];
+function sliceCur(key,d){ const c=CLS.find(x=>x.key===key); return (d&&d.cur)||(c&&c.cur)||'RUB'; }
+
+function readWealth(){
+  try{ return JSON.parse(localStorage.getItem('invest_wealth')||'{}'); }catch(e){ return {}; }
+}
+
+function riskRowsStocks(r){
+  if(!r) return '';
+  const rows=[];
+  if(r.expReturn!=null) rows.push(['Ожидаемая доходность (год)', r.expReturn+'%']);
+  if(r.vol!=null)       rows.push(['Волатильность σ (год)', r.vol+'%']);
+  if(r.maxDD!=null)     rows.push(['Макс. просадка', '−'+Math.abs(r.maxDD)+'%']);
+  if(r.var95m!=null)    rows.push(['Возможный убыток (VaR 95%, мес.)', '−'+Math.abs(r.var95m)+'%']);
+  return rows.map(x=>'<div class="rm"><span>'+x[0]+'</span><span class="v">'+x[1]+'</span></div>').join('');
+}
+function riskRowsBonds(r){
+  if(!r) return '';
+  const rows=[];
+  if(r.ytm!=null)      rows.push(['Доходность к погашению (YTM)', r.ytm+'%']);
+  if(r.duration!=null) rows.push(['Дюрация', r.duration+' лет']);
+  if(r.vdoPct!=null)   rows.push(['Доля ВДО', r.vdoPct+'%']);
+  if(r.pdYear)         rows.push(['Ср. вероятность дефолта', r.pdYear]);
+  return rows.map(x=>'<div class="rm"><span>'+x[0]+'</span><span class="v">'+x[1]+'</span></div>').join('');
+}
+
+// Единый портфель: складываем ожидаемую доходность (всегда) и волатильность
+// (при σ облигаций = 0, т.е. держим до погашения). Возвращает {er, vol, haveErStocks} или null.
+function combine(W, total){
+  if(total<=0) return null;
+  let er=0, haveEr=true, volStocks=0, haveVolStocks=false, anyStocks=false, erStocksKnown=true;
+  CLS.forEach(c=>{
+    const d=W[c.key]; if(!d || typeof d.value!=='number') return;
+    if(sliceCur(c.key,d)!=='RUB') return;   // единый портфель — только рублёвое (без смешивания валют)
+    const w=d.value/total, r=d.risk||{};
+    if(c.kind==='bonds'){
+      if(r.ytm!=null) er += w*r.ytm; else haveEr=false;
+      // σ облигаций = 0 при удержании до погашения → вклада в волатильность нет
+    } else {
+      anyStocks=true;
+      if(r.expReturn!=null) er += w*r.expReturn; else { haveEr=false; erStocksKnown=false; }
+      if(r.vol!=null){ volStocks += w*r.vol; haveVolStocks=true; } // ρ=1 сверху при двух рынках — консервативно
+    }
+  });
+  return { er: haveEr?+er.toFixed(2):null, vol: haveVolStocks?+volStocks.toFixed(2):null,
+           anyStocks, erStocksKnown };
+}
+
+function historyCard(W, total){
+  if(total<=0) return '';
+  const stk=(W.stocks_ru && sliceCur('stocks_ru',W.stocks_ru)==='RUB')?W.stocks_ru.value:0;
+  const bnd=(W.bonds && sliceCur('bonds',W.bonds)==='RUB')?W.bonds.value:0;
+  const base=stk+bnd;
+  if(base<=0) return '';
+  let sp=Math.round(stk/base*100/10)*10; if(sp<0)sp=0; if(sp>100)sp=100;
+  const series=HR[sp]; if(!series) return '';
+  const g=_gm(series), v=_std(series), inf=_gm(HI), real=((1+g/100)/(1+inf/100)-1)*100;
+  return '<div class="card"><div class="card-h">На фоне истории · '+series.length+' лет</div>'+
+    '<div style="font-size:0.88rem;color:var(--text2);margin-bottom:0.8rem">Похожий по составу портфель — <b>'+sp+'% акций / '+(100-sp)+'% облигаций</b> — на российской истории (акции: индекс МосБиржи полной доходности; облигации: Cbonds CBI RU Middle Market) давал:</div>'+
+    '<div class="combo">'+
+      '<div class="m"><div class="lbl">Доходность (история)</div><div class="big">'+g.toFixed(1)+'%</div><div class="hint">в год · геом. среднее</div></div>'+
+      '<div class="m"><div class="lbl">Волатильность (история)</div><div class="big">'+v.toFixed(1)+'%</div><div class="hint">разброс по годам</div></div>'+
+      '<div class="m"><div class="lbl">Реальная сверх инфляции</div><div class="big">'+real.toFixed(1)+'%</div><div class="hint">инфляция ~'+inf.toFixed(1)+'%/год</div></div>'+
+    '</div>'+
+    '<div class="disc">Источник: УК «Доход» (доходность.рф). Это исторический ориентир для похожего микса, а не ваш конкретный портфель и не прогноз. Прошлая доходность не гарантирует будущей.</div></div>';
+}
+function render(){
+  const W=readWealth();
+  const present=CLS.filter(c=>W[c.key] && typeof W[c.key].value==='number');
+  const el=document.getElementById('content');
+
+  if(!present.length){
+    el.innerHTML='<div class="card"><div class="card-h">Пока пусто</div>'+
+      '<div class="empty">Здесь появится весь ваш капитал, как только вы рассчитаете хотя бы один портфель в калькуляторах ниже. Данные подтянутся сами.</div></div>';
+    return;
+  }
+
+  const rub = present.filter(c=>sliceCur(c.key,W[c.key])==='RUB');
+  const usd = present.filter(c=>sliceCur(c.key,W[c.key])==='USD');
+  const total = rub.reduce((s,c)=>s+W[c.key].value,0);
+
+  // полоса + строки распределения (только рублёвое)
+  let bar='', rows='';
+  rub.forEach(c=>{ bar+='<span class="'+c.seg+'" style="width:'+pct(W[c.key].value,total)+'%"></span>'; });
+  CLS.forEach(c=>{
+    if(rub.indexOf(c)<0) return;
+    const d=W[c.key];
+    rows+='<div class="alloc-row"><span class="dot" style="background:'+c.color+'"></span>'+
+      '<span class="alloc-name"><b>'+c.label+'</b> <span class="pn">'+(d.name||'')+' · '+(d.asof||'')+'</span></span>'+
+      '<span class="alloc-val">'+fmt(d.value)+' ₽</span>'+
+      '<span class="alloc-pct">'+pct(d.value,total)+'%</span></div>';
+  });
+
+  // ===== Единый портфель: доходность + волатильность (рублёвое) =====
+  const cmb=combine(W,total);
+  const bondsVal=(W.bonds && sliceCur('bonds',W.bonds)==='RUB')?W.bonds.value:0;
+  const bondShare=pct(bondsVal,total);
+  let comboHtml='';
+  if(cmb && total>0){
+    const erCell = cmb.er!=null
+      ? '<div class="m"><div class="lbl">Ожидаемая доходность</div><div class="big">'+cmb.er+'%</div><div class="hint">в год, взвешенно по капиталу</div></div>'
+      : '<div class="m"><div class="lbl">Ожидаемая доходность</div><div class="big" style="color:var(--text3)">—</div><div class="hint">рассчитайте портфель акций РФ</div></div>';
+    const volCell = cmb.anyStocks
+      ? (cmb.vol!=null
+          ? '<div class="m"><div class="lbl">Волатильность σ</div><div class="big">'+cmb.vol+'%</div><div class="hint">в год · облигации её разбавляют</div></div>'
+          : '<div class="m"><div class="lbl">Волатильность σ</div><div class="big" style="color:var(--text3)">—</div><div class="hint">рассчитайте портфель акций РФ</div></div>')
+      : '<div class="m"><div class="lbl">Волатильность σ</div><div class="big">≈ 0%</div><div class="hint">пока только облигации до погашения</div></div>';
+    comboHtml='<div class="card"><div class="card-h">Единый портфель · что честно складывается</div>'+
+      '<div class="combo">'+erCell+volCell+'</div>'+
+      '<div class="caveat">⚠️ Волатильность посчитана в допущении, что <b>облигации держатся до погашения</b> — тогда их σ ≈ 0, и они не добавляют колебаний, а лишь разбавляют риск акций (сейчас облигации — '+bondShare+'% рублёвого капитала). Если продавать облигации раньше срока, у них появляется собственная волатильность (процентный риск), и реальная σ портфеля будет выше этой оценки.'+
+      (cmb.anyStocks && !cmb.erStocksKnown ? '<br><br>Ожидаемая доходность акций не передана из расчёта — пересчитайте портфель акций РФ, чтобы цифра стала полной.' : '')+
+      '</div></div>';
+  }
+
+  // ===== Детали риска по рублёвым классам =====
+  let riskCards='';
+  if(W.stocks_ru && typeof W.stocks_ru.value==='number'){
+    riskCards+='<div class="risk-card"><h4>Акции РФ</h4><div class="cls-sub">рыночный риск</div>'+
+      (W.stocks_ru.risk?riskRowsStocks(W.stocks_ru.risk):'<div class="empty">Рассчитайте портфель, чтобы увидеть доходность, σ, просадку.</div>')+'</div>';
+  }
+  if(bondsVal>0){
+    riskCards+='<div class="risk-card"><h4>Облигации</h4><div class="cls-sub">процентный и кредитный риск</div>'+
+      riskRowsBonds(W.bonds.risk)+'</div>';
+  }
+
+  // ===== Долларовые активы — отдельно (не смешиваем валюты) =====
+  let usdHtml='';
+  if(usd.length){
+    let ur='';
+    usd.forEach(c=>{ const d=W[c.key];
+      ur+='<div class="risk-card"><h4>'+c.label+'</h4><div class="cls-sub">'+(d.name||'')+' · '+(d.asof||'')+' · $'+Math.round(d.value).toLocaleString('en-US')+'</div>'+
+        (d.risk?riskRowsStocks(d.risk):'')+'</div>';
+    });
+    usdHtml='<div class="card"><div class="card-h">В валюте — отдельно</div>'+
+      '<div class="risk-grid">'+ur+'</div>'+
+      '<div class="disc">Долларовые активы показываем отдельно: чтобы честно включить их в рублёвый итог, нужен курс и учёт валютного риска. В единый ₽-портфель выше они не входят.</div></div>';
+  }
+
+  let html='';
+  if(total>0){
+    html+='<div class="card"><div class="card-h">Всего капитала в рублях (по рассчитанным портфелям)</div>'+
+      '<div class="total">'+fmt(total)+' ₽</div>'+
+      '<div class="total-sub">только рублёвые портфели, которые вы уже рассчитали</div>'+
+      '<div class="bar">'+bar+'</div>'+rows+'</div>'+
+      comboHtml+historyCard(W,total);
+    if(riskCards){
+      html+='<div class="card"><div class="card-h">Детали риска по классам — без смешивания</div>'+
+        '<div class="risk-grid">'+riskCards+'</div>'+
+        '<div class="disc">Полный риск акций (просадка, VaR) и облигаций (дюрация, кредит) в одну цифру не сводим — у них разная природа. Складываем только доходность и σ, остальное смотрим рядом.</div></div>';
+    }
+  } else if(usd.length){
+    html+='<div class="card"><div class="card-h">Пока только валютные активы</div>'+
+      '<div class="empty">Рублёвых портфелей ещё нет — рассчитайте акции РФ или облигации, и здесь появится единый ₽-портфель.</div></div>';
+  }
+  html+=usdHtml;
+  el.innerHTML=html;
+}
+render();
+</script>
+<script src="/nav.js" defer></script>
+
+<!-- Яндекс.Метрика -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+ym(109013741,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute;left:-9999px" alt=""/></div></noscript>
+</body>
+</html>

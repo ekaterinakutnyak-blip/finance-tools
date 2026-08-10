@@ -1614,6 +1614,24 @@ async function run(){
     // сохраняем данные для PDF-отчёта
     window._reportData = {cards, tickers, retMap, userPort, stockStats};
 
+    // ===== Сводка в «Мой капитал» (личный кабинет lite, localStorage) =====
+    try{
+      const _your=cards.find(c=>c.title==='Ваш портфель');
+      if(_your && _your.data && _your.data.totalValue>0){
+        const _sel=document.getElementById('pfSelect');
+        const W=JSON.parse(localStorage.getItem('invest_wealth')||'{}');
+        W.stocks_us={
+          name:(_sel&&_sel.value)||'Акции США',
+          value:Math.round(_your.data.totalValue),
+          cur:'USD',
+          asof:new Date().toISOString().slice(0,10),
+          risk:{ expReturn:+(_your.data.r*100).toFixed(2), vol:+(_your.data.v*100).toFixed(2),
+                 maxDD:+(_your.data.d*100).toFixed(1) }
+        };
+        localStorage.setItem('invest_wealth', JSON.stringify(W));
+      }
+    }catch(e){}
+
     // Weights table
     document.getElementById('weightsCard').classList.remove('hidden');
     const wt=document.getElementById('weightsTable');

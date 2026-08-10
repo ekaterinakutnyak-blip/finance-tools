@@ -1720,6 +1720,22 @@ async function run(){
       credit_summary, credit_zones, credit_rows
     };
 
+    // ===== Сводка в «Мой капитал» (личный кабинет lite, localStorage) =====
+    try{
+      const _vdo=(credit_zones||[]).find(z=>/ВДО/i.test(z.label));
+      const _sel=document.getElementById('pfSelect');
+      const W=JSON.parse(localStorage.getItem('invest_wealth')||'{}');
+      W.bonds={
+        name:(_sel&&_sel.value)||'Облигации',
+        value:Math.round(totalValue),
+        cur:'RUB',
+        asof:new Date().toISOString().slice(0,10),
+        risk:{ duration:+wDuration.toFixed(2), ytm:+wYTM.toFixed(2),
+               vdoPct:_vdo?_vdo.pct:0, pdYear:(credit_summary&&credit_summary.pd_year)||null }
+      };
+      localStorage.setItem('invest_wealth', JSON.stringify(W));
+    }catch(e){}
+
     // ===== Купонный календарь: реальный график выплат из bondization =====
     document.getElementById('couponCard').classList.remove('hidden');
     const today=new Date();today.setHours(0,0,0,0);
