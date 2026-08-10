@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Модели банкротства простыми словами: Альтман, Таффлер и Иркутская</title>
+<meta name="description" content="Как по цифрам одного отчёта прикинуть риск банкротства компании: модель Альтмана (Z-score и Z″), Таффлер и Иркутская модель (ИГЭА). Формулы, зоны, честные ограничения и почему три модели вместе надёжнее одной. Рубрика «Анатомия отчётности», Екатерина Кутняк.">
+<meta name="keywords" content="модель Альтмана, Z-score, Таффлер, Иркутская модель, ИГЭА, модели банкротства, вероятность дефолта, кредитный риск, финансовый анализ">
+<link rel="canonical" href="https://investtools.pro/articles/modeli-bankrotstva-altman-taffler-igea.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/articles/modeli-bankrotstva-altman-taffler-igea.html">
+<meta property="og:title" content="Модели банкротства простыми словами: Альтман, Таффлер и Иркутская">
+<meta property="og:description" content="Как по одному отчёту прикинуть риск банкротства: Альтман, Таффлер, Иркутская модель. Формулы, зоны, честные ограничения и живой пример.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.75}
+.container{max-width:720px;margin:0 auto;padding:1.6rem 1.5rem 3rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+.back-link:hover{color:var(--accent)}
+.art-h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.4rem;line-height:1.25}
+.art-meta{font-size:0.8rem;color:var(--text3);margin-bottom:1.6rem}
+.art p{font-size:1.05rem;color:var(--text);margin-bottom:1.15rem}
+.art h2{font-size:1.35rem;font-weight:700;margin:2.4rem 0 0.8rem;letter-spacing:-0.01em}
+.art h3{font-size:1.08rem;font-weight:700;margin:1.4rem 0 0.5rem;color:var(--accent)}
+.lead{font-size:1.06rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:1.1rem 1.3rem;margin-bottom:1.6rem;line-height:1.7}
+.art strong{font-weight:600}
+.art a{color:var(--accent2)}
+.formula{font-family:var(--mono);font-size:0.92rem;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:0.8rem 1rem;margin:0.4rem 0 1rem;overflow-x:auto;white-space:nowrap;color:var(--text)}
+.zones{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.6rem 1rem;margin:0.2rem 0 1.2rem}
+.zones div{font-size:0.95rem;padding:0.35rem 0;border-top:1px solid var(--border)}
+.zones div:first-child{border-top:none}
+.zones .z{font-family:var(--mono);color:var(--text2);margin-right:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+.dot.r{background:var(--red)}.dot.y{background:var(--yellow)}.dot.g{background:var(--green)}
+.callout{background:#FFF7E6;border:1px solid #E6A100;border-radius:var(--radius);padding:0.9rem 1.1rem;margin:1rem 0 1.4rem;font-size:0.98rem;color:#8a6d00}
+.cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:2.2rem 0 0;font-size:1rem;color:var(--text2)}
+.cta a{color:var(--accent);font-weight:600;text-decoration:none}
+.disclaimer{font-size:0.82rem;color:var(--text3);font-style:italic;margin:1.6rem 0 0;padding-top:1rem;border-top:1px solid var(--border)}
+.footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7;text-align:center}
+.footer a{color:var(--text2)}
+.sign{font-size:0.95rem;color:var(--text2);margin-top:1.4rem}
+</style>
+</head>
+<body>
+<div class="container art">
+<a href="../articles.html" class="back-link">← Все статьи</a>
+<h1 class="art-h1">Три модели банкротства: Альтман, Таффлер и Иркутская</h1>
+<div class="art-meta">Рубрика «Анатомия отчётности» · как по цифрам одного отчёта прикинуть риск дефолта</div>
+
+<div class="lead">Компании не умирают внезапно. Как и люди. Сначала недомогание, потом симптомы, и только в конце то, что замечают все: «ой, а он же банкрот». Люди больше полувека пытаются поймать этот момент раньше — свести пухлый отчёт к одному числу-температуре. Разберём три таких термометра: американский (Альтман), британский (Таффлер) и наш (Иркутская модель).</div>
+
+<h2>С чего всё началось: Альтман</h2>
+<p>В 1968 году американский экономист Эдвард Альтман задал нахальный вопрос: можно ли предсказать банкротство, не листая сто страниц истории болезни, — по одному числу? До этого он несколько лет копался в 66 компаниях и 22 финансовых коэффициентах и первым применил к оценке банкротства дискриминантный анализ — метод, который берёт горстку показателей, взвешивает каждый своим множителем и складывает в единый балл Z. Чем ниже Z — тем ближе край.</p>
+<p>Тонкость, о которой обычно молчат: <strong>формул у Альтмана несколько.</strong> Он всю жизнь свою модель дорабатывал — под разные типы компаний и разные страны. Самая известная — пятифакторная, для <strong>публичных</strong> заводов с котировками на бирже:</p>
+<div class="formula">Z = 1,2·X1 + 1,4·X2 + 3,3·X3 + 0,6·X4 + 0,999·X5</div>
+<p>где X1 — оборотный капитал/активы, X2 — нераспределённая прибыль/активы, X3 — прибыль до процентов и налогов (EBIT)/активы, X4 — <em>рыночная</em> стоимость акций/обязательства, X5 — выручка/активы. Зоны простые: Z &lt; 1,81 — вероятность банкротства 80–100% за два года; 1,81–2,99 — серёдка; Z &gt; 2,99 — благополучно. Точность около 85% на год вперёд — для такого рода моделей это много.</p>
+<p>Но у большинства наших эмитентов акции на бирже <strong>не котируются</strong> — а значит, рыночной стоимости акций (тот самый X4) просто нет. Для них Альтман сделал отдельную версию, а потом ещё и поправил её под развивающиеся рынки, добавив константу 3,25. Это та самая <strong>Z″</strong>, которую и стоит применять к нашим компаниям:</p>
+<div class="formula">Z″ = 3,25 + 6,56·X1 + 3,26·X2 + 6,72·X3 + 1,05·X4</div>
+<p>Здесь X4 уже <em>балансовый</em> капитал к обязательствам — никакой биржи не требуется. Зоны: Z″ &gt; 2,6 — безопасно; 1,1–2,6 — серая зона неопределённости; Z″ &lt; 1,1 — высокая вероятность банкротства. Считать «не той» формулой — всё равно что мерить давление градусником: цифра будет, гордая, только не про то.</p>
+
+<h2>Балл — это ещё не вероятность. Честно про перевод</h2>
+<p>Сам по себе Z — просто балл. Чтобы он стал понятным, его связывают с <strong>кредитным рейтингом</strong>. Альтман показал, что балл напрямую коррелирует с рейтингами агентств: у Microsoft Z-score около 5,9 и рейтинг наивысший, у сети Burger King — 2,6 и рейтинг уже B. У «отличников» с рейтингом ААА средний Z ≈ 5. То есть по баллу можно прикинуть эквивалентный рейтинг, а рейтингу — сопоставить историческую частоту дефолтов: как часто компании такого класса не доживали, по статистике за десятки лет.</p>
+<div class="callout">И тут держим руку на пульсе честности: это <strong>не</strong> вероятность банкротства конкретной компании. Это средняя температура по палате с похожим диагнозом. Красная лампочка «посмотреть внимательнее», а не приговор.</div>
+<p>И ещё честно: Альтман строил модель на американских компаниях с их стандартом учёта. Для наших к ней нужно относиться как к <strong>ориентиру</strong>, а не к истине в последней инстанции. Полезно — да. Достаточно в одиночку — нет.</p>
+
+<h2>Таффлер: британский ответ</h2>
+<p>В 1977 году британцы Таффлер и Тишоу собрали свою модель — на четырёх коэффициентах, но с другим акцентом: не столько на структуре капитала, сколько на <strong>операционной живучести</strong> — способна ли компания генерировать деньги и обслуживать краткосрочные долги.</p>
+<div class="formula">Z = 0,53·X1 + 0,13·X2 + 0,18·X3 + 0,16·X4</div>
+<p>где X1 — прибыль до налога/краткосрочные обязательства (главный вес — «хватает ли прибыли на короткие долги»), X2 — оборотные активы/все обязательства, X3 — краткосрочные обязательства/активы, X4 — выручка/активы. Зоны:</p>
+<div class="zones">
+<div><span class="dot g"></span><span class="z">&gt; 0,3</span>по модели устойчиво</div>
+<div><span class="dot y"></span><span class="z">0,2–0,3</span>серая зона, у границы</div>
+<div><span class="dot r"></span><span class="z">&lt; 0,2</span>тревожно</div>
+</div>
+<p>У Таффлера есть особенность, о которой честно предупредим: он хорошо <strong>ранжирует</strong> компании по риску, но готовой международной шкалы «балл → вероятность дефолта» у него нет. Чтобы получить из него именно вероятность, нужна локальная калибровка на своей статистике. Поэтому Таффлер у нас говорит зонами, а не процентами — и это честнее, чем рисовать вероятность из воздуха.</p>
+
+<h2>Иркутская модель (ИГЭА): наша</h2>
+<p>Западные модели построены на западных компаниях и западном учёте. Логично было сделать свою — на российских данных и по РСБУ. Такую в конце 1990-х собрали в Иркутской государственной экономической академии, отсюда и имя — модель ИГЭА (её ещё называют иркутской):</p>
+<div class="formula">R = 8,38·K1 + K2 + 0,054·K3 + 0,63·K4</div>
+<p>где K1 — оборотный капитал/активы (с самым большим весом — оборотка тут главный нерв), K2 — чистая прибыль/собственный капитал, K3 — выручка/активы, K4 — чистая прибыль/затраты. В отличие от Таффлера, у ИГЭА <strong>есть</strong> авторские вероятностные бэнды:</p>
+<div class="zones">
+<div><span class="dot g"></span><span class="z">R &gt; 0,42</span>риск минимальный (&lt; 10%)</div>
+<div><span class="dot g"></span><span class="z">0,32–0,42</span>низкий (15–20%)</div>
+<div><span class="dot y"></span><span class="z">0,18–0,32</span>средний (35–50%)</div>
+<div><span class="dot r"></span><span class="z">0–0,18</span>высокий (60–80%)</div>
+<div><span class="dot r"></span><span class="z">R &lt; 0</span>максимальный (90–100%)</div>
+</div>
+<p>Плюс модели — она «говорит по-русски»: заточена под нашу отчётность. Минус тот же, что у всех: пороги подобраны эмпирически на конкретной выборке, и на компании другого профиля их надо переносить с оглядкой.</p>
+
+<h2>Почему три, а не одна</h2>
+<p>Резонный вопрос: если есть Альтман, зачем остальные? Затем, что каждая модель ловит своё. Альтман смотрит на структуру капитала и накопленную прибыль. Таффлер — на операционную живучесть и короткие долги. ИГЭА — на оборотку и рентабельность по-нашему. Один термометр под мышкой, другой во рту, третий электронный — и если все трое показывают жар, диагноз надёжнее.</p>
+<p>А вот когда модели <strong>расходятся</strong> — это не повод махнуть рукой, это само по себе сигнал. Значит, компания нестандартная: где-то данные искажают картину, где-то бизнес не укладывается в шаблон, под который модель заточена. Смотреть надо на <strong>согласие моделей и на тренд</strong> во времени, а не на одну цифру одного года.</p>
+
+<h2>Главное — без иллюзий</h2>
+<p>Ни одна из этих моделей не заменяет чтение отчёта. Все они построены эмпирически — коэффициенты подобраны под массив исторических данных, а значит, к новой компании применяются с допуском. Это <strong>скрининг</strong>: быстрый термометр перед серьёзным разговором. Он говорит «тут стоит присмотреться», а не выносит приговор. И именно так его и надо использовать — как первый фильтр, а не как последнее слово.</p>
+
+<h2>Как это выглядит вживую</h2>
+<p>Возьмём свежий отчёт ТрансКонтейнера (МСФО 2025) — компанию с чистым убытком и дефицитом оборотного капитала. Прогоняем через все три:</p>
+<div class="zones">
+<div><span class="dot r"></span><strong>Альтман Z″ = 1,94</strong> — эквивалент рейтинга ССС-, высокий риск</div>
+<div><span class="dot y"></span><strong>Таффлер = 0,219</strong> — пограничная, серая зона</div>
+<div><span class="dot r"></span><strong>ИГЭА = −3,06</strong> — вероятность 90–100%</div>
+</div>
+<p>А теперь самое интересное — уже без шуток. В том же отчёте <strong>аудитор</strong>, независимо от всяких формул, пишет: «существенная неопределённость в отношении непрерывности деятельности». Три модели и живой человек-аудитор, не сговариваясь, показали на одну дверь. Когда математика 1968 года и аудитор 2025-го говорят одно и то же — спорить как-то неловко.</p>
+
+<div class="cta">Считать три модели руками по каждому отчёту — долго и муторно. На investtools.pro это делает <a href="../pro/ai-analyst.html">ИИ-аналитик отчётности</a>: загрузили PDF — он сам достаёт строки из баланса (и показывает какие, чтобы вы сверились), выбирает нужную версию Альтмана и считает все три модели со светофором. Минута вместо вечера с калькулятором.</div>
+
+<p class="sign">Кутняк Екатерина</p>
+
+<div class="disclaimer">Материал образовательный и не является индивидуальной инвестиционной рекомендацией. Скоринговые модели — инструмент экспресс-оценки, а не гарантия: они показывают вероятность и класс риска, а не судьбу конкретной компании. Пороги и коэффициенты подобраны эмпирически и на разных выборках могут отличаться.</div>
+
+<div class="footer">
+Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a><br>
+<a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram-канал</a> · © 2025–2026
+</div>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>
