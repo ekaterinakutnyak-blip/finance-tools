@@ -137,6 +137,9 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 <script src="../gate.js"></script>
 <div class="container">
 <h1>Оптимизация портфеля · США</h1>
+<a id="backToWealth" href="/pro/wealth.html" style="display:none;align-items:center;gap:0.4rem;margin:0.4rem 0 1rem;padding:0.55rem 0.95rem;background:#E8F0EB;border:1px solid #2D5A3D;border-radius:10px;color:#2D5A3D;font-weight:600;font-size:0.9rem;text-decoration:none;width:fit-content">← Вернуться в «Мой капитал»</a>
+<script>(function(){try{var p=new URLSearchParams(location.search);var fromW=p.get("from")==="wealth"||/\/wealth\.html/.test(document.referrer||"");if(fromW){var b=document.getElementById("backToWealth");if(b)b.style.display="inline-flex";}}catch(e){}})();</script>
+
 <p class="subtitle">Markowitz · эффективная граница · NYSE / NASDAQ</p>
 
 <div class="card">
