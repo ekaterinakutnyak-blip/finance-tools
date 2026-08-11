@@ -45,6 +45,17 @@ h1{font-size:1.5rem;font-weight:700;margin-bottom:0.2rem}
 .cta{display:inline-block;margin:0.3rem 0.5rem 0 0;padding:0.5rem 0.9rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--accent);text-decoration:none;font-size:0.82rem;font-weight:500}
 .cta:hover{border-color:var(--accent)}
 .disc{font-size:0.74rem;color:var(--text3);margin-top:0.5rem}
+.wactions{display:flex;gap:0.6rem;margin:0 0 1.3rem;flex-wrap:wrap}
+.wbtn{font-family:var(--sans);font-size:0.85rem;font-weight:600;padding:0.5rem 0.95rem;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.wbtn.ghost{background:var(--surface);color:var(--accent)}
+.wbtn:hover{opacity:0.92}
+.print-head{display:none}
+@media print{
+  body{background:#fff;padding:0.5rem}
+  .wactions,#fillCard,header,nav{display:none !important}
+  .print-head{display:block;font-size:1.35rem;font-weight:700;margin-bottom:0.4rem}
+  .card{break-inside:avoid;border-color:#ccc}
+}
 </style>
 </head>
 <body>
@@ -52,9 +63,15 @@ h1{font-size:1.5rem;font-weight:700;margin-bottom:0.2rem}
   <h1>Мой капитал</h1>
   <div class="sub">Все ваши портфели в одном месте. Объединяем только то, что честно складывается — ожидаемую доходность и волатильность. <b>Это вишенка, а не замена разборам по классам.</b></div>
 
+  <div class="print-head" id="printHead"></div>
+  <div class="wactions" id="wactions" style="display:none">
+    <button class="wbtn" onclick="savePdf()">💾 Сохранить в PDF</button>
+    <button class="wbtn ghost" onclick="resetWealth()">↺ Сбросить до начала</button>
+  </div>
+
   <div id="content"></div>
 
-  <div class="card">
+  <div class="card" id="fillCard">
     <div class="card-h">Пополнить картину</div>
     <div style="font-size:0.86rem;color:var(--text2);margin-bottom:0.6rem">Данные берутся из ваших расчётов в калькуляторах. Рассчитайте портфель — и он появится здесь.</div>
     <a class="cta" href="/pro/markowitz.html?from=wealth">Акции РФ →</a>
@@ -147,6 +164,7 @@ function render(){
   const W=readWealth();
   const present=CLS.filter(c=>W[c.key] && typeof W[c.key].value==='number');
   const el=document.getElementById('content');
+  const _wa=document.getElementById('wactions'); if(_wa)_wa.style.display=present.length?'flex':'none';
 
   if(!present.length){
     el.innerHTML='<div class="card"><div class="card-h">Пока пусто</div>'+
@@ -235,6 +253,18 @@ function render(){
   }
   html+=usdHtml;
   el.innerHTML=html;
+}
+function savePdf(){
+  var ph=document.getElementById('printHead');
+  var d=new Date();
+  var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(ph)ph.textContent='Мой капитал · investtools.pro · '+ds;
+  window.print();
+}
+function resetWealth(){
+  if(!confirm('Сбросить «Мой капитал» до начала? Очистится только эта сводная картина. Портфели, сохранённые в калькуляторах, останутся.'))return;
+  try{localStorage.removeItem('invest_wealth');}catch(e){}
+  render();
 }
 render();
 </script>
