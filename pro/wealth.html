@@ -50,9 +50,16 @@ h1{font-size:1.5rem;font-weight:700;margin-bottom:0.2rem}
 .wbtn.ghost{background:var(--surface);color:var(--accent)}
 .wbtn:hover{opacity:0.92}
 .print-head{display:none}
+.splitctl{margin:0 0 1.1rem;padding:0.9rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)}
+.splitlab{display:flex;justify-content:space-between;font-size:0.9rem;margin-bottom:0.5rem}
+.splitlab b{font-family:var(--mono)}
+.splitctl input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;margin:0.15rem 0}
+.splithint{font-size:0.78rem;color:var(--text2);margin-top:0.45rem;line-height:1.5}
+.splithint a{color:var(--accent);text-decoration:none;font-weight:600}
+.mixbadge{display:inline-block;font-family:var(--mono);font-size:0.62rem;font-weight:600;letter-spacing:0.05em;background:#E6F1FB;color:var(--accent2);padding:2px 7px;border-radius:5px;vertical-align:middle}
 @media print{
   body{background:#fff;padding:0.5rem}
-  .wactions,#fillCard,header,nav{display:none !important}
+  .wactions,#fillCard,header,nav,.splitctl{display:none !important}
   .print-head{display:block;font-size:1.35rem;font-weight:700;margin-bottom:0.4rem}
   .card{break-inside:avoid;border-color:#ccc}
 }
@@ -160,6 +167,37 @@ function historyCard(W, total){
     '</div>'+
     '<div class="disc">Источник: УК «Доход» (доходность.рф). Это исторический ориентир для похожего микса, а не ваш конкретный портфель и не прогноз. Прошлая доходность не гарантирует будущей.</div></div>';
 }
+function histFor(sp){var r=Math.round(sp/10)*10;if(r<0)r=0;if(r>100)r=100;var series=HR[r];if(!series)return null;var g=_gm(series),v=_std(series),inf=_gm(HI),real=((1+g/100)/(1+inf/100)-1)*100;return {r:r,g:g,v:v,real:real,inf:inf,n:series.length};}
+function histCardSlider(sp){
+  var h=histFor(sp); if(!h) return '';
+  return '<div class="card"><div class="card-h">На фоне истории · '+h.n+' лет</div>'+
+    '<div style="font-size:0.88rem;color:var(--text2);margin-bottom:0.8rem">Похожий по составу портфель — <b id="hSplit">'+h.r+'% акций / '+(100-h.r)+'% облигаций</b> — на российской истории (акции: индекс МосБиржи полной доходности; облигации: Cbonds CBI RU Middle Market) давал:</div>'+
+    '<div class="combo">'+
+      '<div class="m"><div class="lbl">Доходность (история)</div><div class="big" id="hG">'+h.g.toFixed(1)+'%</div><div class="hint">в год · геом. среднее</div></div>'+
+      '<div class="m"><div class="lbl">Волатильность (история)</div><div class="big" id="hV">'+h.v.toFixed(1)+'%</div><div class="hint">разброс по годам</div></div>'+
+      '<div class="m"><div class="lbl">Реальная сверх инфляции</div><div class="big" id="hReal">'+h.real.toFixed(1)+'%</div><div class="hint">инфляция ~'+h.inf.toFixed(1)+'%/год</div></div>'+
+    '</div>'+
+    '<div class="disc">Источник: УК «Доход» (доходность.рф). Это исторический ориентир для похожего микса, а не ваш конкретный портфель и не прогноз. Прошлая доходность не гарантирует будущей.</div></div>';
+}
+function applyMix(sp){
+  var M=window.__mix; if(!M)return;
+  var s=sp/100,b=1-s;
+  var er=s*M.ERS+b*M.YTMB, vol=s*M.VOLS;
+  function g(id){return document.getElementById(id);}
+  if(g('spS'))g('spS').textContent=Math.round(sp);
+  if(g('spB'))g('spB').textContent=Math.round(100-sp);
+  if(g('capB'))g('capB').textContent=Math.round(100-sp);
+  if(g('erVal'))g('erVal').textContent=er.toFixed(2)+'%';
+  if(g('volVal'))g('volVal').textContent=vol.toFixed(2)+'%';
+  if(g('mixBadge'))g('mixBadge').style.display=(Math.round(sp)===Math.round(M.AS))?'none':'inline-block';
+  var h=histFor(sp);
+  if(h){
+    if(g('hSplit'))g('hSplit').textContent=h.r+'% акций / '+(100-h.r)+'% облигаций';
+    if(g('hG'))g('hG').textContent=h.g.toFixed(1)+'%';
+    if(g('hV'))g('hV').textContent=h.v.toFixed(1)+'%';
+    if(g('hReal'))g('hReal').textContent=h.real.toFixed(1)+'%';
+  }
+}
 function render(){
   const W=readWealth();
   const present=CLS.filter(c=>W[c.key] && typeof W[c.key].value==='number');
@@ -192,8 +230,31 @@ function render(){
   const cmb=combine(W,total);
   const bondsVal=(W.bonds && sliceCur('bonds',W.bonds)==='RUB')?W.bonds.value:0;
   const bondShare=pct(bondsVal,total);
+  // ---- Ползунок доли акций/облигаций (режим «что если») ----
+  const sRu=(W.stocks_ru && sliceCur('stocks_ru',W.stocks_ru)==='RUB' && typeof W.stocks_ru.value==='number')?W.stocks_ru:null;
+  const bRu=(W.bonds && sliceCur('bonds',W.bonds)==='RUB' && typeof W.bonds.value==='number')?W.bonds:null;
+  const ERS=(sRu&&sRu.risk&&sRu.risk.expReturn!=null)?sRu.risk.expReturn:null;
+  const VOLS=(sRu&&sRu.risk&&sRu.risk.vol!=null)?sRu.risk.vol:null;
+  const YTMB=(bRu&&bRu.risk&&bRu.risk.ytm!=null)?bRu.risk.ytm:null;
+  const canSlide=!!(sRu&&bRu&&ERS!=null&&VOLS!=null&&YTMB!=null&&(sRu.value+bRu.value)>0);
+  const actualSp=canSlide?+(sRu.value/(sRu.value+bRu.value)*100).toFixed(1):null;
   let comboHtml='';
-  if(cmb && total>0){
+  if(canSlide){
+    const asR=Math.round(actualSp);
+    comboHtml='<div class="card"><div class="card-h">Единый портфель · что честно складывается</div>'+
+      '<div class="splitctl">'+
+        '<div class="splitlab"><span>Акции РФ <b id="spS">'+asR+'</b>%</span><span>Облигации <b id="spB">'+(100-asR)+'</b>%</span></div>'+
+        '<input type="range" min="0" max="100" step="1" value="'+actualSp+'" id="mixSlider">'+
+        '<div class="splithint">Двигайте, чтобы посмотреть, как менялись бы доходность и риск при другом балансе <span class="mixbadge" id="mixBadge" style="display:none">что-если</span><br>Ваши деньги и капитал сверху не меняются. <a href="#" id="spReset">↺ вернуть мой ('+asR+'/'+(100-asR)+')</a></div>'+
+      '</div>'+
+      '<div class="combo">'+
+        '<div class="m"><div class="lbl">Ожидаемая доходность</div><div class="big" id="erVal">—</div><div class="hint">в год, при этом балансе</div></div>'+
+        '<div class="m"><div class="lbl">Волатильность σ</div><div class="big" id="volVal">—</div><div class="hint">в год · облигации её разбавляют</div></div>'+
+      '</div>'+
+      '<div class="caveat">⚠️ Волатильность посчитана в допущении, что <b>облигации держатся до погашения</b> — тогда их σ ≈ 0. При этом балансе облигации — <b id="capB">'+(100-asR)+'</b>% портфеля. Если продавать их раньше срока, появляется процентный риск, и реальная σ будет выше.</div>'+
+      '<div class="disc"><b>«Ожидаемая доходность» — это не прогноз.</b> Это средневзвешенная историческая доходность акций и YTM облигаций при выбранном балансе. Прошлое не гарантирует будущего.</div>'+
+      '</div>';
+  } else if(cmb && total>0){
     const erCell = cmb.er!=null
       ? '<div class="m"><div class="lbl">Ожидаемая доходность</div><div class="big">'+cmb.er+'%</div><div class="hint">в год, взвешенно по капиталу</div></div>'
       : '<div class="m"><div class="lbl">Ожидаемая доходность</div><div class="big" style="color:var(--text3)">—</div><div class="hint">рассчитайте портфель акций РФ</div></div>';
@@ -241,7 +302,7 @@ function render(){
       '<div class="total">'+fmt(total)+' ₽</div>'+
       '<div class="total-sub">только рублёвые портфели, которые вы уже рассчитали</div>'+
       '<div class="bar">'+bar+'</div>'+rows+'</div>'+
-      comboHtml+historyCard(W,total);
+      comboHtml+(canSlide?histCardSlider(actualSp):historyCard(W,total));
     if(riskCards){
       html+='<div class="card"><div class="card-h">Детали риска по классам — без смешивания</div>'+
         '<div class="risk-grid">'+riskCards+'</div>'+
@@ -253,6 +314,14 @@ function render(){
   }
   html+=usdHtml;
   el.innerHTML=html;
+  if(canSlide){
+    window.__mix={ERS:ERS,VOLS:VOLS,YTMB:YTMB,AS:actualSp};
+    var _sl=document.getElementById('mixSlider');
+    if(_sl)_sl.addEventListener('input',function(){applyMix(+this.value);});
+    var _rs=document.getElementById('spReset');
+    if(_rs)_rs.addEventListener('click',function(e){e.preventDefault();var s=document.getElementById('mixSlider');if(s)s.value=window.__mix.AS;applyMix(window.__mix.AS);});
+    applyMix(actualSp);
+  }
 }
 function savePdf(){
   var ph=document.getElementById('printHead');
