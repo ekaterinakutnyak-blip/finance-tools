@@ -163,6 +163,15 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .seo h3{font-size:0.98rem;font-weight:600;margin:1.1rem 0 0.35rem;color:var(--text)}
 .seo p{font-size:0.92rem;color:var(--text2);margin-bottom:0.7rem}
 .seo p:last-child{margin-bottom:0}
+.compare-banner{background:#E8F0EB;border:1px solid #2D5A3D;border-radius:12px;padding:1rem 1.2rem;margin:0 0 1.3rem;font-size:0.92rem;line-height:1.55;color:#1A1A18}
+.compare-banner .cb-h{font-weight:700;font-size:1rem;margin-bottom:0.35rem;color:#2D5A3D}
+.compare-banner b{font-weight:600}
+.keystats{display:flex;gap:0.7rem;margin:0.5rem 0 1rem}
+.keystat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.75rem;text-align:center}
+.result-card.is-winner .keystat{border-color:var(--accent)}
+.keystat .ks-lbl{font-size:0.66rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:3px}
+.keystat .ks-val{font-family:var(--mono);font-size:1.25rem;font-weight:600;line-height:1.1;color:var(--text)}
+.keystat .ks-suf{font-size:0.7rem;color:var(--text3);font-weight:400}
 </style>
 </head>
 <body>
@@ -170,6 +179,12 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 <a href="index.html" class="back-link">← Все калькуляторы</a>
 <h1>Облигация vs Депозит</h1>
 <p class="subtitle">Сравнение на одной сумме за один срок. Сколько в итоге у вас на руках — в рублях, не в процентах.</p>
+
+<div class="compare-banner">
+  <div class="cb-h">Что именно мы сравниваем</div>
+  Только то, что известно точно у обоих вариантов: <b>сколько денег будет на руках</b> и <b>простая доходность</b> (прибыль ÷ сумма ÷ срок). Эффективную (сложную) доходность по облигации мы намеренно не считаем — она зависит от ставки реинвестирования купонов, а её заранее никто не знает. По депозиту всё известно, но чтобы сравнение было честным, обе бумаги меряем одной линейкой — простой. <b>Сравниваем то, что сравнимо.</b><br><br>
+  Сроки облигации и вклада не всегда совпадают — тогда сумма денег отличается ещё и из-за разного горизонта. Именно поэтому важна <b>простая доходность в % годовых</b>: она считается на год и сглаживает разницу в сроках. Когда сроки близки, но не равны, ориентируйтесь прежде всего на неё.
+</div>
 
 <div class="card">
   <div class="card-title">Параметры</div>
@@ -238,8 +253,12 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
     <input type="checkbox" id="useTax">
     <span>Учесть налоги (НДФЛ 13% на доход свыше необлагаемого минимума по депозитам)</span>
   </label>
+  <div class="field" id="keyRateField" style="max-width:300px;margin-top:8px;display:none">
+    <label>Ключевая ставка ЦБ, % <span style="color:var(--text3)">(для лимита по вкладам)</span></label>
+    <input type="text" id="keyRate" value="14" inputmode="decimal" oninput="updTaxHint()">
+  </div>
   <div class="hint" id="taxHint" style="font-size:0.7rem;color:var(--text3);margin-top:4px;display:none">
-    Необлагаемая сумма по депозитам в 2026 ≈ 220 000 ₽ в год (1 млн × ставка ЦБ). Купоны облигаций облагаются полностью.
+    Необлагаемая сумма по депозитам = 1 млн × ключевая ставка ЦБ = <b><span id="taxFreeShow">140 000</span> ₽</b> в год. Для точного налога берётся максимальная ставка ЦБ за год. Купоны облигаций облагаются полностью.
   </div>
 
   <div class="row-actions">
@@ -290,8 +309,8 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
     2. <strong>Облигация:</strong> с MOEX подтягивается чистая цена, НКД, все будущие купоны и дата погашения. На введённую сумму покупается целое число бумаг. К дате погашения суммируются: все купоны + номинал. От этого вычитается стоимость покупки (грязная цена × число бумаг). Остаток денег («не работает») учитывается при расчёте эффективной доходности.<br>
     3. <strong>Если облигация погашается раньше срока депозита</strong> — расчёт идёт до её погашения, и в результате это отмечается. Корректное сравнение возможно при близких сроках.<br>
     4. <strong>Налоги</strong> (если включены):<br>
-    — Депозит: процент-доход минус необлагаемая сумма (1 млн × ставка ЦБ ≈ 220 000 ₽ в 2026) × 13%.<br>
-    — Облигация: купоны + дисконт × 13%. ИИС-Б и ЛДВ не учитываются (можно вычесть налог из результата самостоятельно).<br><br>
+    — Депозит: процент-доход минус необлагаемая сумма (1 млн × ключевая ставка ЦБ, задаётся в поле) × 13%.<br>
+    — Облигация: купоны + дисконт × 13%. ИИС-Б и ЛДВ не учитываются (можно вычесть налог из результата самостоятельно).<br><br>    <strong>Реинвестирование:</strong> у депозита с капитализацией проценты реинвестируются — это уже заложено в итоговую сумму. У облигации купоны в итоговой сумме <u>суммируются как есть, их реинвестирование не учитывается</u>. Если реинвестировать купоны, реальная доходность облигации была бы немного выше показанной — то есть в этой части сравнение чуть консервативно к облигации. Поэтому мы показываем именно <u>простую</u> доходность (прибыль / сумма / срок), а не «эффективную»: эффективная доходность облигации зависела бы от ставки реинвестирования купонов, которая заранее неизвестна.<br><br>
     <strong style="color:var(--red)">Важно:</strong> депозит застрахован государством через АСВ до 1.4 млн ₽. По облигациям нет страховки — есть кредитный риск эмитента. Сравнение «голой» доходностью без учёта надёжности эмитента имеет смысл только для ОФЗ или AAA-корпоратов.
   </div>
 </div>
@@ -339,7 +358,9 @@ function moexFetch(url){
 
 // === Налоги ===
 const TAX_RATE=0.13;
-const DEPOSIT_TAX_FREE=220000; // 2026: ~1 млн × 22% ключа
+function getKeyRate(){ const el=document.getElementById('keyRate'); const v=el?parseFloat(String(el.value).replace(',','.')):NaN; return (isNaN(v)||v<=0)?14:v; }
+function depositTaxFree(){ return 1000000*getKeyRate()/100; } // 1 млн × ключевая ставка ЦБ
+function updTaxHint(){ const s=document.getElementById('taxFreeShow'); if(s)s.textContent=Math.round(depositTaxFree()).toLocaleString('ru-RU'); }
 
 // === UI helpers ===
 // === Список ОФЗ под срок депозита ===
@@ -629,6 +650,8 @@ function pickCorp(isin){
 
 document.getElementById('useTax').addEventListener('change',e=>{
   document.getElementById('taxHint').style.display=e.target.checked?'block':'none';
+  const kf=document.getElementById('keyRateField'); if(kf)kf.style.display=e.target.checked?'flex':'none';
+  updTaxHint();
 });
 
 // === Расчёт депозита ===
@@ -659,7 +682,7 @@ function computeDeposit(amount,rate,termMonths,capFreq,useTax){
   if(useTax){
     // Необлагаемая сумма работает по году, для упрощения — на весь срок пропорционально
     const yearsExposed=months/12;
-    const taxFreeTotal=DEPOSIT_TAX_FREE*yearsExposed;
+    const taxFreeTotal=depositTaxFree()*yearsExposed;
     const taxableInterest=Math.max(0,totalInterest-taxFreeTotal);
     tax=taxableInterest*TAX_RATE;
   }
@@ -896,6 +919,7 @@ function renderResults(dep,bond,amount,termMonths,useTax){
   let depCard='<div class="result-card deposit'+(!bondWins?' is-winner':'')+'">';
   if(!bondWins && delta>=100)depCard+='<span class="crown">★ Победитель</span>';
   depCard+='<h4>Депозит · '+dep.rate.toFixed(2)+'% год.</h4>'+
+    '<div class="keystats"><div class="keystat"><div class="ks-lbl">На руках</div><div class="ks-val">'+fmtRub(dep.finalAfterTax)+' ₽</div></div><div class="keystat"><div class="ks-lbl">Простая доходность</div><div class="ks-val">'+dep.effectiveAnnual.toFixed(2)+'%<span class="ks-suf"> год.</span></div></div></div>'+
     '<div class="row"><span class="lbl">Сумма вложений</span><span class="val">'+fmtRub(dep.amount)+' ₽</span></div>'+
     '<div class="row"><span class="lbl">Срок</span><span class="val">'+(termMonths>=12?(termMonths/12).toFixed(1)+' лет':termMonths+' мес')+'</span></div>'+
     '<div class="row"><span class="lbl">Капитализация</span><span class="val">'+capLabel+'</span></div>'+
@@ -905,7 +929,7 @@ function renderResults(dep,bond,amount,termMonths,useTax){
   }
   depCard+='<div class="row highlight"><span class="lbl">В конце срока на руках</span><span class="val">'+fmtRub(dep.finalAfterTax)+' ₽</span></div>'+
     '<div class="row"><span class="lbl">Чистая прибыль</span><span class="val">+'+fmtRub(dep.profit)+' ₽</span></div>'+
-    '<div class="row"><span class="lbl">Эффективная ставка</span><span class="val">'+dep.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
+    '<div class="row"><span class="lbl">Простая доходность</span><span class="val">'+dep.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
   '</div>';
 
   // Карточка облигации
@@ -914,6 +938,7 @@ function renderResults(dep,bond,amount,termMonths,useTax){
   const horizonStr=bond.horizonDate.toLocaleDateString('ru-RU');
   const horizonNote=bond.earlyRedemption?' <span style="font-size:0.7rem;color:var(--text3)">(погашена раньше)</span>':'';
   bondCard+='<h4>Облигация · '+bond.shortname+'</h4>'+
+    '<div class="keystats"><div class="keystat"><div class="ks-lbl">На руках</div><div class="ks-val">'+fmtRub(bond.finalAfterTax)+' ₽</div></div><div class="keystat"><div class="ks-lbl">Простая доходность</div><div class="ks-val">'+bond.effectiveAnnual.toFixed(2)+'%<span class="ks-suf"> год.</span></div></div></div>'+
     '<div class="row"><span class="lbl">ISIN</span><span class="val" style="font-size:0.78rem">'+bond.isin+'</span></div>'+
     '<div class="row"><span class="lbl">Цена / НКД</span><span class="val">'+bond.price.toFixed(2)+'% · '+bond.nkd.toFixed(2)+' ₽</span></div>'+
     '<div class="row"><span class="lbl">Грязная цена (1 шт)</span><span class="val">'+bond.dirtyPrice.toFixed(2)+' ₽</span></div>'+
@@ -929,7 +954,7 @@ function renderResults(dep,bond,amount,termMonths,useTax){
   }
   bondCard+='<div class="row highlight"><span class="lbl">В конце срока на руках</span><span class="val">'+fmtRub(bond.finalAfterTax)+' ₽</span></div>'+
     '<div class="row"><span class="lbl">Чистая прибыль</span><span class="val">+'+fmtRub(bond.profit)+' ₽</span></div>'+
-    '<div class="row"><span class="lbl">Эффективная ставка</span><span class="val">'+bond.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
+    '<div class="row"><span class="lbl">Простая доходность</span><span class="val">'+bond.effectiveAnnual.toFixed(2)+'% год.</span></div>'+
   '</div>';
 
   cards.innerHTML=depCard+bondCard;
