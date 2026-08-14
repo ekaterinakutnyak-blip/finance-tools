@@ -48,6 +48,8 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
 .btnrow{display:flex;gap:.5rem;margin-top:.6rem}
 .btn{font-family:inherit;font-size:.8rem;font-weight:600;padding:.4rem .7rem;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
+.find{width:100%;margin-top:.9rem;font-family:inherit;font-size:.95rem;font-weight:700;padding:.65rem;border:none;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer}
+.find:hover{opacity:.92}
 .count{font-size:.8rem;color:var(--text2);margin-bottom:.5rem}
 .disc{font-size:.74rem;color:var(--text3);font-style:italic;margin-top:1rem}
 .pf{position:sticky;top:1rem}
@@ -103,6 +105,7 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
         <label>Минимальный уровень (0…4)</label>
         <select id="minLiq"><option value="0">0 — любые</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4 — самые ликвидные</option></select>
       </details>
+      <button class="find" id="findBtn">🔍 Найти</button>
     </div>
   </div>
 
@@ -127,18 +130,18 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
 
 <script src="calc-core.js"></script>
 <script>
+(function(){
 const C = window.CalcCore;
-let BONDS = [];
 const $ = id => document.getElementById(id);
+if(!C){ const p=$('pfBody'); if(p) p.innerHTML='<div class="lbl">Не загрузилось ядро расчётов <b>calc-core.js</b>. Проверьте, что файл лежит в той же папке и открывается по адресу /pro/calc-core.js.</div>'; return; }
+let BONDS = [], LAST = [];
 const fmt = n => Math.round(n).toLocaleString('ru-RU');
 const excluded = new Set();   // ISIN, снятые пользователем
 
 // заполнить select рейтинга
-(function(){
-  const sel=$('ratingFloor');
-  C.LADDER.slice().reverse().forEach(g=>{ const o=document.createElement('option');o.value=C.RANK[g];o.textContent=g;sel.appendChild(o);});
-  sel.value=C.RANK['BBB-'];   // дефолтный пол
-})();
+const rsel=$('ratingFloor');
+C.LADDER.slice().reverse().forEach(g=>{ const o=document.createElement('option');o.value=C.RANK[g];o.textContent=g;rsel.appendChild(o);});
+rsel.value=C.RANK['BBB-'];   // дефолтный пол
 
 function params(){
   const curr=['Рубль']; if($('aFx').checked) curr.push('Доллар','Юань','Евро','CHF');
@@ -158,6 +161,7 @@ function params(){
 
 function render(){
   const filtered = C.filterUniverse(BONDS, params());
+  LAST = filtered;
   const selected = filtered.filter(b=>!excluded.has(b.isin));
   // таблица
   const rows=$('rows'); rows.innerHTML='';
@@ -175,7 +179,9 @@ function render(){
   $('count').textContent=`${filtered.length} бумаг под фильтры · в портфеле ${selected.length}`+(filtered.length>150?' · показаны первые 150':'');
   rows.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
     if(cb.checked) excluded.delete(cb.dataset.isin); else excluded.add(cb.dataset.isin);
-    renderPortfolio(filtered.filter(b=>!excluded.has(b.isin)));
+    const sel=filtered.filter(b=>!excluded.has(b.isin));
+    $('count').textContent=`${filtered.length} бумаг под фильтры · в портфеле ${sel.length}`+(filtered.length>150?' · показаны первые 150':'');
+    renderPortfolio(sel);
   });
   renderPortfolio(selected);
 }
@@ -210,13 +216,17 @@ function renderPortfolio(selected){
   el.innerHTML=h;
 }
 
-$('selAll').onclick=()=>{excluded.clear();render();};
-$('selNone').onclick=()=>{C.filterUniverse(BONDS,params()).forEach(b=>excluded.add(b.isin));render();};
-['capital','target','spMin','spMax','ratingFloor','exAnom','exWarn','tMin','tMax','aFloat','aFx','aAmort','aPutCall','aSubord','aQual','minLiq']
-  .forEach(id=>{ const e=$(id); e.addEventListener('change',render); });
+// Кнопка «Найти» применяет фильтры. Список не дёргается на каждый ввод.
+$('findBtn').onclick=render;
+$('selAll').onclick=()=>{ excluded.clear(); render(); };
+$('selNone').onclick=()=>{ LAST.forEach(b=>excluded.add(b.isin)); render(); };
+// Капитал и цель только пересчитывают доход по текущему набору, список не трогают
+['capital','target'].forEach(id=>$(id).addEventListener('input',()=>renderPortfolio(LAST.filter(b=>!excluded.has(b.isin)))));
 
 fetch('bonds.json').then(r=>r.json()).then(d=>{ BONDS=C.markAnomalous(d); render(); })
-  .catch(e=>{ $('pfBody').innerHTML='<div class="lbl">Не загрузился bonds.json (нужен http-сервер рядом с calc-core.js).</div>'; });
+  .catch(e=>{ $('pfBody').innerHTML='<div class="lbl">Не загрузился bonds.json — проверьте, что файл лежит рядом со страницей (/pro/bonds.json).</div>'; });
+})();
 </script>
+<script src="/nav.js" defer></script>
 </body>
 </html>
