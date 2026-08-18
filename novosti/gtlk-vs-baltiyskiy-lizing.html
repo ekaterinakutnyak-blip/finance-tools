@@ -53,6 +53,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 .warnbox{background:#FDF6E8;border:1px solid #E6A100;border-radius:8px;padding:0.7rem 0.9rem;margin:0.6rem 0 1.1rem;font-size:0.94rem;color:var(--text2)}
 .cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:1.8rem 0 0;font-size:0.96rem;color:var(--text2)}
 .cta a{color:var(--accent);font-weight:600;text-decoration:none}
+.toolbridge{background:#F1F6F2;border:1px solid var(--accent);border-radius:12px;padding:1rem 1.2rem;margin:1.6rem 0}
+.toolbridge .tb-h{font-weight:700;color:var(--accent);font-size:1.02rem;margin-bottom:0.35rem}
+.toolbridge p{font-size:0.95rem;color:var(--text2);margin:0 0 0.6rem}
+.toolbridge a{display:inline-block;color:#fff;background:var(--accent);font-weight:600;text-decoration:none;font-size:0.92rem;padding:0.55rem 1rem;border-radius:8px}
+.probar{display:flex;flex-wrap:wrap;align-items:center;gap:0.6rem 1rem;background:#FFF7E6;border:1px solid #E6A100;border-radius:12px;padding:0.9rem 1.2rem;margin:1.6rem 0 0}
+.probar .pb-t{font-size:0.95rem;color:#8a6d00;flex:1;min-width:220px}
+.probar a{display:inline-block;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;font-size:0.92rem;padding:0.55rem 1.1rem;border-radius:8px;white-space:nowrap}
 .disclaimer{font-size:0.82rem;color:var(--text3);font-style:italic;margin:1.4rem 0 0;padding-top:1rem;border-top:1px solid var(--border)}
 .footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
 .footer a{color:var(--text2)}
@@ -253,6 +260,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
 <tr><td>Прибыль 1П2026, млн ₽</td><td>+40</td><td>−14 224</td><td>ноль против растущей дыры</td></tr>
 <tr><td>Год назад, млн ₽</td><td>+2 103</td><td>−1 826</td><td></td></tr>
 </tbody></table>
+<div class="toolbridge">
+<div class="tb-h">Сравните эти выпуски сами — бесплатно</div>
+<p>Возьмите ISIN из таблиц облигационного контура выше и прогоните их через калькулятор: он покажет не проценты, а рубли — сколько каждая бумага реально приносит за день владения на одинаковую сумму. Так видно, что «дороже по купону» ≠ «выгоднее».</p>
+<a href="../bond-compare.html">Открыть калькулятор облигаций →</a>
+</div>
 <p>Главная строка таблицы — чистый процентный доход. У Балтийского он положительный: компания зарабатывает на спреде, как и положено лизингодателю. У ГТЛК он отрицательный: проценты, которые компания платит, больше процентов, которые она получает. Это разница не в качестве, а в природе бизнеса. Балтийский может ухудшиться и снова улучшиться в цикле; у ГТЛК улучшение возможно только через изменение условий фондирования, то есть через решение акционера.</p>
 
 <h3>Справедливый спред</h3>
@@ -282,10 +294,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:
   <div style="font-size:1.05rem;font-weight:700;color:#1A1A18;margin-bottom:0.25rem">Telegram-канал «Екатерина Кутняк · инвестиции»</div>
   <div style="font-size:0.93rem;color:#6B6A65;line-height:1.5">Разборы эмитентов, обзоры размещений и новые инструменты — первыми. <span style="color:#1B6B9A;font-weight:600">Подписаться →</span></div>
 </a>
+<div class="probar">
+<div class="pb-t"><strong>PRO</strong> — четыре ИИ: аналитик отчётности, проверка идеи и риск-менеджер по РФ и US. Считают то, что вы прочитали в этом разборе.</div>
+<a href="../index.html#pricing">Смотреть PRO →</a>
+</div>
 <div class="footer">
 Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a><br>
 <a href="https://t.me/kutnyak_invest" target="_blank">Telegram-канал</a> · © 2025–2026
 </div>
 </div>
+<script src="/nav.js" defer></script>
 </body>
 </html>
