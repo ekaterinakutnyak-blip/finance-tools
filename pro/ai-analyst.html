@@ -188,6 +188,7 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 #modelsCard .mchip.orange{background:rgba(230,126,34,0.14);color:#a85a17}
 #modelsCard .mchip.red{background:rgba(192,57,43,0.12);color:#a3271c}
 #modelsCard .models-foot{font-size:0.74rem;color:var(--text3);line-height:1.5;margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--border)}
+.promo-week{background:var(--green-bg,#EAF3EC);border:1px solid var(--accent,#2D5A3D);border-radius:12px;padding:0.85rem 1.1rem;margin-bottom:1rem;font-size:0.9rem;line-height:1.55;color:var(--text,#1a1a1a)}
 </style>
 </head>
 <body>
@@ -197,6 +198,7 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 <p class="subtitle">Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его за вас, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком: насколько бизнес устойчив и где риск. Работает по лизингу, девелоперам, банкам и финсектору. Методология Екатерины Кутняк.</p>
 
 <div id="intake">
+  <div class="promo-week" id="promoWeek">На выходных разбор своего отчёта — <b>бесплатно, без подписки</b>. Один разбор на человека. Загрузите PDF — ИИ прочитает отчёт и посчитает всё сам.</div>
   <div class="card">
     <div class="drop" id="drop">
       <div class="drop-ico">📄</div>
@@ -209,12 +211,12 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
       <textarea id="textInput" placeholder="Вставьте текст финансовой отчётности…"></textarea>
     </details>
     <div class="tokrow" id="tokrow">
-      <label>PRO-код или пароль (вводится один раз, дальше запомнится):</label><br>
+      <label>Есть PRO-код или пароль? На выходных необязательно — но с ним разбор без лимитов (вводится один раз, дальше запомнится):</label><br>
       <input type="text" id="tokInput" placeholder="PRO-код или пароль">
     </div>
     <button class="btn" id="goBtn">Разобрать мой отчёт</button>
     <div class="err" id="err"></div>
-    <div class="hint">ИИ читает отчёт и пишет разбор — это занимает до минуты. Загрузка своего отчёта доступна по PRO-подписке; число оставшихся разборов показывается после разбора.</div>
+    <div class="hint">ИИ читает отчёт и пишет разбор — это занимает до минуты. На выходных — бесплатно, без подписки; дальше загрузка своего отчёта доступна по PRO-подписке.</div>
   </div>
 
   <div class="tryblock">
@@ -295,6 +297,18 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 <script>
 var API = 'https://investtools.pro/api/analyze';
 var chosenFile = null, chartObj = null;
+/* id устройства — для «1 бесплатный разбор на устройство» на выходных */
+function deviceId(){
+  try{
+    var d = localStorage.getItem('an_device_id');
+    if(!d){ d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,10); localStorage.setItem('an_device_id', d); }
+    return d;
+  }catch(e){ return ''; }
+}
+/* акция выходного — авто-истечение по дате (совпадает с gate.js и бэкендом) */
+var PROMO_END = new Date('2026-08-24T00:00:00+03:00');
+function promoActive(){ try{ return new Date() < PROMO_END; }catch(e){ return false; } }
+if(!promoActive()){ var _pw = document.getElementById('promoWeek'); if(_pw) _pw.style.display = 'none'; }
 var cssv = function(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
 
 /* ===================== ДОСТУП (как в idea-check/risk-check) ===================== */
@@ -362,11 +376,12 @@ function analyze(){
   var text = document.getElementById('textInput').value.trim();
   if(!chosenFile && !text){ err.textContent = 'Загрузите PDF или вставьте текст отчёта.'; return; }
   var typed = document.getElementById('tokInput').value.trim();
-  var code = typed || storedCode();
-  if(!code){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Введите PRO-код или пароль.'; return; }
+  var code = typed || storedCode();   // пусто = бесплатный разбор выходного (доступ решает сервер)
+  if(!code && !promoActive()){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Введите PRO-код или пароль.'; return; }
 
   var fd = new FormData();
   fd.append('token', code);
+  fd.append('device', deviceId());
   if(chosenFile) fd.append('file', chosenFile);
   else fd.append('text', text);
 
@@ -565,7 +580,9 @@ function renderReal(res, fromSaved){
 
   var remain = document.getElementById('remain');
   remain.textContent = '';
-  if(res.left_this_month !== undefined && res.left_this_month !== null){
+  if(res.free_mode){
+    remain.textContent = 'Это был бесплатный разбор выходного дня. Полный доступ — без лимитов, с моделями банкротства по любому отчёту — по PRO-подписке.';
+  } else if(res.left_this_month !== undefined && res.left_this_month !== null){
     remain.textContent = 'Осталось разборов в этом месяце: ' + res.left_this_month;
   }
   if(res.report_truncated){
