@@ -297,8 +297,8 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
 </div>
 
 <div class="card hidden" id="mktDepCard">
-  <div class="card-title">Зависимость бумаг от рынка · β и R²</div>
-  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem;line-height:1.5">R² — какая доля колебаний бумаги объясняется рынком (систематический риск, его не убрать диверсификацией). Остальное (100−R²) — собственный риск эмитента, он гасится при диверсификации несвязанными бумагами. β — сила движения относительно индекса.</div>
+  <div class="card-title">Риск по бумагам · σ, β и R²</div>
+  <div style="font-size:0.78rem;color:var(--text2);margin-bottom:0.5rem;line-height:1.5">σ — годовая волатильность самой бумаги: насколько сильно она колеблется, независимо от рынка. R² — какая доля колебаний бумаги объясняется рынком (систематический риск, его не убрать диверсификацией). Остальное (100−R²) — собственный риск эмитента, он гасится при диверсификации несвязанными бумагами. β — сила движения относительно индекса.</div>
   <div class="matrix-wrap">
     <table class="weights" id="mktDepTable"></table>
   </div>
@@ -1587,6 +1587,13 @@ async function run(){
     if(userPort){
       cards.push({cls:'user',title:'Ваш портфель',data:userPort,extraLabel:'Sharpe'});
     }
+    // σ КАЖДОЙ бумаги — годовая волатильность. Бенчмарк для неё не нужен, поэтому считаем всегда.
+    stockStats={};
+    tickers.forEach(t=>{
+      const sr=retMap[t];
+      if(!sr||sr.length<10)return;
+      stockStats[t]={vol:annVolFromReturns(sr)*100, betaIMOEX:NaN, betaMCFTRR:NaN, r2:NaN};
+    });
     // Расчёт беты и R² для каждой карточки, если бенчмарки загружены
     if(retBenchIMOEX && retBenchMCFTRR && retMapBench){
       cards.forEach(c=>{
@@ -1599,13 +1606,15 @@ async function run(){
       });
       // R² и бета КАЖДОЙ бумаги к рынку: сколько её колебаний — рыночные (систематический риск),
       // а сколько собственные (специфический). Тот же betaR2, что и для портфеля.
-      stockStats={};
       benchTickers.forEach(t=>{
         const sr=retMapBench[t];
         if(!sr||sr.length<10)return;
         const sI=betaR2(sr,retBenchIMOEX);
         const sM=betaR2(sr,retBenchMCFTRR);
-        stockStats[t]={betaIMOEX:sI.beta, betaMCFTRR:sM.beta, r2:sM.r2};
+        if(!stockStats[t])stockStats[t]={vol:NaN};
+        stockStats[t].betaIMOEX=sI.beta;
+        stockStats[t].betaMCFTRR=sM.beta;
+        stockStats[t].r2=sM.r2;
       });
     }
     cards.forEach(c=>{
@@ -1705,22 +1714,21 @@ async function run(){
       document.getElementById('mktDepCard').classList.remove('hidden');
       const mdt=document.getElementById('mktDepTable');
       const shareHead=userPort?'Доля':'Доля (равн.)';
-      let mh='<thead><tr><th style="text-align:left">Тикер</th><th>'+shareHead+'</th><th>β</th><th>R² к рынку</th><th style="text-align:left">Риск в основном</th></tr></thead><tbody>';
+      let mh='<thead><tr><th style="text-align:left">Тикер</th><th>'+shareHead+'</th><th>σ, %</th><th>β</th><th>R² к рынку</th><th style="text-align:left">Риск в основном</th></tr></thead><tbody>';
       const wref=userPort?userPort.w:eqW;
       const ord=tickers.map((t,i)=>({t,w:wref[i]})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w);
       ord.forEach(({t,w})=>{
         const s=stockStats[t];
-        const bTxt=isNaN(s.betaIMOEX)?'—':s.betaIMOEX.toFixed(2);
-        if(isNaN(s.r2)){
-          mh+='<tr><td class="tk" style="text-align:left">'+t+'</td><td>'+(w*100).toFixed(1)+'%</td><td>'+bTxt+'</td><td>—</td><td style="text-align:left;color:var(--text2)">—</td></tr>';
-          return;
-        }
-        const r2p=Math.round(s.r2*100);
-        const mark=r2p>=60?'рыночный':(r2p<=30?'собственный':'смешанный');
+        const vTxt=(s.vol==null||isNaN(s.vol))?'—':s.vol.toFixed(1);
+        const bTxt=(s.betaIMOEX==null||isNaN(s.betaIMOEX))?'—':s.betaIMOEX.toFixed(2);
+        const hasR2=!(s.r2==null||isNaN(s.r2));
+        const r2p=hasR2?Math.round(s.r2*100):null;
+        const mark=!hasR2?'—':(r2p>=60?'рыночный':(r2p<=30?'собственный':'смешанный'));
         mh+='<tr><td class="tk" style="text-align:left">'+t+'</td>'+
           '<td>'+(w*100).toFixed(1)+'%</td>'+
+          '<td>'+vTxt+'</td>'+
           '<td>'+bTxt+'</td>'+
-          '<td>'+r2p+'%</td>'+
+          '<td>'+(hasR2?r2p+'%':'—')+'</td>'+
           '<td style="text-align:left;color:var(--text2)">'+mark+'</td></tr>';
       });
       mh+='</tbody>';
@@ -1950,13 +1958,14 @@ function buildSnapshot(){
     tickers.map((t,i)=>({t,w:wref[i]})).filter(x=>x.w>=0.0005).sort((a,b)=>b.w-a.w).forEach(x=>{s+='- '+x.t+': '+pf(x.w)+'%\n';});
   }
   if(stockStats){
-    s+='\nЗависимость бумаг от рынка (бета к IMOEX; R2 — доля рыночного/систематического риска, остальное собственный риск эмитента):\n';
+    s+='\nРиск по бумагам (sigma — годовая волатильность самой бумаги; бета к IMOEX; R2 — доля рыночного/систематического риска, остальное собственный риск эмитента):\n';
     const wr=userPort?userPort.w:null;
     tickers.map((t,i)=>({t,w:wr?wr[i]:0})).filter(x=>stockStats[x.t]).sort((a,b)=>b.w-a.w).forEach(x=>{
       const st=stockStats[x.t];
-      const b=isNaN(st.betaIMOEX)?'—':st.betaIMOEX.toFixed(2);
-      const r2=isNaN(st.r2)?'—':Math.round(st.r2*100)+'%';
-      s+='- '+x.t+' (доля '+pf(x.w)+'%): бета '+b+', R2 '+r2+'\n';
+      const b=(st.betaIMOEX==null||isNaN(st.betaIMOEX))?'—':st.betaIMOEX.toFixed(2);
+      const r2=(st.r2==null||isNaN(st.r2))?'—':Math.round(st.r2*100)+'%';
+      const vv=(st.vol==null||isNaN(st.vol))?'—':st.vol.toFixed(1)+'%';
+      s+='- '+x.t+' (доля '+pf(x.w)+'%): sigma '+vv+', бета '+b+', R2 '+r2+'\n';
     });
   }
   if(varStats&&varStats.length){
