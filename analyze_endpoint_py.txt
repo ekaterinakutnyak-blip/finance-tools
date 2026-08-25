@@ -5,6 +5,9 @@
 авторизацию под паролем/токеном, счётчик 30-дневного лимита и вызов модели call_model.
 Пароль остаётся внутри risk_manager._is_master — сюда НЕ копируется.
 
++ АКЦИЯ ВЫХОДНОГО (2026-08): 50 бесплатных разборов на всех, без подписки.
+  Глобальный атомарный лимит 50 (мимо не проскочит), 1 разбор на устройство,
+  мягкий потолок на IP, рубильник и авто-закрытие по дате. Платный путь не тронут.
 Установка:
   1) положить этот файл в /opt/finance-api/
   2) pip install pdfplumber      (httpx/ключ модели НЕ нужны — берём твой call_model)
@@ -14,38 +17,261 @@
         app.include_router(analyze_router)
   5) перезапустить сервис
 """
-
 import io, re, json, sqlite3, datetime
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from typing import Optional
-
 # ← вся авторизация/лимит/вызов модели берём из уже работающего риск-менеджера
 from risk_manager import (
     _is_master, _token_info, _period_token, _period_master,
     _used, _bump, call_model,
 )
-
 PROMPT_PATH   = "/opt/finance-api/analyst_prompt.md"
 ANALYZE_LIMIT = 5           # разборов отчётов за 30 дней на код доступа (своё окно, отдельно от risk-check)
 MAX_REPORT_CHARS = 300_000
-
 # ← модель аналитика: Qwen (сильнее флеша, держит большой промпт + структурный JSON).
 #   ПОДСТАВЬ точный идентификатор Qwen из своего Yandex AI Studio, формат как у deepseek-v4-flash/latest.
 ANALYZE_MODEL = "qwen3.6-35b-a3b/latest"
-
 # ← доступ к разбору только для длинных подписок (от полугода).
 #   Длину считаем из дат токена (expires_at − created_at): месяц ≈30 дн, полгода ≈180, год ≈365.
 MAIN_DB_PATH  = "/opt/finance-api/db.sqlite"   # та же база, что у бота (таблица tokens)
 MIN_PLAN_DAYS = 175
+MASTER_LIMIT  = 100         # свой лимит для мастер-пароля Екатерины: тестировать, не упираясь в клиентские 5
+
+# ─────────────── ПАКЕТЫ РАЗБОРОВ (докупка) ───────────────
+# Работает в двух случаях сразу:
+#   1) подписчик исчерпал свои ANALYZE_LIMIT за 30 дней → тратит купленные;
+#   2) человек БЕЗ подписки купил пакет и заходит по коду вида RZB-XXXX-XXXX.
+# Баланс привязан к коду. Начисление — командой (см. grant_credits ниже).
+CREDITS_DB = "/opt/finance-api/analyze_credits.db"
+
+def _credits_conn():
+    con = sqlite3.connect(CREDITS_DB, timeout=10)
+    con.execute("PRAGMA busy_timeout=10000")
+    con.execute("""CREATE TABLE IF NOT EXISTS credits(
+        code TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_granted INTEGER NOT NULL DEFAULT 0,
+        note TEXT,
+        created_at TEXT,
+        last_used TEXT)""")
+    con.commit()
+    return con
+
+def _credits_balance(code: str) -> int:
+    if not code:
+        return 0
+    con = _credits_conn()
+    try:
+        row = con.execute("SELECT balance FROM credits WHERE code=? OR code=?", (code, code.upper())).fetchone()
+        return int(row[0]) if row else 0
+    finally:
+        con.close()
+
+def _credits_known(code: str) -> bool:
+    """Такой код пакета вообще существует? (чтобы отличить «пакет пуст» от «кода нет»)."""
+    if not code:
+        return False
+    con = _credits_conn()
+    try:
+        return con.execute("SELECT 1 FROM credits WHERE code=? OR code=?",
+                           (code, code.upper())).fetchone() is not None
+    finally:
+        con.close()
+
+def _credits_spend(code: str) -> int:
+    """Атомарно списывает один разбор. Возвращает остаток или -1, если списать нечего."""
+    con = _credits_conn()
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        cur = con.execute(
+            "UPDATE credits SET balance=balance-1, last_used=? WHERE (code=? OR code=?) AND balance>0",
+            (now, code, code.upper()))
+        if cur.rowcount == 0:
+            con.commit()
+            return -1
+        row = con.execute("SELECT balance FROM credits WHERE code=? OR code=?", (code, code.upper())).fetchone()
+        con.commit()
+        return int(row[0]) if row else 0
+    finally:
+        con.close()
+
+def _credits_refund(code: str):
+    """Вернуть списанный разбор, если модель не ответила."""
+    con = _credits_conn()
+    try:
+        con.execute("UPDATE credits SET balance=balance+1 WHERE code=? OR code=?", (code, code.upper()))
+        con.commit()
+    finally:
+        con.close()
+
+def grant_credits(code: str, n: int, note: str = ""):
+    """Начислить n разборов на код. Вызывается из консоли:
+       python3 -c "import sys;sys.path.insert(0,'/opt/finance-api');
+       import analyze_endpoint as a; a.grant_credits('RZB-1234-5678', 10, 'оплата 1500')"
+    """
+    code = code.strip().upper()
+    con = _credits_conn()
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        con.execute("INSERT OR IGNORE INTO credits(code,balance,total_granted,note,created_at) VALUES(?,0,0,?,?)",
+                    (code, note, now))
+        con.execute("UPDATE credits SET balance=balance+?, total_granted=total_granted+?, note=COALESCE(?,note) WHERE code=?",
+                    (n, n, note or None, code))
+        row = con.execute("SELECT code,balance,total_granted,note FROM credits WHERE code=?", (code,)).fetchone()
+        con.commit()
+        print("код:", row[0], "| баланс:", row[1], "| всего начислено:", row[2], "|", row[3] or "")
+        return row
+    finally:
+        con.close()
+
+def grant_for_user(user_id, n: int, payment_id: str = "", prefix: str = "RZB"):
+    """
+    Начисление на Telegram-пользователя. Идемпотентно по payment_id: повторный вызов
+    с тем же payment_id ничего не добавит (защита от двойного вебхука ЮKassa).
+    Возвращает (code, balance). Код у пользователя ОДИН и постоянный — докупки идут на него же.
+    """
+    uid = str(user_id).strip()
+    con = _credits_conn()
+    try:
+        con.execute("""CREATE TABLE IF NOT EXISTS grants(
+            payment_id TEXT PRIMARY KEY, user_id TEXT, code TEXT, n INTEGER, ts TEXT)""")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if payment_id:
+            was = con.execute("SELECT code FROM grants WHERE payment_id=?", (payment_id,)).fetchone()
+            if was:  # этот платёж уже начислен
+                b = con.execute("SELECT balance FROM credits WHERE code=?", (was[0],)).fetchone()
+                con.commit()
+                return was[0], (int(b[0]) if b else 0)
+        row = con.execute("SELECT code FROM credits WHERE note LIKE ?", ("uid:%s|%%" % uid,)).fetchone()
+        if row:
+            code = row[0]
+        else:
+            import secrets, string
+            al = string.ascii_uppercase + string.digits
+            part = lambda: "".join(secrets.choice(al) for _ in range(4))
+            code = "%s-%s-%s" % (prefix, part(), part())
+            con.execute("INSERT INTO credits(code,balance,total_granted,note,created_at) VALUES(?,0,0,?,?)",
+                        (code, "uid:%s|" % uid, now))
+        con.execute("UPDATE credits SET balance=balance+?, total_granted=total_granted+? WHERE code=?",
+                    (n, n, code))
+        if payment_id:
+            con.execute("INSERT OR IGNORE INTO grants(payment_id,user_id,code,n,ts) VALUES(?,?,?,?,?)",
+                        (payment_id, uid, code, n, now))
+        b = con.execute("SELECT balance FROM credits WHERE code=?", (code,)).fetchone()[0]
+        con.commit()
+        return code, int(b)
+    finally:
+        con.close()
+
+def new_code(prefix: str = "RZB") -> str:
+    """Сгенерировать код пакета разборов."""
+    import secrets, string
+    al = string.ascii_uppercase + string.digits
+    part = lambda: "".join(secrets.choice(al) for _ in range(4))
+    return "%s-%s-%s" % (prefix, part(), part())
+
+def credits_list():
+    """Показать все коды пакетов и остатки."""
+    con = _credits_conn()
+    try:
+        for r in con.execute("SELECT code,balance,total_granted,note,created_at,last_used FROM credits ORDER BY created_at DESC"):
+            print(r)
+    finally:
+        con.close()
+
+# ─────────────────────────── АКЦИЯ: 50 бесплатных разборов ───────────────────────────
+PROMO_DB          = "/opt/finance-api/free_promo.db"
+PROMO_CAP         = 50                    # всего бесплатных разборов на всех
+PROMO_IP_CAP      = 3                     # мягкий потолок на один IP (защита от сброса localStorage)
+PROMO_END_UTC     = datetime.datetime(2026, 8, 23, 21, 0, 0, tzinfo=datetime.timezone.utc)  # = вс 24.08 00:00 МСК
+MAX_FREE_CHARS    = 80_000                # для бесплатных урезаем отчёт жёстче — бережём токены гранта
+
+def _promo_conn():
+    con = sqlite3.connect(PROMO_DB, timeout=10)
+    con.execute("PRAGMA busy_timeout=10000")
+    con.execute("CREATE TABLE IF NOT EXISTS free_pool(id INTEGER PRIMARY KEY, used INTEGER, cap INTEGER, enabled INTEGER)")
+    con.execute("CREATE TABLE IF NOT EXISTS free_used(k TEXT PRIMARY KEY, ts TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS free_ip(ip TEXT PRIMARY KEY, cnt INTEGER)")
+    con.execute("INSERT OR IGNORE INTO free_pool(id, used, cap, enabled) VALUES(1, 0, ?, 1)", (PROMO_CAP,))
+    con.commit()
+    return con
+
+def _promo_open() -> bool:
+    """Акция активна? (включена рубильником И не вышел срок)."""
+    if datetime.datetime.now(datetime.timezone.utc) >= PROMO_END_UTC:
+        return False
+    con = _promo_conn()
+    row = con.execute("SELECT enabled FROM free_pool WHERE id=1").fetchone()
+    con.close()
+    return bool(row and row[0])
+
+def _promo_left() -> int:
+    con = _promo_conn()
+    row = con.execute("SELECT cap-used FROM free_pool WHERE id=1").fetchone()
+    con.close()
+    return max(0, row[0]) if row else 0
+
+def _promo_reserve(dev_key: str, ip: str):
+    """
+    Атомарно занимает один бесплатный разбор.
+    Возвращает ('ok', осталось) либо код отказа: 'closed' | 'dup' | 'ipcap' | 'empty'.
+    Порядок: заявка устройства (атомарно) → потолок IP → атомарный забор из пула.
+    """
+    con = _promo_conn()
+    try:
+        row = con.execute("SELECT enabled, used, cap FROM free_pool WHERE id=1").fetchone()
+        if not row or not row[0]:
+            return ('closed', 0)
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        # 1) заявка устройства — одно бесплатное на устройство
+        cur = con.execute("INSERT OR IGNORE INTO free_used(k, ts) VALUES(?, ?)", ('d:' + dev_key, now))
+        if cur.rowcount == 0:
+            con.commit()
+            return ('dup', 0)
+        # 2) мягкий потолок на IP
+        iprow = con.execute("SELECT cnt FROM free_ip WHERE ip=?", (ip,)).fetchone()
+        if iprow and iprow[0] >= PROMO_IP_CAP:
+            con.execute("DELETE FROM free_used WHERE k=?", ('d:' + dev_key,))
+            con.commit()
+            return ('ipcap', 0)
+        # 3) атомарный забор из пула — здесь и живёт защита «мимо 50 не проскочит»
+        upd = con.execute("UPDATE free_pool SET used=used+1 WHERE id=1 AND enabled=1 AND used<cap")
+        if upd.rowcount == 0:
+            con.execute("DELETE FROM free_used WHERE k=?", ('d:' + dev_key,))
+            con.commit()
+            return ('empty', 0)
+        con.execute(
+            "INSERT INTO free_ip(ip, cnt) VALUES(?, 1) ON CONFLICT(ip) DO UPDATE SET cnt=cnt+1",
+            (ip,),
+        )
+        left = con.execute("SELECT cap-used FROM free_pool WHERE id=1").fetchone()[0]
+        con.commit()
+        return ('ok', max(0, left))
+    finally:
+        con.close()
+
+def _promo_refund(dev_key: str, ip: str):
+    """Вернуть занятый разбор, если модель не ответила (чтобы сбой не съел слот и шанс человека)."""
+    con = _promo_conn()
+    try:
+        con.execute("UPDATE free_pool SET used=MAX(0, used-1) WHERE id=1")
+        con.execute("DELETE FROM free_used WHERE k=?", ('d:' + dev_key,))
+        con.execute("UPDATE free_ip SET cnt=MAX(0, cnt-1) WHERE ip=?", (ip,))
+        con.commit()
+    finally:
+        con.close()
+
+def _client_ip(request: Request) -> str:
+    xff = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if xff:
+        return xff
+    return (request.headers.get("x-real-ip") or (request.client.host if request.client else "") or "unknown").strip()
+# ──────────────────────────────────────────────────────────────────────────────────────
 
 analyze_router = APIRouter(tags=["ai-analyst"])
-
-
 def _load_prompt() -> str:
     with open(PROMPT_PATH, encoding="utf-8") as f:
         return f.read()
-
-
 def _ocr_pdf(raw: bytes, max_pages: int = 40) -> str:
     """OCR отсканированного PDF (tesseract, русский). Вызывается, когда текстового слоя нет."""
     try:
@@ -64,8 +290,6 @@ def _ocr_pdf(raw: bytes, max_pages: int = 40) -> str:
     except Exception:
         pass
     return "\n".join(out)
-
-
 def _extract_pdf_text(raw: bytes):
     """Вернёт (текст, число_страниц, использован_ли_OCR). Если текстового слоя нет (скан) — OCR."""
     import pdfplumber
@@ -84,8 +308,6 @@ def _extract_pdf_text(raw: bytes):
         if len(ocr.strip()) > len(text.strip()):
             text, ocr_used = ocr, True
     return text, npages, ocr_used
-
-
 def _split_prose_and_json(answer: str):
     # полный блок ```json ... ``` — забираем данные, прозу берём до него
     matches = list(re.finditer(r"```json\s*(.*?)```", answer, re.DOTALL | re.IGNORECASE))
@@ -102,8 +324,6 @@ def _split_prose_and_json(answer: str):
     if cut:
         return answer[:cut.start()].strip(), None
     return answer.strip(), None
-
-
 def _plan_days(code: str):
     """Длина подписки по токену в днях (expires_at − created_at), либо None если токен не найден."""
     try:
@@ -120,34 +340,235 @@ def _plan_days(code: str):
         return (e - c).days
     except Exception:
         return None
+# ── Внутренний секрет между ботом (Hetzner) и API (Timeweb) ──
+# ТОТ ЖЕ, что уже используется для /api/issue и /api/payment-status:
+# заголовок X-Internal-Secret, значение INTERNAL_API_SECRET из /opt/finance-api/.env.
+# Свой секрет НЕ заводим.
+ENV_PATH = "/opt/finance-api/.env"
 
+def _internal_secret() -> str:
+    import os
+    v = os.getenv("INTERNAL_API_SECRET")
+    if v:
+        return v.strip()
+    try:
+        with open(ENV_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("INTERNAL_API_SECRET="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return ""
+
+def _check_internal(header_value: Optional[str]):
+    want = _internal_secret()
+    if not want or not header_value or header_value.strip() != want:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+@analyze_router.post("/api/issue-credits")
+async def issue_credits(
+    request: Request,
+    user_id: str = Form(...),
+    n: int = Form(...),
+    payment_id: str = Form(""),
+):
+    """
+    Выдать пакет разборов. Вызывает БОТ после успешной оплаты — так же,
+    как сейчас зовёт /api/issue для подписки, с заголовком X-Internal-Secret.
+    Идемпотентно по payment_id: повторный вебхук ничего не добавит.
+    Возвращает {"code": "RZB-XXXX-XXXX", "balance": N}.
+    """
+    _check_internal(request.headers.get("X-Internal-Secret"))
+    if n <= 0 or n > 1000:
+        raise HTTPException(status_code=400, detail="некорректное количество")
+    code, balance = grant_for_user(user_id, n, payment_id)
+    return {"code": code, "balance": balance}
+
+@analyze_router.get("/api/credits-balance")
+async def credits_balance_ep(request: Request, code: str = ""):
+    """Остаток пакета по коду — для ответа бота «сколько осталось». Тоже под секретом."""
+    _check_internal(request.headers.get("X-Internal-Secret"))
+    return {"code": code.strip().upper(), "balance": _credits_balance(code.strip())}
+
+# ════════════ ПОКУПКА ПАКЕТА РАЗБОРОВ ПРЯМО НА САЙТЕ (без бота) ════════════
+# Ключи YOOKASSA_SHOP_ID / YOOKASSA_SECRET_KEY уже есть в /opt/finance-api/.env.
+# main.py НЕ трогаем: статус платежа спрашиваем у ЮKassa сами, когда человек
+# вернулся на страницу после оплаты. Начисление идемпотентно по payment_id.
+
+PACKAGES = {10: 1500}          # {сколько разборов: цена в рублях}. Менять здесь.
+RETURN_URL = "https://investtools.pro/pro/ai-analyst.html"
+YK_API = "https://api.yookassa.ru/v3/payments"
+
+def _env(name: str) -> str:
+    import os
+    v = os.getenv(name)
+    if v:
+        return v.strip()
+    try:
+        with open(ENV_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith(name + "="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return ""
+
+def _yk_auth():
+    shop = _env("YOOKASSA_SHOP_ID")
+    key = _env("YOOKASSA_SECRET_KEY")
+    if not shop or not key:
+        raise HTTPException(status_code=500, detail="Оплата временно недоступна")
+    return (shop, key)
+
+@analyze_router.post("/api/credits/buy")
+async def credits_buy(n: int = Form(10), code: str = Form("")):
+    """
+    Создаёт платёж в ЮKassa на пакет разборов и возвращает ссылку на оплату.
+    n — размер пакета (только из PACKAGES). code — если у человека УЖЕ есть код,
+    разборы добавятся на него; иначе после оплаты будет выдан новый.
+    """
+    import httpx, uuid
+    if n not in PACKAGES:
+        raise HTTPException(status_code=400, detail="Такого пакета нет")
+    price = PACKAGES[n]
+    code = (code or "").strip().upper()
+    if code and _credits_balance(code) == 0:
+        # код указан, но такого нет — не молчим, иначе человек заплатит «в никуда»
+        con = _credits_conn()
+        exists = con.execute("SELECT 1 FROM credits WHERE code=?", (code,)).fetchone()
+        con.close()
+        if not exists:
+            raise HTTPException(status_code=400, detail="Такой код не найден. Оставьте поле пустым — выдадим новый.")
+    body = {
+        "amount": {"value": "%.2f" % price, "currency": "RUB"},
+        "capture": True,
+        # ЮKassa НЕ подставляет payment_id в return_url — номер платежа страница
+        # запоминает у себя (localStorage) перед уходом на оплату.
+        "confirmation": {"type": "redirect", "return_url": RETURN_URL + "?paid=1"},
+        "description": "Разборы отчётности: %d шт." % n,
+        "metadata": {"product": "credits", "n": str(n), "code": code},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20) as cl:
+            r = await cl.post(YK_API, json=body, auth=_yk_auth(),
+                              headers={"Idempotence-Key": str(uuid.uuid4())})
+        j = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail="Платёжная система недоступна: %s" % e)
+    url = (j.get("confirmation") or {}).get("confirmation_url")
+    if not url:
+        # не глотаем причину: ЮKassa пишет её в description/code — иначе диагностировать нечем
+        why = j.get("description") or j.get("code") or ("HTTP %s" % r.status_code)
+        print("[credits/buy] YooKassa error:", r.status_code, j)
+        raise HTTPException(status_code=502, detail="ЮKassa не приняла платёж: %s" % why)
+    return {"payment_id": j.get("id"), "url": url, "n": n, "price": price}
+
+@analyze_router.get("/api/credits/claim")
+async def credits_claim(payment_id: str):
+    """
+    Человек вернулся после оплаты. Спрашиваем ЮKassa напрямую: оплачено?
+    Если да — начисляем (идемпотентно) и отдаём код. Без реальной оплаты не начислит.
+    """
+    import httpx
+    payment_id = (payment_id or "").strip()
+    if not payment_id:
+        raise HTTPException(status_code=400, detail="нет номера платежа")
+    try:
+        async with httpx.AsyncClient(timeout=20) as cl:
+            r = await cl.get(YK_API + "/" + payment_id, auth=_yk_auth())
+        j = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail="Платёжная система недоступна: %s" % e)
+    status = j.get("status")
+    if status != "succeeded":
+        return {"paid": False, "status": status}
+    md = j.get("metadata") or {}
+    if md.get("product") != "credits":
+        raise HTTPException(status_code=400, detail="Этот платёж не про разборы")
+    n = int(md.get("n") or 0)
+    old_code = (md.get("code") or "").strip().upper()
+    if n <= 0:
+        raise HTTPException(status_code=400, detail="некорректный пакет")
+    if old_code:
+        # докупка на существующий код — идемпотентность через таблицу grants
+        con = _credits_conn()
+        try:
+            con.execute("""CREATE TABLE IF NOT EXISTS grants(
+                payment_id TEXT PRIMARY KEY, user_id TEXT, code TEXT, n INTEGER, ts TEXT)""")
+            was = con.execute("SELECT code FROM grants WHERE payment_id=?", (payment_id,)).fetchone()
+            already = bool(was)
+        finally:
+            con.close()
+        if not already:
+            grant_credits(old_code, n, "оплата %s" % payment_id)
+            con = _credits_conn()
+            con.execute("INSERT OR IGNORE INTO grants(payment_id,user_id,code,n,ts) VALUES(?,?,?,?,?)",
+                        (payment_id, "site", old_code, n,
+                         datetime.datetime.now(datetime.timezone.utc).isoformat()))
+            con.commit(); con.close()
+        return {"paid": True, "code": old_code, "balance": _credits_balance(old_code), "n": n}
+    # новый покупатель: код привязываем к самому платежу
+    code, balance = grant_for_user("pay:" + payment_id, n, payment_id)
+    return {"paid": True, "code": code, "balance": balance, "n": n}
+
+@analyze_router.get("/api/credits/packages")
+async def credits_packages():
+    """Что продаём — чтобы страница не хардкодила цены."""
+    return {"packages": [{"n": k, "price": v} for k, v in sorted(PACKAGES.items())]}
 
 @analyze_router.post("/api/analyze")
 async def analyze(
-    token: str = Form(...),                 # PRO-код/пароль ИЛИ токен — как в risk-check
+    request: Request,
+    token: str = Form(""),                  # PRO-код/пароль ИЛИ токен — как в risk-check; пусто = бесплатный режим акции
     text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
+    device: Optional[str] = Form(None),     # id устройства из localStorage (для «1 бесплатный на устройство»)
 ):
     code = (token or "").strip()
+    free_mode = False        # бесплатное окно акции
+    credit_mode = False      # разбор списывается с купленного пакета
+    key = period = None
+    used = 0
+    limit = ANALYZE_LIMIT
+    balance = _credits_balance(code)   # сколько докупленных разборов на этом коде
 
-    # 1) доступ — ровно как в /api/risk-check, но со своим ключом-префиксом "AN:" (свой лимит)
+    # 1) доступ. Порядок: мастер → подписка → купленный пакет → акция.
     if _is_master(code):
-        key, period = "AN:MASTER", _period_master()
+        key, period, limit = "AN:MASTER", _period_master(), MASTER_LIMIT
     else:
         info = _token_info(code)
-        if info is None:
-            raise HTTPException(status_code=403, detail="Разбор отчётности доступен по подписке")
-        # доступ к аналитику — только для подписок от полугода
-        if (_plan_days(code) or 0) < MIN_PLAN_DAYS:
-            raise HTTPException(status_code=403, detail="Разбор отчётности доступен на тарифе от 6 месяцев")
-        uid, created_at = info
-        key, period = f"AN:U:{uid}", _period_token(created_at)
+        if info is not None and (_plan_days(code) or 0) >= MIN_PLAN_DAYS:
+            # подписка от полугода: сначала тратим включённые в тариф
+            uid, created_at = info
+            key, period = f"AN:U:{uid}", _period_token(created_at)
+        elif balance > 0:
+            # подписки нет (или короткая), но есть купленный пакет разборов
+            credit_mode = True
+        elif info is not None:
+            # подписка есть, но короткая, и пакета нет
+            raise HTTPException(status_code=403, detail="Разбор отчётности доступен на тарифе от 6 месяцев или по пакету разборов")
+        elif _credits_known(code):
+            # код пакета настоящий, но разборы на нём кончились — так и говорим,
+            # иначе человек читает «у вас нет доступа» и думает, что код не работает
+            raise HTTPException(status_code=402,
+                detail="Разборы в этом пакете закончились. Можно докупить ещё на тот же код.")
+        else:
+            # ни подписки, ни пакета → бесплатное окно акции, если открыто
+            if not _promo_open():
+                raise HTTPException(status_code=403, detail="Разбор отчётности доступен по подписке или по пакету разборов")
+            free_mode = True
 
-    # 2) лимит (30-дневное окно, как у риск-менеджера)
-    used = _used(key, period)
-    if used >= ANALYZE_LIMIT:
-        raise HTTPException(status_code=402, detail=f"Лимит {ANALYZE_LIMIT} разборов за 30 дней исчерпан")
-
+    # 2) лимит подписки (30-дневное окно). Исчерпан — переходим на купленный пакет, если он есть.
+    if not free_mode and not credit_mode:
+        used = _used(key, period)
+        if used >= limit:
+            if balance > 0:
+                credit_mode = True          # включённые кончились → тратим докупленные
+            else:
+                raise HTTPException(status_code=402,
+                    detail=f"Лимит {limit} разборов за 30 дней исчерпан. Можно докупить пакет разборов.")
     # 3) текст отчёта (PDF или вставленный текст)
     report_text = ""
     is_pdf = False
@@ -169,11 +590,32 @@ async def analyze(
         if is_pdf and pdf_pages > 0:
             raise HTTPException(status_code=422, detail="Не удалось прочитать отчёт: похоже, это скан плохого качества. Попробуйте более чёткий PDF, текстовую версию отчёта (обычно МСФО) или вставьте текст вручную.")
         raise HTTPException(status_code=400, detail="Пустая отчётность: загрузите PDF или вставьте текст")
-
-    truncated = len(report_text) > MAX_REPORT_CHARS
+    # для бесплатных — свой, более жёсткий потолок на объём отчёта
+    cap_chars = MAX_FREE_CHARS if free_mode else MAX_REPORT_CHARS
+    truncated = len(report_text) > cap_chars
     if truncated:
-        report_text = report_text[:MAX_REPORT_CHARS]
-
+        report_text = report_text[:cap_chars]
+    # 3b) бесплатный режим — занимаем слот в пуле ПОСЛЕ того, как убедились, что отчёт читаемый
+    free_left = None
+    dev_key = ip = None
+    if free_mode:
+        ip = _client_ip(request)
+        dev_key = (device or "").strip() or ("ip:" + ip)
+        status, free_left = _promo_reserve(dev_key, ip)
+        if status != 'ok':
+            msg = {
+                'closed': "Бесплатные разборы на выходные закончились. Полный доступ — по подписке.",
+                'dup':    "С этого устройства бесплатный разбор уже был. Полный доступ — по подписке.",
+                'ipcap':  "С этого адреса уже сделали несколько бесплатных разборов. Полный доступ — по подписке.",
+                'empty':  "Все 50 бесплатных разборов на выходные разобрали. Полный доступ — по подписке.",
+            }.get(status, "Бесплатные разборы недоступны. Полный доступ — по подписке.")
+            raise HTTPException(status_code=403, detail=msg)
+    # 3c) режим пакета — списываем один разбор с баланса кода (атомарно), тоже после проверки отчёта
+    credit_left = None
+    if credit_mode:
+        credit_left = _credits_spend(code)
+        if credit_left < 0:
+            raise HTTPException(status_code=402, detail="Разборы в пакете закончились. Можно докупить ещё.")
     # 4) вызов модели — твой же call_model (DeepSeek уже настроен на сервере)
     system_prompt = _load_prompt()
     user_input = "<отчётность>\n" + report_text + "\n</отчётность>"
@@ -182,12 +624,28 @@ async def analyze(
                             model=ANALYZE_MODEL,
                             max_output_tokens=16000, temperature=0)
     except Exception as e:
+        if free_mode:
+            _promo_refund(dev_key, ip)      # модель не ответила → вернуть слот, чтобы сбой не съел шанс
+        if credit_mode:
+            _credits_refund(code)           # то же для купленного разбора — сбой не должен стоить денег
         raise HTTPException(status_code=502, detail=f"Модель недоступна: {e}")
-
     # 5) списываем разбор и делим ответ на прозу + JSON
-    _bump(key, period)
+    if not free_mode and not credit_mode:
+        _bump(key, period)
     prose, data = _split_prose_and_json(answer)
-    return {"prose": prose, "data": data,
-            "left_this_month": max(0, ANALYZE_LIMIT - (used + 1)),
+    resp = {"prose": prose, "data": data,
             "report_truncated": truncated,
             "ocr_used": ocr_used}
+    if free_mode:
+        resp["free_mode"] = True
+        resp["free_left"] = free_left
+    elif credit_mode:
+        resp["free_mode"] = False
+        resp["credit_mode"] = True
+        resp["credits_left"] = credit_left
+    else:
+        resp["free_mode"] = False
+        resp["left_this_month"] = max(0, limit - (used + 1))
+        if balance > 0:
+            resp["credits_left"] = balance      # показываем, что в запасе есть докупленные
+    return resp
