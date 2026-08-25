@@ -400,6 +400,15 @@ PACKAGES = {10: 1500}          # {сколько разборов: цена в �
 RETURN_URL = "https://investtools.pro/pro/ai-analyst.html"
 YK_API = "https://api.yookassa.ru/v3/payments"
 
+# ── ДАННЫЕ ДЛЯ ЧЕКА (54-ФЗ) ──
+# Без них ЮKassa отказывается создавать платёж: "Receipt is missing or illegal".
+# Значения НЕ придуманы: взяты 25.08.2026 из зарегистрированного чека по годовой
+# подписке (GET /v3/receipts?payment_id=321d0e60-...): vat_code 1, service,
+# full_payment. Меняются только вместе с системой налогообложения.
+VAT_CODE        = 1              # 1 = без НДС
+PAYMENT_SUBJECT = "service"      # услуга
+PAYMENT_MODE    = "full_payment" # полный расчёт
+
 def _env(name: str) -> str:
     import os
     v = os.getenv(name)
@@ -441,14 +450,28 @@ async def credits_buy(n: int = Form(10), code: str = Form("")):
         con.close()
         if not exists:
             raise HTTPException(status_code=400, detail="Такой код не найден. Оставьте поле пустым — выдадим новый.")
+    # наименование одной строкой с ценой — как в чеках за подписку
+    title = "Разбор отчётности ИИ-аналитиком (пакет %d шт. — %d ₽)" % (n, price)
     body = {
         "amount": {"value": "%.2f" % price, "currency": "RUB"},
         "capture": True,
         # ЮKassa НЕ подставляет payment_id в return_url — номер платежа страница
         # запоминает у себя (localStorage) перед уходом на оплату.
         "confirmation": {"type": "redirect", "return_url": RETURN_URL + "?paid=1"},
-        "description": "Разборы отчётности: %d шт." % n,
+        "description": title,
         "metadata": {"product": "credits", "n": str(n), "code": code},
+        # блок чека — покупателя не спрашиваем, почту для чека ЮKassa берёт
+        # на своей странице оплаты (так же, как на платежах бота)
+        "receipt": {
+            "items": [{
+                "description": title,
+                "quantity": 1,
+                "amount": {"value": "%.2f" % price, "currency": "RUB"},
+                "vat_code": VAT_CODE,
+                "payment_subject": PAYMENT_SUBJECT,
+                "payment_mode": PAYMENT_MODE,
+            }],
+        },
     }
     try:
         async with httpx.AsyncClient(timeout=20) as cl:
