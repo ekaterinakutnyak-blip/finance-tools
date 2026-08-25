@@ -18,7 +18,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ИИ-аналитик отчётности · investtools.pro</title>
 <meta name="description" content="Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком, насколько бизнес устойчив. Методология Екатерины Кутняк.">
-<script src="../gate.js"></script>
+<!-- gate.js здесь намеренно НЕТ: страницу должны открывать и те, кто пришёл покупать
+     пакет разборов без подписки. Реальная защита — на сервере, в /api/analyze. -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -59,6 +60,14 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
 .tokrow{display:none;margin-top:0.9rem}
 .tokrow label{font-size:0.82rem;color:var(--text2)}
 .tokrow input{font-family:var(--mono);font-size:0.9rem;padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);width:280px;max-width:100%;margin-top:0.35rem}
+.buybox{display:none;margin-top:1rem;padding:1rem 1.1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.buybox-h{font-weight:600;margin-bottom:0.35rem}
+.buybox-p{font-size:0.86rem;color:var(--text2);line-height:1.5}
+.buybox-note{font-size:0.78rem;color:var(--text2);margin-top:0.5rem}
+.buybtn{margin-top:0.8rem}
+.mono{font-family:var(--mono)}
+.okbox{display:none;margin-top:1rem;padding:1rem 1.1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2);font-size:0.9rem;line-height:1.55}
+.okbox .code{font-family:var(--mono);font-size:1.1rem;font-weight:700;letter-spacing:0.5px}
 .btn{font-family:var(--sans);font-size:0.9rem;font-weight:600;padding:0.65rem 1.7rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;transition:opacity .2s;margin-top:1rem}
 .btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:default}
 .hint{font-size:0.78rem;color:var(--text3);margin-top:0.6rem;line-height:1.5}
@@ -211,12 +220,23 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
       <textarea id="textInput" placeholder="Вставьте текст финансовой отчётности…"></textarea>
     </details>
     <div class="tokrow" id="tokrow">
-      <label>Есть PRO-код или пароль? На выходных необязательно — но с ним разбор без лимитов (вводится один раз, дальше запомнится):</label><br>
-      <input type="text" id="tokInput" placeholder="PRO-код или пароль">
+      <label>PRO-код, пароль или код пакета разборов (вводится один раз, дальше запомнится):</label><br>
+      <input type="text" id="tokInput" placeholder="PRO-код, пароль или код пакета">
     </div>
     <button class="btn" id="goBtn">Разобрать мой отчёт</button>
     <div class="err" id="err"></div>
-    <div class="hint">ИИ читает отчёт и пишет разбор — это занимает до минуты. На выходных — бесплатно, без подписки; дальше загрузка своего отчёта доступна по PRO-подписке.</div>
+
+    <!-- покупка пакета разборов прямо на сайте -->
+    <div class="buybox" id="buybox">
+      <div class="buybox-h">Пакет разборов — <b id="buyN">10</b> разборов за <b id="buyPrice">1500</b> ₽</div>
+      <div class="buybox-p">Без подписки и без бота. После оплаты вы получите код вида <span class="mono">RZB-XXXX-XXXX</span> — он подставится в поле выше сам. Разборы не сгорают по времени: тратятся по мере использования.</div>
+      <button class="btn buybtn" id="buyBtn">Купить и оплатить</button>
+      <div class="buybox-note" id="buyNote">Если код у вас уже есть — впишите его в поле выше, разборы добавятся на него.</div>
+    </div>
+
+    <!-- сюда падает выданный после оплаты код -->
+    <div class="okbox" id="okbox"></div>
+    <div class="hint">ИИ читает отчёт и пишет разбор — это занимает до минуты. Загрузка своего отчёта доступна по PRO-подписке от 6 месяцев или по пакету разборов.</div>
   </div>
 
   <div class="tryblock">
@@ -305,6 +325,107 @@ function deviceId(){
     return d;
   }catch(e){ return ''; }
 }
+/* ссылка «докупить разборы» — показывается, когда лимит исчерпан */
+function buyLink(){
+  return '<a href="javascript:void(0)" data-buy="1" style="color:var(--accent);font-weight:600;text-decoration:underline">Купить пакет разборов →</a>';
+}
+
+/* ===================== ПОКУПКА ПАКЕТА РАЗБОРОВ ===================== */
+var BUY_API   = 'https://investtools.pro/api/credits';
+var PENDING_K = 'credits_pending_payment';
+var PKG = { n: 10, price: 1500 };            // подтянется с сервера, это запасной вариант
+
+function showBuy(){
+  var b = document.getElementById('buybox');
+  if(!b) return;
+  b.style.display = 'block';
+  b.scrollIntoView({behavior:'smooth', block:'center'});
+}
+/* клик по ссылке «купить» в тексте ошибки */
+document.addEventListener('click', function(ev){
+  var t = ev.target;
+  if(t && t.getAttribute && t.getAttribute('data-buy')){ ev.preventDefault(); showBuy(); }
+});
+
+/* актуальные цены — чтобы страница не врала, если Екатерина поменяет пакет */
+(function(){
+  try{
+    fetch(BUY_API + '/packages').then(function(r){ return r.json(); }).then(function(j){
+      if(j && j.packages && j.packages.length){
+        PKG = j.packages[0];
+        var a = document.getElementById('buyN'), b = document.getElementById('buyPrice');
+        if(a) a.textContent = PKG.n;
+        if(b) b.textContent = PKG.price;
+      }
+    }).catch(function(){});
+  }catch(e){}
+})();
+
+document.getElementById('buyBtn').onclick = function(){
+  var btn = this, note = document.getElementById('buyNote');
+  /* если у человека уже есть код пакета (в поле или сохранён в браузере) —
+     докупаем НА НЕГО, чтобы не плодить второй код. Токен подписки сюда не годится. */
+  var typed = (document.getElementById('tokInput').value || '').trim().toUpperCase();
+  var have  = typed || (storedCode() || '').trim().toUpperCase();
+  var existing = /^RZB-/.test(have) ? have : '';
+  btn.disabled = true; btn.textContent = 'Готовим оплату…';
+  var fd = new FormData();
+  fd.append('n', PKG.n);
+  fd.append('code', existing);
+  fetch(BUY_API + '/buy', { method:'POST', body: fd })
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+    .then(function(res){
+      if(!res.ok || !res.j || !res.j.url){
+        btn.disabled = false; btn.textContent = 'Купить и оплатить';
+        note.textContent = (res.j && res.j.detail) ? res.j.detail : 'Не получилось создать платёж. Попробуйте ещё раз.';
+        return;
+      }
+      try{ localStorage.setItem(PENDING_K, JSON.stringify({id: res.j.payment_id, ts: Date.now()})); }catch(e){}
+      location.href = res.j.url;
+    })
+    .catch(function(){
+      btn.disabled = false; btn.textContent = 'Купить и оплатить';
+      note.textContent = 'Сеть недоступна. Попробуйте ещё раз.';
+    });
+};
+
+/* вернулись с оплаты — спрашиваем сервер, оплачено ли, и забираем код */
+function pendingId(){
+  try{
+    var raw = localStorage.getItem(PENDING_K);
+    if(!raw) return '';
+    var o = JSON.parse(raw);
+    if(!o || !o.id) return '';
+    if(Date.now() - (o.ts||0) > 6*3600*1000){ localStorage.removeItem(PENDING_K); return ''; }  // протух
+    return o.id;
+  }catch(e){ return ''; }
+}
+function claimPending(tries){
+  var pid = pendingId();
+  if(!pid) return;
+  fetch(BUY_API + '/claim?payment_id=' + encodeURIComponent(pid))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j && j.paid && j.code){
+        try{ localStorage.removeItem(PENDING_K); }catch(e){}
+        try{ localStorage.setItem('idea_pro_code', j.code); }catch(e){}
+        var inp = document.getElementById('tokInput');
+        if(inp){ inp.value = j.code; document.getElementById('tokrow').style.display = 'block'; }
+        var ok = document.getElementById('okbox');
+        ok.innerHTML = 'Оплата прошла. Ваш код: <span class="code">' + esc(j.code) + '</span><br>' +
+                       'Разборов на коде: <b>' + esc(String(j.balance)) + '</b>. Код уже подставлен в поле и сохранён в этом браузере — но лучше выпишите его себе: он же работает с другого устройства.';
+        ok.style.display = 'block';
+        ok.scrollIntoView({behavior:'smooth', block:'center'});
+        var bb = document.getElementById('buybox'); if(bb) bb.style.display = 'none';
+        return;
+      }
+      /* ЮKassa иногда доводит платёж на пару секунд позже возврата */
+      if(j && j.status === 'canceled'){ try{ localStorage.removeItem(PENDING_K); }catch(e){} return; }
+      if((tries||0) < 4){ setTimeout(function(){ claimPending((tries||0)+1); }, 2500); }
+    })
+    .catch(function(){});
+}
+if(pendingId()) claimPending(0);
 /* акция выходного — авто-истечение по дате (совпадает с gate.js и бэкендом) */
 var PROMO_END = new Date('2026-08-24T00:00:00+03:00');
 function promoActive(){ try{ return new Date() < PROMO_END; }catch(e){ return false; } }
@@ -377,7 +498,7 @@ function analyze(){
   if(!chosenFile && !text){ err.textContent = 'Загрузите PDF или вставьте текст отчёта.'; return; }
   var typed = document.getElementById('tokInput').value.trim();
   var code = typed || storedCode();   // пусто = бесплатный разбор выходного (доступ решает сервер)
-  if(!code && !promoActive()){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.textContent = 'Введите PRO-код или пароль.'; return; }
+  if(!code && !promoActive()){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); err.innerHTML = 'Введите PRO-код, пароль или код пакета. ' + buyLink(); return; }
 
   var fd = new FormData();
   fd.append('token', code);
@@ -397,7 +518,11 @@ function analyze(){
         document.getElementById('intake').style.display = 'block';
         if(res.status === 403){
           if(!storedCode()){ document.getElementById('tokrow').style.display = 'block'; document.getElementById('tokInput').focus(); }
-          err.textContent = (res.j && res.j.detail) ? res.j.detail : 'Доступ по подписке. Введите PRO-код или пароль.';
+          err.innerHTML = ((res.j && res.j.detail) ? esc(res.j.detail) : 'Доступ по подписке.') + ' ' + buyLink();
+          return;
+        }
+        if(res.status === 402){
+          err.innerHTML = ((res.j && res.j.detail) ? esc(res.j.detail) : 'Лимит разборов исчерпан.') + ' ' + buyLink();
           return;
         }
         err.textContent = (res.j && res.j.detail) ? res.j.detail : ('Ошибка ' + res.status);
@@ -581,9 +706,12 @@ function renderReal(res, fromSaved){
   var remain = document.getElementById('remain');
   remain.textContent = '';
   if(res.free_mode){
-    remain.textContent = 'Это был бесплатный разбор выходного дня. Полный доступ — без лимитов, с моделями банкротства по любому отчёту — по PRO-подписке.';
+    remain.textContent = 'Это был бесплатный разбор выходного дня. Полный доступ — по PRO-подписке или по пакету разборов.';
+  } else if(res.credit_mode){
+    remain.textContent = 'Разбор списан с вашего пакета. Осталось в пакете: ' + res.credits_left;
   } else if(res.left_this_month !== undefined && res.left_this_month !== null){
     remain.textContent = 'Осталось разборов в этом месяце: ' + res.left_this_month;
+    if(res.credits_left){ remain.textContent += ' · плюс в пакете: ' + res.credits_left; }
   }
   if(res.report_truncated){
     remain.textContent += ' · отчёт был длинным, часть текста усечена — проверьте, что ключевые формы попали в разбор.';
@@ -653,6 +781,19 @@ function renderDemo(key){
   document.getElementById('results').classList.add('on');
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+/* ── если доступа нет вообще — показать блок покупки сразу, не заставляя
+      человека сначала загрузить PDF и упереться в ошибку.
+      Стоит в самом конце: нужны и PROMO_END, и storedCode(). ── */
+(function(){
+  try{
+    if(pendingId()) return;        // человек возвращается с оплаты — не мешаем
+    if(storedCode()) return;       // код или подписка уже есть
+    if(promoActive()) return;      // идёт бесплатное окно
+    var b = document.getElementById('buybox');
+    if(b) b.style.display = 'block';
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
