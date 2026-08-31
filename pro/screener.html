@@ -19,6 +19,9 @@ h1{font-size:1.4rem;font-weight:700}
 label{font-size:.82rem;color:var(--text2);display:block;margin:.55rem 0 .2rem}
 input[type=number],select{width:100%;font-family:var(--mono);font-size:.9rem;padding:.4rem .5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
 .row2{display:flex;gap:.5rem}.row2>div{flex:1}
+.dt{display:flex;align-items:center;gap:.4rem;margin-top:.35rem}
+.dt-l{font-size:.8rem;color:var(--text2);width:22px;flex:none}
+.dt select{flex:1;min-width:0}
 details{border-top:1px solid var(--border);padding:.5rem 0}
 details:first-of-type{border-top:none}
 summary{font-weight:600;font-size:.9rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
@@ -87,8 +90,8 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
 
       <details open><summary>2 · Погашение</summary>
         <label>Гасится в период</label>
-        <div class="row2"><div><input type="month" id="dFrom"><div class="hint">от</div></div>
-          <div><input type="month" id="dTo"><div class="hint">до</div></div></div>
+        <div class="dt"><span class="dt-l">от</span><select id="mFrom"></select><select id="yFrom"></select></div>
+        <div class="dt"><span class="dt-l">до</span><select id="mTo"></select><select id="yTo"></select></div>
         <div class="btnrow" style="margin-top:.45rem">
           <button class="btn" data-win="12">год</button>
           <button class="btn" data-win="24">2 года</button>
@@ -154,9 +157,24 @@ rsel.value=C.RANK['BBB-'];   // дефолтный пол
 var BASE = new Date();                 // дата выгрузки bonds.json (из заголовка файла)
 var MS_Y = 365.25*24*3600*1000;
 
-function ym(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
-function parseYM(v){ if(!v) return null; var p=v.split('-'); var d=new Date(+p[0],+p[1]-1,1); return isNaN(d)?null:d; }
-function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59); }
+var MONTHS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+var MS_D=24*3600*1000;
+
+function fillSelects(){
+  var y0=BASE.getFullYear();
+  [['mFrom','yFrom'],['mTo','yTo']].forEach(function(pair){
+    var m=$(pair[0]), y=$(pair[1]);
+    m.innerHTML=MONTHS.map(function(n,i){return '<option value="'+i+'">'+n+'</option>';}).join('');
+    var opts='';
+    for(var k=0;k<=12;k++){ opts+='<option value="'+(y0+k)+'">'+(y0+k)+'</option>'; }
+    y.innerHTML=opts;
+  });
+}
+function getD(mId,yId,last){
+  var m=+$(mId).value, y=+$(yId).value;
+  return last ? new Date(y,m+1,0,23,59,59) : new Date(y,m,1);
+}
+function setD(mId,yId,d){ $(mId).value=d.getMonth(); $(yId).value=d.getFullYear(); }
 
 /* когда по бумаге придут деньги: дата выгрузки + срок до ближайшего события */
 function matDate(b){ return (b.term==null)?null:new Date(BASE.getTime()+b.term*MS_Y); }
@@ -167,26 +185,29 @@ function matLabel(b){
 }
 
 function initDates(){
-  var f=$('dFrom'), t=$('dTo');
-  if(!f.value) f.value = ym(BASE);
-  if(!t.value){ var e=new Date(BASE.getTime()); e.setFullYear(e.getFullYear()+10); t.value = ym(e); }
+  fillSelects();
+  setD('mFrom','yFrom', BASE);
+  var e=new Date(BASE.getTime()); e.setFullYear(e.getFullYear()+10);
+  setD('mTo','yTo', e);
   syncTerm();
   document.querySelectorAll('[data-win]').forEach(function(btn){
     btn.onclick=function(){
       var m=+btn.dataset.win;
-      if(!m){ f.value=ym(BASE); var e2=new Date(BASE.getTime()); e2.setFullYear(e2.getFullYear()+10); t.value=ym(e2); }
-      else { f.value=ym(BASE); var e3=new Date(BASE.getTime()); e3.setMonth(e3.getMonth()+m); t.value=ym(e3); }
+      setD('mFrom','yFrom', BASE);
+      var e2=new Date(BASE.getTime());
+      if(m) e2.setMonth(e2.getMonth()+m); else e2.setFullYear(e2.getFullYear()+10);
+      setD('mTo','yTo', e2);
       syncTerm(); render();
     };
   });
-  [f,t].forEach(function(el){ el.onchange=function(){ syncTerm(); }; });
+  ['mFrom','yFrom','mTo','yTo'].forEach(function(id){ $(id).onchange=function(){ syncTerm(); }; });
 }
 
 /* переводим выбранные даты в срок в годах, с которым работает фильтр */
 function syncTerm(){
-  var a=parseYM($('dFrom').value), b=parseYM($('dTo').value);
-  var lo = a ? Math.max(0,(a-BASE)/MS_Y) : 0;
-  var hi = b ? Math.max(0,(endOfMonth(b)-BASE)/MS_Y) : 30;
+  var a=getD('mFrom','yFrom',false), b=getD('mTo','yTo',true);
+  var lo = Math.max(0,(a-BASE)/MS_Y);
+  var hi = Math.max(0,(b-BASE)/MS_Y);
   if(hi<lo){ var s=lo; lo=hi; hi=s; }
   $('tMin').value=lo; $('tMax').value=hi;
   $('dHint').innerHTML='Данные на '+('0'+BASE.getDate()).slice(-2)+'.'+('0'+(BASE.getMonth()+1)).slice(-2)+'.'+BASE.getFullYear()+
