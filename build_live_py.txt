@@ -72,7 +72,11 @@ def snapshot():
         exDurD = pos(mr[mi['DURATION']]) if mr else None
         score = (0 if (price is not None and exYtm is not None) else 1,
                  BRANK.get(r[si['BOARDID']], 99))
-        rec = {'price': price, 'exYtm': exYtm,
+        rec = {'price': price,
+               # биржа считает YIELDATPREVWAPRICE от вчерашней средневзвешенной —
+               # чтобы сравнивать честно, свой расчёт ведём от неё же
+               'wa': pos(r[si['PREVWAPRICE']]) or price,
+               'exYtm': exYtm,
                'exDur': exDurD / 365.0 if exDurD else None,
                'nkd': num(r[si['ACCRUEDINT']]),
                'face': num(r[si['FACEVALUEONSETTLEDATE']]) or num(r[si['FACEVALUE']]),
@@ -97,9 +101,16 @@ def add_months(d, k):
     return date(y, m, day)
 
 
-def calc_bullet(s, today):
-    """Копия calcManualBond: поток bullet, бисекция по YTM, дюрация Маколея."""
-    face, price, mat = s['face'], s['price'], s['mat']
+def calc_bullet(s, today, use_wa=False):
+    """Копия calcManualBond: поток bullet, бисекция по YTM, дюрация Маколея.
+    Горизонт — оферта, если она есть и в будущем, иначе погашение (как в портфеле).
+    use_wa — считать от вчерашней средневзвешенной цены, как это делает биржа."""
+    face = s['face']
+    price = s['wa'] if (use_wa and s.get('wa')) else s['price']
+    mat = s['mat']
+    # доходность ВСЕГДА к оферте, если она есть и ещё не прошла
+    if s.get('offer') and s['offer'] > today:
+        mat = s['offer']
     if not face or not price or not mat or mat <= today:
         return None
     cpct = s['cPct'] or 0.0
@@ -166,12 +177,17 @@ def main(bonds_path):
 
     groups = {'обычные (bullet)': [], 'с амортизацией': [], 'флоатеры': [], 'с офертой': []}
     worst = []
-    checked = 0
+    checked = skipped_short = 0
     for b in bonds:
         s = snap.get(b['isin'])
         if not s or s['exYtm'] is None or s['exDur'] is None:
             continue
-        c = calc_bullet(s, today)
+        # при дюрации меньше четверти года доходность к погашению не показательна
+        # (её правило: короткий хвост разгоняет цифру в сотни процентов)
+        if s['exDur'] < 0.25:
+            skipped_short += 1
+            continue
+        c = calc_bullet(s, today, use_wa=True)
         if not c:
             continue
         checked += 1
@@ -186,7 +202,8 @@ def main(bonds_path):
             groups['обычные (bullet)'].append(row)
         worst.append((abs(s['exYtm'] - c['ytm']), b, s, c))
 
-    print('\nСверено %d бумаг — там, где биржа сама знает и доходность, и дюрацию.' % checked)
+    print('\nСверено %d бумаг · выкинуто с дюрацией < 0,25 года: %d' % (checked, skipped_short))
+    print('Считаем от той же цены, что биржа (вчерашняя средневзвешенная), горизонт — до оферты.')
     print('Расхождение НАШЕЙ формулы с биржей:')
     for k in ['обычные (bullet)', 'с офертой', 'с амортизацией', 'флоатеры']:
         report(k, groups[k])
