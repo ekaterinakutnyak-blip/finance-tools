@@ -60,12 +60,17 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
 .count{font-size:.8rem;color:var(--text2);margin-bottom:.5rem}
 .disc{font-size:.74rem;color:var(--text3);font-style:italic;margin-top:1rem}
 .pf{position:sticky;top:1rem}
+.live{font-size:.78rem;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem .7rem;margin:-.6rem 0 1rem}
+.live b{font-family:var(--mono);color:var(--text)}
+.live.err{background:#FDECEA;border-color:var(--red);color:#8a2820}
+.badge.f{background:var(--surface2);color:var(--text2)}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>Персональный подбор облигаций</h1>
 <div class="sub">Задайте параметры — получите бумаги, подходящие под них. Уберите лишние — портфель пересоберётся. Сайт не знает вашего профиля: это фильтр, а не рекомендация.</div>
+<div class="live" id="liveBar">Загружаю данные с Московской биржи…</div>
 
 <div class="grid">
   <!-- ЛЕВО: параметры и фильтры -->
@@ -140,7 +145,7 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
       <div class="card-h">Что получилось в отборе</div>
       <div id="pfBody"></div>
       <button class="find" id="toPortfolio" style="margin-top:.8rem;display:none">Открыть в анализе портфеля →</button>
-      <div class="hint" id="toPfHint" style="display:none">Количество бумаг посчитается по равным долям от суммы, из расчёта номинала 1000 ₽. Валютные и нестандартные — поправьте руками.</div>
+      <div class="hint" id="toPfHint" style="display:none">Количество посчитается по равным долям от суммы, по настоящему номиналу с биржи. Валютные — поправьте руками.</div>
     </div>
     <div class="card">
       <div class="card-h">Кандидаты</div>
@@ -150,7 +155,7 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
         <th></th><th>Рейт.</th><th>Выпуск</th><th>Тип</th><th class="n">Спред</th><th class="n">Купон</th><th class="n">Погашение</th><th class="n">Ликв</th><th>Отрасль</th>
       </tr></thead><tbody id="rows"></tbody></table></div>
     </div>
-    <div class="disc">Образовательный инструмент, не индивидуальная инвестиционная рекомендация. Параметры вводит пользователь; сайт не собирает инвестиционный профиль. Цены, доходности и спреды — из недельной выгрузки <span id="discDate"></span>, а не онлайн-котировки: за неделю они меняются. Рейтинг — худший из агентств.</div>
+    <div class="disc">Образовательный инструмент, не индивидуальная инвестиционная рекомендация. Параметры вводит пользователь; сайт не собирает инвестиционный профиль. Цены, доходности, дюрации и даты — с Московской биржи, запрашиваются при открытии страницы. G-спред считаем сами: доходность минус кривая ОФЗ на сроке бумаги. Доходность у флоатеров условная — при текущей ставке. Рейтинг, ликвидность и отрасль — из недельной выгрузки <span id="discDate"></span>, биржа их не публикует.</div>
   </div>
 </div>
 </div>
@@ -193,11 +198,198 @@ function getD(mId,yId,last){
 function setD(mId,yId,d){ $(mId).value=d.getMonth(); $(yId).value=d.getFullYear(); }
 
 /* когда по бумаге придут деньги: дата выгрузки + срок до ближайшего события */
-function matDate(b){ return (b.term==null)?null:new Date(BASE.getTime()+b.term*MS_Y); }
+/* дата берётся с биржи; если бумаги там нет — старый расчёт от срока */
+function matDate(b){
+  if(b.horizon) return new Date(b.horizon+'T00:00:00');
+  return (b.term==null)?null:new Date(BASE.getTime()+b.term*MS_Y);
+}
 function matLabel(b){
-  var d=matDate(b); if(!d) return '—';
+  var d=matDate(b); if(!d||isNaN(d)) return '—';
   var s=('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear();
-  return (b.fPut||b.fCall) ? s+'<span class="badge w">оферта</span>' : s;
+  var off = b.toOffer!=null ? b.toOffer : (b.fPut||b.fCall);
+  return off ? s+'<span class="badge w">оферта</span>' : s;
+}
+
+/* ============ ЖИВЫЕ ДАННЫЕ С МОСБИРЖИ ============
+   Что берём с биржи: цену, НКД, номинал, лот, даты погашения и оферты,
+   доходность и дюрацию. Доходность — ТОЛЬКО биржевую; нет её — прочерк.
+   Дюрацию, где биржа молчит, считаем сами, но лишь для рублёвого bullet
+   без оферты и амортизации — на остальных формула врёт (проверено).
+   G-спред считаем сами: YTM минус КБД ОФЗ на сроке бумаги.
+   Из выгрузки остаются рейтинг, ликвидность, отрасль, объём, листинг,
+   квал, суборд и флаги свойств. Всё, что здесь трогается, — с биржи. */
+var _jp=0;
+function moexFetch(url){
+  return fetch(url).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+  .catch(function(){return new Promise(function(resolve,reject){
+    var cb='_sc'+(++_jp)+'_'+Date.now(), sep=url.indexOf('?')>=0?'&':'?';
+    var s=document.createElement('script');
+    var t=setTimeout(function(){cl();reject(new Error('Timeout'));},20000);
+    function cl(){clearTimeout(t);try{delete window[cb];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
+    window[cb]=function(d){cl();resolve(d);};
+    s.src=url+sep+'callback='+cb; s.onerror=function(){cl();reject(new Error('JSONP'));};
+    document.body.appendChild(s);
+  });});
+}
+
+var ISS='https://iss.moex.com/iss';
+var BOARDS=['TQOB','TQCB','TQIR','TQRD','TQUD','TQOD','TQIY','TQOY','TQED','TQIF','EQOB','EQQB'];
+var MS_DAY=86400000, YEAR=365.25;
+var GC=[];                       // КБД ОФЗ: [{t, rate}]
+var NO_CURVE=false;              // кривая не загрузилась → фильтр по спреду выключаем
+
+function _n(v){ var f=parseFloat(v); return isFinite(f)?f:null; }
+function _p(v){ var f=_n(v); return (f!=null&&f>0)?f:null; }
+function _d(v){
+  var s=String(v||'').trim();
+  if(s.length!==10 || s.indexOf('0000')===0 || s==='0000-00-00') return null;
+  var t=new Date(s+'T00:00:00'); return isNaN(t)?null:t;
+}
+/* nsRate и loadGcurve перенесены из pro/bond-portfolio.html целиком,
+   вместе с запасным путём: если ручка zcyc молчит, кривая собирается
+   из доходностей ОФЗ серии SU26 на доске TQOB. */
+function nsRate(t){
+  if(!GC.length||t<=0)return 0;
+  if(t<=GC[0].t)return GC[0].rate;
+  if(t>=GC[GC.length-1].t)return GC[GC.length-1].rate;
+  for(var i=1;i<GC.length;i++){
+    if(t<=GC[i].t){
+      var p0=GC[i-1],p1=GC[i];
+      var frac=(t-p0.t)/(p1.t-p0.t);
+      return p0.rate+frac*(p1.rate-p0.rate);
+    }
+  }
+  return GC[GC.length-1].rate;
+}
+
+function loadGcurve(){
+  GC=[];
+  return moexFetch(ISS+'/engines/stock/zcyc/securities.json?iss.meta=off').then(function(d){
+    var cols=d.data.columns, pi=cols.indexOf('period'), vi=cols.indexOf('value');
+    d.data.data.forEach(function(row){
+      var p=parseFloat(row[pi]), v=parseFloat(row[vi]);
+      if(!isNaN(p)&&!isNaN(v)&&p>0) GC.push({t:p,rate:v});
+    });
+    GC.sort(function(a,b){return a.t-b.t;});
+    if(GC.length>0) return 'КБД';
+    throw new Error('empty');
+  }).catch(function(){
+    return moexFetch(ISS+'/engines/stock/markets/bonds/boards/TQOB/securities.json'+
+      '?iss.meta=off&iss.only=securities&securities.columns=SECID,MATDATE,YIELDATPREVWAPRICE')
+    .then(function(d){
+      var cols=d.securities.columns;
+      var si=cols.indexOf('SECID'), mi=cols.indexOf('MATDATE'), yi=cols.indexOf('YIELDATPREVWAPRICE');
+      var today=new Date(); today.setHours(0,0,0,0);
+      d.securities.data.forEach(function(row){
+        var secid=row[si]||'', matDate=row[mi], ytm=parseFloat(row[yi]);
+        if(secid.indexOf('SU26')===0 && matDate && ytm>=8 && ytm<=25){
+          var years=(new Date(matDate)-today)/(365.25*86400000);
+          if(years>0.1) GC.push({t:years,rate:ytm});
+        }
+      });
+      GC.sort(function(a,b){return a.t-b.t;});
+      return GC.length? 'ОФЗ' : 'нет';
+    }).catch(function(){ return 'нет'; });
+  });
+}
+
+/* Дюрация Маколея — тот же расчёт, что calcManualBond в «Портфеле облигаций».
+   Только для чистого рублёвого bullet: без оферты, без амортизации. */
+function ownDur(x, today){
+  if(!x.face||!x.price||!x.mat) return null;
+  var freq=Math.max(1,Math.round(365/(x.cPer||182))), step=Math.max(1,Math.round(12/freq));
+  var camt=x.face*((x.cPct||0)/100)/freq, dates=[], d=new Date(x.mat);
+  while(d>today && dates.length<400){ dates.push(new Date(d)); d=new Date(d); d.setMonth(d.getMonth()-step); }
+  if(!dates.length) return null;
+  dates.reverse();
+  var nkd=x.nkd;
+  if(nkd==null){
+    var fc=dates[0], pc=new Date(fc); pc.setMonth(pc.getMonth()-step);
+    var pdays=(fc-pc)/MS_DAY||1, passed=(today-pc)/MS_DAY;
+    nkd=camt*Math.max(0,Math.min(1,passed/pdays));
+  }
+  var dirty=x.price/100*x.face+nkd;
+  if(dirty<=0) return null;
+  var fl=dates.map(function(dt,i){ return {t:(dt-today)/MS_DAY/YEAR, cf:camt+(i===dates.length-1?x.face:0)}; });
+  function pv(y){ var s=0; for(var i=0;i<fl.length;i++) s+=fl[i].cf/Math.pow(1+y,fl[i].t); return s; }
+  var lo=-0.99, hi=5.0;
+  if(pv(lo)<dirty||pv(hi)>dirty) return null;
+  for(var k=0;k<160;k++){ var m=(lo+hi)/2; if(pv(m)>dirty) lo=m; else hi=m; }
+  var y=(lo+hi)/2, p=pv(y), w=0;
+  for(var j=0;j<fl.length;j++) w+=fl[j].t*fl[j].cf/Math.pow(1+y,fl[j].t);
+  return w/p;
+}
+
+function applyLive(sec, today){
+  var S=sec.securities, M=sec.marketdata;
+  var si={}, mi={};
+  S.columns.forEach(function(c,i){si[c]=i;}); M.columns.forEach(function(c,i){mi[c]=i;});
+  var md={};
+  M.data.forEach(function(r){ md[r[mi.SECID]+'|'+r[mi.BOARDID]]=r; });
+
+  var best={};
+  S.data.forEach(function(r){
+    var isin=r[si.ISIN]||r[si.SECID]; if(!isin) return;
+    var mr=md[r[si.SECID]+'|'+r[si.BOARDID]];
+    var price=null;
+    if(mr) price=_p(mr[mi.MARKETPRICE])||_p(mr[mi.WAPRICE])||_p(mr[mi.LAST]);
+    if(price==null) price=_p(r[si.PREVWAPRICE])||_p(r[si.PREVPRICE]);
+    var ytm=_p(r[si.YIELDATPREVWAPRICE])||(mr?_p(mr[mi.YIELD]):null);
+    var durD=mr?_p(mr[mi.DURATION]):null;
+    var bi=BOARDS.indexOf(r[si.BOARDID]); if(bi<0) bi=99;
+    var score=(price!=null&&ytm!=null?0:1)*1000+bi;
+    if(best[isin]&&best[isin].score<=score) return;
+    best[isin]={score:score, x:{
+      price:price, ytm:ytm, dur:durD!=null?durD/365:null,
+      nkd:_n(r[si.ACCRUEDINT]),
+      face:_n(r[si.FACEVALUEONSETTLEDATE])||_n(r[si.FACEVALUE]),
+      faceCur:r[si.FACEUNIT]||null, lot:_n(r[si.LOTSIZE]),
+      cPct:_n(r[si.COUPONPERCENT]), cPer:_n(r[si.COUPONPERIOD]),
+      mat:_d(r[si.MATDATE]),
+      offer:_d(r[si.OFFERDATE])||_d(r[si.PUTOPTIONDATE])||_d(r[si.BUYBACKDATE])
+    }};
+  });
+
+  var n={live:0, file:0, ownDur:0, noYtm:0, spread:0};
+  BONDS.forEach(function(b){
+    var rec=best[b.isin];
+    if(!rec){ b.stale=true; n.file++; return; }
+    var x=rec.x;
+    b.stale=false; n.live++;
+    b.face=x.face; b.faceCur=x.faceCur; b.lot=x.lot;
+    b.matDate=x.mat?x.mat.toISOString().slice(0,10):null;
+    b.offerDate=x.offer?x.offer.toISOString().slice(0,10):null;
+    if(x.price!=null) b.price=x.price;
+
+    // горизонт: оферта ВСЕГДА в приоритете
+    var hor=(x.offer&&x.offer>today)?x.offer:x.mat;
+    b.horizon=hor?hor.toISOString().slice(0,10):null;
+    b.toOffer=!!(x.offer&&x.offer>today);
+    b.term=hor?((hor-today)/MS_DAY/YEAR):null;
+
+    // доходность — только биржевая
+    b.ytm=x.ytm;
+    if(b.ytm==null) n.noYtm++;
+
+    // купонная доходность: годовой купон к цене
+    b.tkd=(x.cPct!=null&&x.price)?(x.cPct/(x.price/100)):null;
+
+    // дюрация: биржа, иначе свой расчёт для чистого рублёвого bullet
+    if(x.dur!=null){ b.dur=x.dur; }
+    else{
+      var rub=!x.faceCur||['SUR','RUB'].indexOf(String(x.faceCur).toUpperCase())>=0;
+      var clean=rub && !b.fAmort && !b.fPut && !b.fCall && !x.offer;
+      var od=clean?ownDur({face:x.face,price:x.price,mat:hor,cPct:x.cPct,cPer:x.cPer,nkd:x.nkd},today):null;
+      b.dur=od; if(od!=null) n.ownDur++;
+    }
+
+    // G-спред = YTM − КБД на СРОКЕ ДО ГОРИЗОНТА (T_eff), как в bond-portfolio.
+    // На коротком хвосте не показателен — прочерк.
+    b.gspread=(b.ytm!=null&&b.term!=null&&b.term>0&&b.dur!=null&&b.dur>=0.25&&GC.length)
+      ? Math.round((b.ytm-nsRate(b.term))*100)/100 : null;
+    if(b.gspread!=null) n.spread++;
+  });
+  return n;
 }
 
 /* тип купона: слова и цвета те же, что в «Портфеле облигаций» */
@@ -259,12 +451,45 @@ function params(){
     allowAmort:$('aAmort').checked, allowPutCall:$('aPutCall').checked,
     allowSubord:$('aSubord').checked, allowQual:$('aQual').checked,
     minListing:null,
-    spreadMin:parseFloat($('spMin').value), spreadMax:parseFloat($('spMax').value),
+    spreadMin:NO_CURVE?null:parseFloat($('spMin').value),
+    spreadMax:NO_CURVE?null:parseFloat($('spMax').value),
     ratingFloorRank:parseInt($('ratingFloor').value), allowNoRating:false,
     excludeAnom:$('exAnom').checked, excludeWarn:$('exWarn').checked,
     termMin:parseFloat($('tMin').value), termMax:parseFloat($('tMax').value),
     minLiq:parseInt($('minLiq').value)
   };
+}
+
+/* Если под фильтры не попало ничего — показываем, какой именно фильтр всё выкосил.
+   Считаем, сколько бумаг проходит каждое условие ПО ОТДЕЛЬНОСТИ. */
+function whyEmpty(){
+  var p=params(), n=BONDS.length, out=[];
+  function cnt(f){ var k=0; BONDS.forEach(function(b){ if(f(b)) k++; }); return k; }
+  var kn=parseFloat($('kMin').value), kx=parseFloat($('kMax').value);
+  var yn=parseFloat($('yMin').value), yx=parseFloat($('yMax').value);
+  var tests=[
+    ['валюта',      function(b){ return p.currencies.indexOf(b.cur)>=0; }],
+    ['рейтинг',     function(b){ return b.grank!=null && b.grank>=p.ratingFloorRank; }],
+    ['ликвидность', function(b){ return b.liq!=null && b.liq>=p.minLiq; }],
+    ['коридор спреда', function(b){ return p.spreadMin==null || (b.gspread!=null && b.gspread>=p.spreadMin && b.gspread<=p.spreadMax); }],
+    ['срок до погашения', function(b){ return b.term!=null && b.term>=p.termMin && b.term<=p.termMax; }],
+    ['структура (галочки)', function(b){ return (p.allowFloater||!b.fFloat)&&(p.allowLinker||!b.fLinker)&&(p.allowStep||!b.fStep)&&(p.allowAmort||!b.fAmort)&&(p.allowPutCall||!(b.fPut||b.fCall))&&(p.allowSubord||!b.subord)&&(p.allowQual||!b.qual); }],
+    ['аномальный спред', function(b){ return !p.excludeAnom || !b.anom; }],
+    ['Warning List', function(b){ return !p.excludeWarn || !b.fWarn; }],
+    ['доходность (ТКД/YTM)', function(b){
+        if(!isNaN(kn)&&(b.tkd==null||b.tkd<kn)) return false;
+        if(!isNaN(kx)&&(b.tkd==null||b.tkd>kx)) return false;
+        if(!isNaN(yn)&&(b.ytm==null||b.ytm<yn)) return false;
+        if(!isNaN(yx)&&(b.ytm==null||b.ytm>yx)) return false;
+        return true; }]
+  ];
+  tests.forEach(function(t){ out.push([t[0], cnt(t[1])]); });
+  out.sort(function(a,b){ return a[1]-b[1]; });
+  var h='<div class="flag warn" style="margin-top:.5rem">Ни одна бумага не прошла все условия сразу. '+
+        'Сколько проходит каждое по отдельности, из '+n+':<br>';
+  h+=out.map(function(x){ return '&nbsp;&nbsp;'+x[0]+' — <b>'+x[1]+'</b>'; }).join('<br>');
+  h+='<br>Начните с самого строгого — верхнего в списке.</div>';
+  return h;
 }
 
 function render(){
@@ -284,7 +509,7 @@ function render(){
   const rows=$('rows'); rows.innerHTML='';
   filtered.slice(0,150).forEach(b=>{
     const tr=document.createElement('tr');
-    const badges=(b.anom?'<span class="badge d">спред!</span>':'')+(b.fWarn?'<span class="badge w">warn</span>':'')+(b.cur!=='Рубль'?'<span class="badge w">'+b.cur+'</span>':'');
+    const badges=(b.anom?'<span class="badge d">спред!</span>':'')+(b.fWarn?'<span class="badge w">warn</span>':'')+(b.cur!=='Рубль'?'<span class="badge w">'+b.cur+'</span>':'')+(b.stale?'<span class="badge f" title="Бумаги нет в биржевом списке — цифры из недельной выгрузки">выгрузка</span>':'');
     tr.innerHTML=`<td><input type=checkbox data-isin="${b.isin}" ${excluded.has(b.isin)?'':'checked'}></td>`+
       `<td class="g">${b.grade||'—'}</td><td>${b.name}${badges}</td>`+
       `<td>${typeTag(b)}</td>`+
@@ -294,7 +519,7 @@ function render(){
       `<td class="n">${b.liq!=null?b.liq:'—'}</td><td>${b.sector||''}</td>`;
     rows.appendChild(tr);
   });
-  $('count').textContent=`${filtered.length} бумаг под фильтры · в портфеле ${selected.length}`+(filtered.length>150?' · показаны первые 150':'');
+  $('count').innerHTML=`${filtered.length} бумаг под фильтры · в портфеле ${selected.length}`+(filtered.length>150?' · показаны первые 150':'')+(filtered.length?'':whyEmpty());
   rows.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
     if(cb.checked) excluded.delete(cb.dataset.isin); else excluded.add(cb.dataset.isin);
     const sel=filtered.filter(b=>!excluded.has(b.isin));
@@ -360,8 +585,8 @@ function handoff(){
   var cap = parseFloat($('capital').value)||0;
   var per = cap>0 ? cap/sel.length : 0;
   var list = sel.map(function(b){
-    var qty = 0;
-    if(per>0 && b.cur==='Рубль' && b.price){ qty = Math.round(per/(b.price/100*1000)); }
+    var qty = 0, face = b.face || 1000;          // номинал теперь настоящий, с биржи
+    if(per>0 && b.cur==='Рубль' && b.price){ qty = Math.round(per/(b.price/100*face)); }
     return { isin:b.isin, qty: qty>0?qty:1 };
   });
   try{ localStorage.setItem('screener_basket', JSON.stringify({ ts:Date.now(), capital:cap, items:list })); }catch(e){}
@@ -380,8 +605,43 @@ fetch('bonds.json').then(function(r){
   var lm=r.headers.get('last-modified');
   if(lm){ var t=new Date(lm); if(!isNaN(t)) BASE=t; }
   return r.json();
-}).then(d=>{ BONDS=C.markAnomalous(d); initDates(); render(); })
-  .catch(e=>{ $('pfBody').innerHTML='<div class="lbl">Не загрузился bonds.json — проверьте, что файл лежит рядом со страницей (/pro/bonds.json).</div>'; });
+}).then(function(d){
+  BONDS=d;
+  var today=new Date(); today.setHours(0,0,0,0);
+  return Promise.all([
+    moexFetch(ISS+'/engines/stock/markets/bonds/securities.json?iss.meta=off&iss.only=securities,marketdata'),
+    loadGcurve()
+  ]).then(function(a){
+    var src=a[1];
+    var n=applyLive(a[0], today);
+    BASE=today;                       // даты считаем от сегодня, данные живые
+    var t=new Date();
+    $('liveBar').innerHTML='Данные Московской биржи на <b>'+
+      ('0'+t.getDate()).slice(-2)+'.'+('0'+(t.getMonth()+1)).slice(-2)+'.'+t.getFullYear()+' '+
+      ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+
+      '</b> · живых бумаг <b>'+n.live+'</b>'+
+      (n.file?' · не торгуются на бирже <b>'+n.file+'</b>':'')+
+      (n.ownDur?' · дюрация посчитана нами у <b>'+n.ownDur+'</b>':'')+
+      ' · G-спред посчитан у <b>'+n.spread+'</b>'+
+      '. Рейтинг, ликвидность и отрасль — из недельной выгрузки, их биржа не даёт.';
+    if(!GC.length){
+      NO_CURVE=true;
+      $('liveBar').className='live err';
+      $('liveBar').innerHTML='Кривая ОФЗ не загрузилась — G-спред посчитать не от чего, '+
+        'поэтому фильтр по коридору спреда сейчас отключён, остальные работают. Обновите страницу позже.';
+    }
+  }).catch(function(){
+    $('liveBar').className='live err';
+    $('liveBar').innerHTML='Мосбиржа сейчас не отвечает — показаны цифры из выгрузки от '+
+      ('0'+BASE.getDate()).slice(-2)+'.'+('0'+(BASE.getMonth()+1)).slice(-2)+'.'+BASE.getFullYear()+
+      '. Это не онлайн-котировки, обновите страницу позже.';
+    BONDS.forEach(function(b){ b.stale=true; });
+  });
+}).then(function(){
+  BONDS=C.markAnomalous(BONDS); initDates(); render();
+}).catch(function(){
+  $('pfBody').innerHTML='<div class="lbl">Не загрузился bonds.json — проверьте, что файл лежит рядом со страницей (/pro/bonds.json).</div>';
+});
 })();
 </script>
 <script src="/nav.js" defer></script>
