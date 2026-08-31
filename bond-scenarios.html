@@ -45,6 +45,11 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .rm{cursor:pointer;color:var(--text3);font-size:1.1rem;padding:0 0.3rem}
 .rm:hover{color:var(--danger)}
 table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.back-link{display:inline-block;font-size:0.8rem;color:var(--text2);text-decoration:none;margin-bottom:0.8rem}
+.back-link:hover{color:var(--accent)}
+.footer-nav{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.8rem;color:var(--text3);line-height:2}
+.footer-nav a{color:var(--text2);text-decoration:none;margin-right:1.1rem}
+.footer-nav a:hover{color:var(--accent)}
 .tblscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tblscroll table{width:auto;min-width:100%}
 .tblscroll th,.tblscroll td{padding:0.5rem 0.35rem}
@@ -75,6 +80,7 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
 </head>
 <body>
 <div class="container">
+<a href="/index.html" class="back-link">← Все инструменты</a>
 <h1>Как облигации ведут себя при разной ставке<span class="hnew">НОВОЕ</span></h1>
 <div class="lead">Выбор облигации — это всегда ставка на то, куда пойдёт ключевая ставка. Даже если вы об этом не думаете. Этот инструмент показывает не «какая бумага лучше», а как каждая отработает в разных сценариях — чтобы выбор был осознанным.</div>
 
@@ -125,6 +131,9 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
 </div>
 
 <div class="warnbox" id="finalWarn" style="display:none"></div>
+<div class="footer-nav">
+<a href="/index.html">← Все инструменты</a><a href="/pro/bond-portfolio.html">Портфель облигаций</a><a href="/articles.html">Статьи</a><a href="/novosti.html">Новости</a>
+</div>
 </div><!-- /container -->
 
 <script>
