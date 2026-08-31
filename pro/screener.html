@@ -150,7 +150,7 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
         <th></th><th>Рейт.</th><th>Выпуск</th><th>Тип</th><th class="n">Спред</th><th class="n">Купон</th><th class="n">Погашение</th><th class="n">Ликв</th><th>Отрасль</th>
       </tr></thead><tbody id="rows"></tbody></table></div>
     </div>
-    <div class="disc">Образовательный инструмент, не индивидуальная инвестиционная рекомендация. Параметры вводит пользователь; сайт не собирает инвестиционный профиль. Спред и купон — из недельной выгрузки; на сервере пересчитываются вживую с MOEX. Рейтинг — худший из агентств.</div>
+    <div class="disc">Образовательный инструмент, не индивидуальная инвестиционная рекомендация. Параметры вводит пользователь; сайт не собирает инвестиционный профиль. Цены, доходности и спреды — из недельной выгрузки <span id="discDate"></span>, а не онлайн-котировки: за неделю они меняются. Рейтинг — худший из агентств.</div>
   </div>
 </div>
 </div>
@@ -245,6 +245,8 @@ function syncTerm(){
   var hi = Math.max(0,(b-BASE)/MS_Y);
   if(hi<lo){ var s=lo; lo=hi; hi=s; }
   $('tMin').value=lo; $('tMax').value=hi;
+  var dd=$('discDate');
+  if(dd) dd.textContent='от '+('0'+BASE.getDate()).slice(-2)+'.'+('0'+(BASE.getMonth()+1)).slice(-2)+'.'+BASE.getFullYear();
   $('dHint').innerHTML='Данные на '+('0'+BASE.getDate()).slice(-2)+'.'+('0'+(BASE.getMonth()+1)).slice(-2)+'.'+BASE.getFullYear()+
     '. Если у бумаги есть оферта, срок считается до неё — деньги придут там.';
 }
