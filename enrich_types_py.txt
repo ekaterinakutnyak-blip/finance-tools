@@ -1,0 +1,148 @@
+# -*- coding: utf-8 -*-
+"""
+Проставляет тип купона каждой бумаге в bonds.json.
+
+Каскад — точная копия того, что работает в pro/bond-portfolio.html
+(48/48 на боевых данных MOEX). Отличие одно, намеренное: линкер и золото
+там сведены к фиксу для риск-расчёта, здесь дополнительно сохраняется
+подпись для витрины, сам couponType не меняется.
+
+Тип у выпуска не меняется, поэтому результат кладётся в справочник
+bond_types.json и на следующих запусках биржа опрашивается только по новым ISIN.
+
+Запуск:
+    python3 enrich_types.py bonds.json bond_types.json          # все новые
+    python3 enrich_types.py bonds.json bond_types.json --limit 20   # попробовать на 20
+"""
+import sys, json, time, os, urllib.request, urllib.error
+
+ISS = 'https://iss.moex.com/iss'
+UA  = {'User-Agent': 'investtools.pro/bond-types'}
+PAUSE = 0.12          # пауза между запросами, чтобы не долбить биржу
+RETRY = 3
+
+def get(url):
+    for a in range(RETRY):
+        try:
+            req = urllib.request.Request(url, headers=UA)
+            with urllib.request.urlopen(req, timeout=25) as r:
+                return json.loads(r.read().decode('utf-8'))
+        except Exception:
+            if a == RETRY - 1: return None
+            time.sleep(1.0 + a)
+    return None
+
+def spec(isin):
+    """BOND_TYPE и имя из спецификации бумаги."""
+    d = get('%s/securities/%s.json?iss.only=description&iss.meta=off' % (ISS, isin))
+    bond_type, name = '', ''
+    try:
+        cols = d['description']['columns']; rows = d['description']['data']
+        ni, vi = cols.index('name'), cols.index('value')
+        for r in rows:
+            k = r[ni]
+            if k == 'BOND_TYPE': bond_type = str(r[vi] or '')
+            if k in ('ISSUENAME','SHORTNAME','NAME','SECNAME') and not name:
+                name = str(r[vi] or '')
+    except Exception:
+        pass
+    return bond_type, name
+
+def coupons(isin):
+    """Купоны: сколько всего, у скольких есть сумма и ставка, и сами ставки с датами."""
+    d = get('%s/statistics/engines/stock/markets/bonds/bondization/%s.json'
+            '?iss.only=coupons&iss.meta=off&limit=300' % (ISS, isin))
+    n = nval = nprc = 0; rated = []
+    try:
+        cols = d['coupons']['columns']; rows = d['coupons']['data']
+        vi, vpi, cdi = cols.index('value'), cols.index('valueprc'), cols.index('coupondate')
+        n = len(rows)
+        for r in rows:
+            v, vp = r[vi], r[vpi]
+            try:
+                if v is not None and float(v) > 0: nval += 1
+            except Exception: pass
+            try:
+                if vp is not None and float(vp) > 0:
+                    nprc += 1; rated.append((str(r[cdi] or ''), round(float(vp), 2)))
+            except Exception: pass
+    except Exception:
+        pass
+    return n, nval, nprc, rated
+
+GOLD = ('SELGOLD', 'GOLD', 'GLD')
+
+def classify(bond_type, name, n, nval, nprc, rated):
+    """Каскад из bond-portfolio.html. Возвращает (couponType, isDiscount, подпись)."""
+    bt = (bond_type or '').lower()
+    nm = (name or '').upper()
+    is_float_label = any(k in bt for k in ('floater', 'флоат', 'переменн', 'плавающ'))
+
+    if any(k in bt for k in ('linker', 'indexed', 'ндексируем', 'инкер')) or any(k in nm for k in GOLD):
+        return 'fix', False, ('золото' if any(k in nm for k in GOLD) else 'линкер')
+    if 'structural' in bt or 'структурн' in bt:
+        return 'structural', False, 'структурная'
+    if n == 0 or (nval == 0 and nprc == 0):
+        return 'fix', True, 'дисконт'
+    if 'discount' in bt or 'дисконт' in bt:
+        return 'fix', True, 'дисконт'
+    if nprc == 0:
+        return 'float', False, 'флоат'
+    if not is_float_label:
+        return 'fix', False, 'фикс'
+    if nprc < 6:
+        return 'float', False, 'флоат'
+    rated = sorted(rated, key=lambda x: x[0])
+    ch = sum(1 for i in range(1, len(rated)) if rated[i][1] != rated[i-1][1])
+    fc = ch / (len(rated) - 1) if len(rated) > 1 else 0
+    return ('float', False, 'флоат') if fc > 0.30 else ('fix', False, 'фикс')
+
+def main(bonds_path, cache_path, limit=None):
+    bonds = json.load(open(bonds_path, encoding='utf-8'))
+    cache = {}
+    if os.path.exists(cache_path):
+        cache = json.load(open(cache_path, encoding='utf-8'))
+    todo = [b['isin'] for b in bonds if b['isin'] not in cache]
+    if limit: todo = todo[:limit]
+    print('Бумаг в базе: %d · уже в справочнике: %d · спросим у биржи: %d'
+          % (len(bonds), len(cache), len(todo)))
+
+    for k, isin in enumerate(todo, 1):
+        bt, nm = spec(isin); time.sleep(PAUSE)
+        n, nval, nprc, rated = coupons(isin); time.sleep(PAUSE)
+        ct, disc, label = classify(bt, nm, n, nval, nprc, rated)
+        cache[isin] = {'couponType': ct, 'isDiscount': disc, 'kind': label, 'bondType': bt}
+        if k % 100 == 0 or k == len(todo):
+            json.dump(cache, open(cache_path, 'w', encoding='utf-8'), ensure_ascii=False)
+            print('  ...%d из %d' % (k, len(todo)), flush=True)
+    json.dump(cache, open(cache_path, 'w', encoding='utf-8'), ensure_ascii=False)
+
+    got = 0
+    for b in bonds:
+        c = cache.get(b['isin'])
+        if c:
+            b['couponType'] = c['couponType']; b['isDiscount'] = c['isDiscount']; b['kind'] = c['kind']
+            got += 1
+        else:
+            b.setdefault('couponType', None); b.setdefault('isDiscount', None); b.setdefault('kind', None)
+    json.dump(bonds, open(bonds_path, 'w', encoding='utf-8'), ensure_ascii=False)
+
+    import collections
+    print('\nТип проставлен у %d из %d бумаг' % (got, len(bonds)))
+    for k, v in collections.Counter(b.get('kind') for b in bonds).most_common():
+        print('   %-14s %5d' % (k, v))
+    # сверка с флагами из выгрузки
+    mism = [b for b in bonds if b.get('kind') and
+            ((b['kind'] == 'флоат') != bool(b.get('fFloat')))]
+    print('\nРасходится с флагом «Флоатер» из выгрузки: %d бумаг' % len(mism))
+    for b in mism[:8]:
+        print('   %-34s выгрузка: %s · биржа: %s' %
+              (b['name'][:34], 'флоатер' if b.get('fFloat') else 'не флоатер', b['kind']))
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print(__doc__); sys.exit(1)
+    lim = None
+    if '--limit' in sys.argv:
+        lim = int(sys.argv[sys.argv.index('--limit') + 1])
+    main(sys.argv[1], sys.argv[2], lim)
