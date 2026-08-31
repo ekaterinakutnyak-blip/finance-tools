@@ -1,0 +1,164 @@
+# -*- coding: utf-8 -*-
+"""
+Живой слой для скринера: один запрос к MOEX на все облигации сразу.
+
+Берём с биржи: цену, доходность, дюрацию, номинал, лот, даты погашения/оферты.
+Из файла остаётся только то, чего у биржи нет: рейтинг, ликвидность, отрасль,
+средний объём, листинг, квал, суборд, флаги свойств.
+G-спред НЕ берём — он считается по нашей методике от КБД.
+
+Сначала запускать БЕЗ --write: скрипт только смотрит и печатает отчёт.
+
+    python3 build_live.py /var/www/html/pro/bonds.json            # только отчёт
+    python3 build_live.py /var/www/html/pro/bonds.json --write    # дописать в базу
+"""
+import sys, json, urllib.request
+
+URL = ('https://iss.moex.com/iss/engines/stock/markets/bonds/securities.json'
+       '?iss.meta=off&iss.only=securities,marketdata')
+UA = {'User-Agent': 'investtools.pro/bond-live'}
+
+# основные режимы торгов, в порядке предпочтения
+BOARDS = ['TQOB', 'TQCB', 'TQIR', 'TQRD', 'TQUD', 'TQOD', 'TQIY', 'TQOY',
+          'TQED', 'TQIF', 'EQOB', 'EQQB']
+BRANK = {b: i for i, b in enumerate(BOARDS)}
+
+
+def num(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f
+
+
+def pos(v):
+    f = num(v)
+    return f if (f is not None and f > 0) else None
+
+
+def date(v):
+    s = str(v or '').strip()
+    return s if (len(s) == 10 and s[:4].isdigit() and s != '0000-00-00') else None
+
+
+def fetch():
+    req = urllib.request.Request(URL, headers=UA)
+    with urllib.request.urlopen(req, timeout=90) as r:
+        return json.loads(r.read().decode('utf-8'))
+
+
+def collect():
+    j = fetch()
+    s, m = j['securities'], j['marketdata']
+    si = {c: i for i, c in enumerate(s['columns'])}
+    mi = {c: i for i, c in enumerate(m['columns'])}
+    md = {(r[mi['SECID']], r[mi['BOARDID']]): r for r in m['data']}
+
+    best = {}
+    for r in s['data']:
+        isin = r[si['ISIN']] or r[si['SECID']]
+        if not isin:
+            continue
+        mr = md.get((r[si['SECID']], r[si['BOARDID']]))
+        dur = pos(mr[mi['DURATION']]) if mr else None
+        ytm = (pos(mr[mi['YIELDATWAPRICE']]) or pos(mr[mi['YIELD']])) if mr else None
+        if ytm is None:
+            ytm = pos(r[si['YIELDATPREVWAPRICE']])
+        price = None
+        if mr:
+            price = pos(mr[mi['MARKETPRICE']]) or pos(mr[mi['WAPRICE']]) or pos(mr[mi['LAST']])
+        if price is None:
+            price = pos(r[si['PREVWAPRICE']]) or pos(r[si['PREVPRICE']])
+
+        # приоритет доски: сначала те, где есть дюрация, потом по списку режимов
+        score = (0 if dur is not None else 1, BRANK.get(r[si['BOARDID']], 99))
+        rec = {
+            'board':    r[si['BOARDID']],
+            'price':    price,
+            'ytm':      ytm,
+            'ytmOffer': pos(mr[mi['YIELDTOOFFER']]) if mr else None,
+            'dur':      round(dur / 365.0, 3) if dur is not None else None,
+            'face':     num(r[si['FACEVALUEONSETTLEDATE']]) or num(r[si['FACEVALUE']]),
+            'faceCur':  r[si['FACEUNIT']] or None,
+            'lot':      num(r[si['LOTSIZE']]),
+            'coupon':   num(r[si['COUPONPERCENT']]),
+            'matDate':  date(r[si['MATDATE']]),
+            'offerDate': date(r[si['OFFERDATE']]) or date(r[si['PUTOPTIONDATE']]),
+            'callDate': date(r[si['CALLOPTIONDATE']]),
+            'trades':   num(mr[mi['NUMTRADES']]) if mr else None,
+        }
+        prev = best.get(isin)
+        if prev is None or score < prev[0]:
+            best[isin] = (score, rec)
+    return {k: v[1] for k, v in best.items()}
+
+
+def main(bonds_path, write):
+    live = collect()
+    print('Уникальных бумаг у биржи: %d' % len(live))
+
+    bonds = json.load(open(bonds_path, encoding='utf-8'))
+    n = len(bonds)
+    hit = [b for b in bonds if b['isin'] in live]
+    print('Наших бумаг: %d · нашлись на бирже: %d · не нашлись: %d' % (n, len(hit), n - len(hit)))
+
+    def cov(field):
+        return sum(1 for b in hit if live[b['isin']].get(field) is not None)
+    print('\nЧто биржа реально знает (из %d найденных):' % len(hit))
+    for f, name in [('price', 'цена'), ('ytm', 'доходность'), ('dur', 'дюрация'),
+                    ('face', 'номинал'), ('lot', 'лот'), ('matDate', 'дата погашения'),
+                    ('offerDate', 'дата оферты'), ('coupon', 'ставка купона')]:
+        c = cov(f)
+        print('   %-16s %5d  (%4.1f%%)' % (name, c, 100.0 * c / max(1, len(hit))))
+
+    import collections
+    print('\nПо каким доскам разобрались:')
+    for b, c in collections.Counter(live[x['isin']]['board'] for x in hit).most_common(8):
+        print('   %-6s %5d' % (b, c))
+
+    print('\nСверка со старыми данными из выгрузки (первые 8 бумаг):')
+    print('   %-30s %8s %8s | %6s %6s | %6s %6s' %
+          ('бумага', 'цена ф', 'цена б', 'YTM ф', 'YTM б', 'дюр ф', 'дюр б'))
+    for b in hit[:8]:
+        L = live[b['isin']]
+        print('   %-30s %8s %8s | %6s %6s | %6s %6s' % (
+            b['name'][:30],
+            '%.2f' % b['price'] if b.get('price') is not None else '—',
+            '%.2f' % L['price'] if L['price'] is not None else '—',
+            '%.1f' % b['ytm'] if b.get('ytm') is not None else '—',
+            '%.1f' % L['ytm'] if L['ytm'] is not None else '—',
+            '%.2f' % b['dur'] if b.get('dur') is not None else '—',
+            '%.2f' % L['dur'] if L['dur'] is not None else '—'))
+
+    non1000 = [b for b in hit if live[b['isin']]['face'] not in (None, 1000)]
+    print('\nНоминал не 1000: %d бумаг' % len(non1000))
+    for b in sorted(non1000, key=lambda x: -(live[x['isin']]['face'] or 0))[:8]:
+        L = live[b['isin']]
+        print('   %-38s %10.2f %s' % (b['name'][:38], L['face'], L['faceCur'] or ''))
+
+    if not write:
+        print('\nЭто был только просмотр. Ничего не записано.')
+        print('Чтобы записать в базу — та же команда с --write в конце.')
+        return
+
+    for b in bonds:
+        L = live.get(b['isin'])
+        if not L:
+            for k in ('livePrice', 'liveYtm', 'liveDur', 'face', 'faceCur', 'lot',
+                      'coupon', 'matDate', 'offerDate', 'callDate'):
+                b.setdefault(k, None)
+            continue
+        b['livePrice'] = L['price']; b['liveYtm'] = L['ytm']; b['liveDur'] = L['dur']
+        b['face'] = L['face']; b['faceCur'] = L['faceCur']; b['lot'] = L['lot']
+        b['coupon'] = L['coupon']; b['matDate'] = L['matDate']
+        b['offerDate'] = L['offerDate']; b['callDate'] = L['callDate']
+    json.dump(bonds, open(bonds_path, 'w', encoding='utf-8'), ensure_ascii=False)
+    print('\nЗаписано в %s. Старые поля из выгрузки не тронуты — живые лежат рядом '
+          '(livePrice, liveYtm, liveDur).' % bonds_path)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print(__doc__); sys.exit(1)
+    main(sys.argv[1], '--write' in sys.argv)
