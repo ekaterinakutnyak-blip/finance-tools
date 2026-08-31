@@ -45,6 +45,14 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .rm{cursor:pointer;color:var(--text3);font-size:1.1rem;padding:0 0.3rem}
 .rm:hover{color:var(--danger)}
 table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.tblscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tblscroll table{width:auto;min-width:100%}
+.tblscroll th,.tblscroll td{padding:0.5rem 0.35rem}
+.tblscroll th:first-child,.tblscroll td:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+.tblscroll::-webkit-scrollbar{height:8px}
+.tblscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.scrollhint{display:none;font-size:0.72rem;color:var(--text3);margin-top:0.35rem}
+.tblscroll.is-scrollable + .scrollhint{display:block}
 th,td{padding:0.5rem 0.55rem;text-align:right;border-bottom:1px solid var(--border)}
 th:first-child,td:first-child{text-align:left}
 th{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text3);font-weight:600}
@@ -105,7 +113,8 @@ canvas{width:100%;max-width:100%;height:auto;margin-top:0.5rem}
 
 <div class="card" id="resultCard" style="display:none">
   <h2>3. Годовая доходность (IRR) по сценариям</h2>
-  <table id="resultTable"></table>
+  <div class="tblscroll" id="resultScroll"><table id="resultTable"></table></div>
+  <div class="scrollhint">Таблицу можно прокрутить вбок →</div>
   <div class="legend" id="legend"></div>
   <div class="note" id="resultNote"></div>
 </div>
@@ -626,6 +635,8 @@ function recompute(){
     h+='<td class="num worst-col">'+worst[b.rowId].toFixed(1)+'%</td></tr>';
   });
   document.getElementById('resultTable').innerHTML=h;
+  (function(){var s=document.getElementById('resultScroll');
+    if(s) requestAnimationFrame(function(){ s.classList.toggle('is-scrollable', s.scrollWidth > s.clientWidth + 2); });})();
   document.getElementById('resultCard').style.display='block';
   document.getElementById('chartCard').style.display='block';
   document.getElementById('legend').innerHTML=loadedBonds.map(b=>'<span><span class="tag" style="background:'+b.color+'"></span>'+b.data.shortname+'</span>').join('');
