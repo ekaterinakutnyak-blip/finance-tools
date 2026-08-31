@@ -1,0 +1,162 @@
+# -*- coding: utf-8 -*-
+"""
+Сборка pro/bonds.json из выгрузки xlsx.
+Запуск:  python3 build_bonds.py <export.xlsx> <bonds.json>
+"""
+import sys, json, re, unicodedata
+
+LADDER = ['D','C','CC','CCC-','CCC','CCC+','B-','B','B+','BB-','BB','BB+',
+          'BBB-','BBB','BBB+','A-','A','A+','AA-','AA','AA+','AAA']
+RANK = {g:i for i,g in enumerate(LADDER)}
+
+def norm_rating(raw):
+    """Худший рейтинг из строки вида 'AA+(RU); ruAAA' — та же логика, что в calc-core.js."""
+    if not raw or not isinstance(raw,str): return None, None
+    ranks=[]
+    for tok in re.split(r'[;\n,/]+', raw):
+        s = tok.strip()
+        s = re.sub(r'\(RU\)','',s,flags=re.I)
+        s = re.sub(r'\.ru$','',s,flags=re.I)
+        s = re.sub(r'^ru','',s,flags=re.I).strip().upper()
+        if re.fullmatch(r'[ABCD]{1,3}[+-]?', s) and s in RANK:
+            ranks.append(RANK[s])
+    if not ranks: return None, None
+    r=min(ranks)
+    return LADDER[r], r
+
+# ── эмитент из названия выпуска ───────────────────────────────────────────────
+SEP = {'бо','пбо','бо-п','обл','обл.','об','об.','вып','вып.','выпуск','сер','сер.','серия','класс'}
+SERIES = re.compile(r'^[A-ZА-Яa-zа-я]{0,4}[-–]?\d+[A-ZА-Яa-zа-я]?([-–]\d+[A-ZА-Яa-zа-я]*)*$')
+
+def issuer_of(name, overrides):
+    if not name: return name
+    n = name.strip()
+    for pref, iss in overrides:
+        if n.startswith(pref): return iss
+    t = n.split()
+    while len(t) > 1:
+        last = t[-1].strip('.,').lower()
+        if last in SEP or SERIES.fullmatch(t[-1].strip('.,')):
+            t.pop(); continue
+        break
+    # хвостовые организационные формы
+    while len(t) > 1 and t[-1].strip('.,').upper() in {'ПАО','ОАО','АО','ООО','ПКО','МФК','НКО','ЗАО'}:
+        t.pop()
+    return ' '.join(t).strip() or n
+
+# семьи, которые правилом не режутся — задаём явно (по началу названия)
+OVERRIDES = [
+    ('Сбер CIB',              'Сбер CIB'),
+    ('СФО ВТБ РКС Олимп',     'СФО ВТБ РКС Олимп'),
+    ('Банк ВТБ',              'Банк ВТБ'),
+    ('ВТБ Б-1',               'Банк ВТБ'),
+    ('ВЭБ.РФ',                'ВЭБ.РФ'),
+    ('ДОМ.РФ Ипотечный агент','ДОМ.РФ Ипотечный агент'),
+    ('СОПФ ДОМ.РФ',           'СОПФ ДОМ.РФ'),
+    ('ДОМ.РФ',                'ДОМ.РФ'),
+    ('СФО БКС',               'СФО БКС'),
+    ('СФО Румберг',           'СФО Румберг'),
+    ('СФО ГПБ',               'СФО ГПБ'),
+    ('ОВОЗ РФ',               'ОВОЗ РФ'),
+    ('ГОВОЗ РФ',              'ГОВОЗ РФ'),
+    ('ОФЗ',                   'ОФЗ (Минфин России)'),
+    ('"Российские ЖД"',       'РЖД'),
+    ('РЖД',                   'РЖД'),
+    ('Инвестиционные облигации','Инвестиционные облигации'),
+    ('СберИОС',               'СберИОС'),
+    ('Ипотечный агент',       'Ипотечный агент'),
+    ('Совком Ипотечный агент','Совком Ипотечный агент'),
+    ('ФСК',                   'ФСК'),
+    ('Фабрика ПО',            'Фабрика ПО'),
+    ('ТрансКонтейнер',        'ТрансКонтейнер'),
+    ('АЛИУМ',                 'АЛИУМ'),
+]
+
+# ── суверенные бумаги РФ: агентства им рейтинг не присваивают, ставим AAA ─────
+SOV = re.compile(r'^(ОФЗ|ОВОЗ\s+РФ|ГОВОЗ\s+РФ)')
+def is_sovereign(name, sector):
+    return (sector or '') == 'Гос.управление' and bool(SOV.match((name or '').strip()))
+
+def num(v):
+    if v is None or v == '': return None
+    if isinstance(v,(int,float)): return float(v)
+    s = str(v).replace('\xa0','').replace(' ','').replace(',','.')
+    try: return float(s)
+    except ValueError: return None
+
+def main(src, dst):
+    import openpyxl
+    wb = openpyxl.load_workbook(src, data_only=True, read_only=True)
+    rows = list(wb.active.iter_rows(values_only=True))
+    hdr = [str(h).strip() if h else '' for h in rows[0]]
+    ix = {h:i for i,h in enumerate(hdr)}
+    need = ['ISIN','Название','Срок, лет','Дюрация, лет','Рейтинг','YTM / [EY], %','G/[Z]-спрэд, %',
+            'ТКД, %','Ликвидность','Цена, %','Средний объем, т.р.','Валюта','Отрасль',
+            'Уровень листинга','Для "квалов"','Суборды','Свойства']
+    missing = [c for c in need if c not in ix]
+    if missing:
+        print('НЕ НАЙДЕНЫ КОЛОНКИ:', missing); sys.exit(1)
+
+    out, sov_fixed = [], 0
+    for r in rows[1:]:
+        if not r or not r[ix['ISIN']]: continue
+        name   = (r[ix['Название']] or '').strip()
+        sector = (r[ix['Отрасль']] or None)
+        props  = str(r[ix['Свойства']] or '')
+        grade, grank = norm_rating(r[ix['Рейтинг']])
+        raw = r[ix['Рейтинг']]
+        if grade is None and is_sovereign(name, sector):
+            grade, grank = 'AAA', RANK['AAA']
+            raw = 'AAA (по методике InvestTools: агентства госбумагам рейтинг не присваивают)'
+            sov_fixed += 1
+        liq = num(r[ix['Ликвидность']]);  lst = num(r[ix['Уровень листинга']])
+        out.append({
+            'isin':  r[ix['ISIN']],
+            'name':  name,
+            'term':  num(r[ix['Срок, лет']]),
+            'dur':   num(r[ix['Дюрация, лет']]),
+            'ratingRaw': raw,
+            'grade': grade,
+            'grank': grank,
+            'ytm':   num(r[ix['YTM / [EY], %']]),
+            'gspread': num(r[ix['G/[Z]-спрэд, %']]),
+            'tkd':   num(r[ix['ТКД, %']]),
+            'liq':   int(liq) if liq is not None else None,
+            'price': num(r[ix['Цена, %']]),
+            'avgvol': num(r[ix['Средний объем, т.р.']]),
+            'cur':   r[ix['Валюта']],
+            'sector': sector,
+            'issuer': issuer_of(name, OVERRIDES),
+            'listing': int(lst) if lst is not None else None,
+            'qual':   bool(r[ix['Для "квалов"']]),
+            'subord': bool(r[ix['Суборды']]),
+            'fFloat': 'Флоатер' in props,
+            'fAmort': 'Амортизация' in props,
+            'fPut':   'Put-оферта' in props,
+            'fCall':  'Call-опцион' in props,
+            'fLinker':'Линкер' in props,
+            'fStep':  'лесенкой' in props,
+            'fWarn':  'Warning List' in props,
+        })
+
+    with open(dst,'w',encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False)
+
+    # ── отчёт ────────────────────────────────────────────────────────────────
+    import collections
+    print('Собрано бумаг: %d' % len(out))
+    print('Госбумагам проставлен AAA: %d' % sov_fixed)
+    print('Без рейтинга осталось: %d' % sum(1 for b in out if b['grank'] is None))
+    print('Эмитентов: %d' % len({b['issuer'] for b in out}))
+    print('\nТОП-25 эмитентов по числу выпусков:')
+    for iss,n in collections.Counter(b['issuer'] for b in out).most_common(25):
+        print('  %4d  %s' % (n, iss))
+    print('\nФлаги: флоатер %d · амортизация %d · put %d · call %d · линкер %d · лесенка %d · warning %d' % (
+        sum(b['fFloat'] for b in out), sum(b['fAmort'] for b in out), sum(b['fPut'] for b in out),
+        sum(b['fCall'] for b in out), sum(b['fLinker'] for b in out), sum(b['fStep'] for b in out),
+        sum(b['fWarn'] for b in out)))
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print('python3 build_bonds.py <export.xlsx> <bonds.json>'); sys.exit(1)
+    main(sys.argv[1], sys.argv[2])
