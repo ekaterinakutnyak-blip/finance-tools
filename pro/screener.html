@@ -265,8 +265,11 @@ function nsRate(t){
 function loadGcurve(){
   GC=[];
   return moexFetch(ISS+'/engines/stock/zcyc/securities.json?iss.meta=off').then(function(d){
-    var cols=d.data.columns, pi=cols.indexOf('period'), vi=cols.indexOf('value');
-    d.data.data.forEach(function(row){
+    // Кривая лежит в блоке yearyields (колонки period, value) — так в bond-scenarios.html.
+    // В bond-portfolio читается d.data, из-за чего там всегда срабатывает запасной путь.
+    var blk=d.yearyields||d.data;
+    var cols=blk.columns, pi=cols.indexOf('period'), vi=cols.indexOf('value');
+    blk.data.forEach(function(row){
       var p=parseFloat(row[pi]), v=parseFloat(row[vi]);
       if(!isNaN(p)&&!isNaN(v)&&p>0) GC.push({t:p,rate:v});
     });
