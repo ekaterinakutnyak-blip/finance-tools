@@ -85,10 +85,18 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
         <div class="hint">Больше спред = больше риск. Это дизель риска, не доходности.</div>
       </details>
 
-      <details><summary>2 · Срок</summary>
-        <label>Срок до погашения, лет</label>
-        <div class="row2"><div><input type="number" id="tMin" value="0" step="0.5"><div class="hint">от</div></div>
-          <div><input type="number" id="tMax" value="10" step="0.5"><div class="hint">до</div></div></div>
+      <details open><summary>2 · Погашение</summary>
+        <label>Гасится в период</label>
+        <div class="row2"><div><input type="month" id="dFrom"><div class="hint">от</div></div>
+          <div><input type="month" id="dTo"><div class="hint">до</div></div></div>
+        <div class="btnrow" style="margin-top:.45rem">
+          <button class="btn" data-win="12">год</button>
+          <button class="btn" data-win="24">2 года</button>
+          <button class="btn" data-win="36">3 года</button>
+          <button class="btn" data-win="0">сбросить</button>
+        </div>
+        <div class="hint" id="dHint">Если у бумаги есть оферта, срок считается до неё — деньги придут там.</div>
+        <input type="hidden" id="tMin" value="0"><input type="hidden" id="tMax" value="30">
       </details>
 
       <details><summary>3 · Структура</summary>
@@ -120,7 +128,7 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
       <div class="count" id="count"></div>
       <div class="btnrow"><button class="btn" id="selAll">выбрать все</button><button class="btn" id="selNone">снять все</button></div>
       <div class="tblwrap"><table id="tbl"><thead><tr>
-        <th></th><th>Рейт.</th><th>Выпуск</th><th class="n">Спред</th><th class="n">Купон</th><th class="n">Срок</th><th class="n">Ликв</th><th>Отрасль</th>
+        <th></th><th>Рейт.</th><th>Выпуск</th><th class="n">Спред</th><th class="n">Купон</th><th class="n">Погашение</th><th class="n">Ликв</th><th>Отрасль</th>
       </tr></thead><tbody id="rows"></tbody></table></div>
     </div>
     <div class="disc">Образовательный инструмент, не индивидуальная инвестиционная рекомендация. Параметры вводит пользователь; сайт не собирает инвестиционный профиль. Спред и купон — из недельной выгрузки; на сервере пересчитываются вживую с MOEX. Рейтинг — худший из агентств.</div>
@@ -142,6 +150,48 @@ const excluded = new Set();   // ISIN, снятые пользователем
 const rsel=$('ratingFloor');
 C.LADDER.slice().reverse().forEach(g=>{ const o=document.createElement('option');o.value=C.RANK[g];o.textContent=g;rsel.appendChild(o);});
 rsel.value=C.RANK['BBB-'];   // дефолтный пол
+
+var BASE = new Date();                 // дата выгрузки bonds.json (из заголовка файла)
+var MS_Y = 365.25*24*3600*1000;
+
+function ym(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+function parseYM(v){ if(!v) return null; var p=v.split('-'); var d=new Date(+p[0],+p[1]-1,1); return isNaN(d)?null:d; }
+function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59); }
+
+/* когда по бумаге придут деньги: дата выгрузки + срок до ближайшего события */
+function matDate(b){ return (b.term==null)?null:new Date(BASE.getTime()+b.term*MS_Y); }
+function matLabel(b){
+  var d=matDate(b); if(!d) return '—';
+  var s=('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear();
+  return (b.fPut||b.fCall) ? s+'<span class="badge w">оферта</span>' : s;
+}
+
+function initDates(){
+  var f=$('dFrom'), t=$('dTo');
+  if(!f.value) f.value = ym(BASE);
+  if(!t.value){ var e=new Date(BASE.getTime()); e.setFullYear(e.getFullYear()+10); t.value = ym(e); }
+  syncTerm();
+  document.querySelectorAll('[data-win]').forEach(function(btn){
+    btn.onclick=function(){
+      var m=+btn.dataset.win;
+      if(!m){ f.value=ym(BASE); var e2=new Date(BASE.getTime()); e2.setFullYear(e2.getFullYear()+10); t.value=ym(e2); }
+      else { f.value=ym(BASE); var e3=new Date(BASE.getTime()); e3.setMonth(e3.getMonth()+m); t.value=ym(e3); }
+      syncTerm(); render();
+    };
+  });
+  [f,t].forEach(function(el){ el.onchange=function(){ syncTerm(); }; });
+}
+
+/* переводим выбранные даты в срок в годах, с которым работает фильтр */
+function syncTerm(){
+  var a=parseYM($('dFrom').value), b=parseYM($('dTo').value);
+  var lo = a ? Math.max(0,(a-BASE)/MS_Y) : 0;
+  var hi = b ? Math.max(0,(endOfMonth(b)-BASE)/MS_Y) : 30;
+  if(hi<lo){ var s=lo; lo=hi; hi=s; }
+  $('tMin').value=lo; $('tMax').value=hi;
+  $('dHint').innerHTML='Данные на '+('0'+BASE.getDate()).slice(-2)+'.'+('0'+(BASE.getMonth()+1)).slice(-2)+'.'+BASE.getFullYear()+
+    '. Если у бумаги есть оферта, срок считается до неё — деньги придут там.';
+}
 
 function params(){
   const curr=['Рубль']; if($('aFx').checked) curr.push('Доллар','Юань','Евро','CHF');
@@ -172,7 +222,7 @@ function render(){
       `<td class="g">${b.grade||'—'}</td><td>${b.name}${badges}</td>`+
       `<td class="n">${b.gspread!=null?b.gspread.toFixed(1)+'%':'—'}</td>`+
       `<td class="n">${b.tkd!=null?b.tkd.toFixed(1)+'%':'—'}</td>`+
-      `<td class="n">${b.term!=null?b.term.toFixed(1):'—'}</td>`+
+      `<td class="n">${matLabel(b)}</td>`+
       `<td class="n">${b.liq!=null?b.liq:'—'}</td><td>${b.sector||''}</td>`;
     rows.appendChild(tr);
   });
@@ -223,7 +273,11 @@ $('selNone').onclick=()=>{ LAST.forEach(b=>excluded.add(b.isin)); render(); };
 // Капитал и цель только пересчитывают доход по текущему набору, список не трогают
 ['capital','target'].forEach(id=>$(id).addEventListener('input',()=>renderPortfolio(LAST.filter(b=>!excluded.has(b.isin)))));
 
-fetch('bonds.json').then(r=>r.json()).then(d=>{ BONDS=C.markAnomalous(d); render(); })
+fetch('bonds.json').then(function(r){
+  var lm=r.headers.get('last-modified');
+  if(lm){ var t=new Date(lm); if(!isNaN(t)) BASE=t; }
+  return r.json();
+}).then(d=>{ BONDS=C.markAnomalous(d); initDates(); render(); })
   .catch(e=>{ $('pfBody').innerHTML='<div class="lbl">Не загрузился bonds.json — проверьте, что файл лежит рядом со страницей (/pro/bonds.json).</div>'; });
 })();
 </script>
