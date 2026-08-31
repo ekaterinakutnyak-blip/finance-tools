@@ -18,7 +18,7 @@ import sys, json, time, os, urllib.request, urllib.error
 
 ISS = 'https://iss.moex.com/iss'
 UA  = {'User-Agent': 'investtools.pro/bond-types'}
-PAUSE = 0.12          # пауза между запросами, чтобы не долбить биржу
+PAUSE = 0.30          # пауза между запросами, чтобы не долбить биржу
 RETRY = 3
 
 def get(url):
@@ -33,8 +33,9 @@ def get(url):
     return None
 
 def spec(isin):
-    """BOND_TYPE и имя из спецификации бумаги."""
+    """BOND_TYPE и имя. None — биржа не ответила."""
     d = get('%s/securities/%s.json?iss.only=description&iss.meta=off' % (ISS, isin))
+    if d is None: return None
     bond_type, name = '', ''
     try:
         cols = d['description']['columns']; rows = d['description']['data']
@@ -49,9 +50,10 @@ def spec(isin):
     return bond_type, name
 
 def coupons(isin):
-    """Купоны: сколько всего, у скольких есть сумма и ставка, и сами ставки с датами."""
+    """Купоны. None — биржа не ответила (это НЕ то же самое, что «купонов нет»)."""
     d = get('%s/statistics/engines/stock/markets/bonds/bondization/%s.json'
             '?iss.only=coupons&iss.meta=off&limit=300' % (ISS, isin))
+    if d is None: return None
     n = nval = nprc = 0; rated = []
     try:
         cols = d['coupons']['columns']; rows = d['coupons']['data']
@@ -107,9 +109,20 @@ def main(bonds_path, cache_path, limit=None):
     print('Бумаг в базе: %d · уже в справочнике: %d · спросим у биржи: %d'
           % (len(bonds), len(cache), len(todo)))
 
+    skipped = []
+    inarow = 0
     for k, isin in enumerate(todo, 1):
-        bt, nm = spec(isin); time.sleep(PAUSE)
-        n, nval, nprc, rated = coupons(isin); time.sleep(PAUSE)
+        sp = spec(isin); time.sleep(PAUSE)
+        cp = coupons(isin); time.sleep(PAUSE)
+        if sp is None or cp is None:
+            # биржа не ответила — НИЧЕГО не пишем, повторим при следующем запуске
+            skipped.append(isin); inarow += 1
+            if inarow >= 25:
+                print('  биржа не отвечает подряд — останавливаюсь, запусти позже, продолжит с этого места', flush=True)
+                break
+            continue
+        inarow = 0
+        bt, nm = sp; n, nval, nprc, rated = cp
         ct, disc, label = classify(bt, nm, n, nval, nprc, rated)
         cache[isin] = {'couponType': ct, 'isDiscount': disc, 'kind': label, 'bondType': bt}
         if k % 100 == 0 or k == len(todo):
@@ -117,6 +130,8 @@ def main(bonds_path, cache_path, limit=None):
             print('  ...%d из %d' % (k, len(todo)), flush=True)
     json.dump(cache, open(cache_path, 'w', encoding='utf-8'), ensure_ascii=False)
 
+    if skipped:
+        print('Пропущено из-за сбоев связи: %d — они останутся без типа до следующего запуска' % len(skipped))
     got = 0
     for b in bonds:
         c = cache.get(b['isin'])
