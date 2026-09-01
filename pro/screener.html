@@ -144,8 +144,9 @@ td.g{font-family:var(--mono);font-weight:600;color:var(--accent)}
     <div class="card pf" style="margin-bottom:1rem">
       <div class="card-h">Что получилось в отборе</div>
       <div id="pfBody"></div>
-      <button class="find" id="toPortfolio" style="margin-top:.8rem;display:none">Открыть в анализе портфеля →</button>
-      <div class="hint" id="toPfHint" style="display:none">Количество посчитается по равным долям от суммы, по настоящему номиналу с биржи. Валютные — поправьте руками.</div>
+      <button class="find" id="savePf" style="margin-top:.8rem;display:none">💾 Сохранить как портфель</button>
+      <div class="hint" id="savePfHint" style="display:none">Отбор ляжет в «Портфель облигаций» отдельным портфелем — там можно открыть его, сравнить несколько отборов между собой и посчитать риск. Количество — по равным долям от суммы, по настоящему номиналу с биржи; валютные поправьте в портфеле руками.</div>
+      <div class="hint" id="savePfDone" style="display:none;color:var(--accent);font-weight:600"></div>
     </div>
     <div class="card">
       <div class="card-h">Кандидаты</div>
@@ -533,8 +534,9 @@ function render(){
 }
 
 function renderPortfolio(selected){
-  var _b=$('toPortfolio'), _hh=$('toPfHint');
+  var _b=$('savePf'), _hh=$('savePfHint');
   if(_b){ var on = selected && selected.length>0; _b.style.display = on?'block':'none'; if(_hh) _hh.style.display = on?'block':'none'; }
+  var _d=$('savePfDone'); if(_d) _d.style.display='none';   // прячем прошлое «сохранено» при пересборке
 
   const cap=parseFloat($('capital').value)||0;
   const agg=C.aggregate(selected, cap);
@@ -581,21 +583,71 @@ function renderPortfolio(selected){
   el.innerHTML=h;
 }
 
-// передача выбранного в «Портфель облигаций»
-function handoff(){
+// ===== Сохранение отбора как портфеля =====
+// Пишем в то же хранилище, что читает «Портфель облигаций»: ключ invest_portfolios,
+// формат {name, items:[{isin,qty}], updated}. Под токеном — на сервер (scope bonds),
+// под паролем — в localStorage. Код перенесён из bond-portfolio.html без изменений.
+var PF_KEY='invest_portfolios';
+var PF_API='https://investtools.pro/api/portfolios';
+var PF_SCOPE='bonds';
+function _pfToken(){ try{ if(localStorage.getItem('pro_access_type')==='token') return localStorage.getItem('pro_access_token'); }catch(e){} return null; }
+function _pfReadLocal(){ try{ var v=JSON.parse(localStorage.getItem(PF_KEY)); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
+function _pfWriteLocal(list){ try{ localStorage.setItem(PF_KEY, JSON.stringify(list)); }catch(e){} }
+function _pfToServer(list){ return list.map(function(p){ return {name:p.name, data:JSON.stringify(p.items||[]), updated:p.updated||new Date().toISOString()}; }); }
+function _pfFromServer(arr){ return (arr||[]).map(function(p){ var items=[]; try{items=JSON.parse(p.data);}catch(e){items=[];} return {name:p.name, items:Array.isArray(items)?items:[], updated:p.updated}; }); }
+
+// читаем существующий набор — сначала сервер (если токен), иначе localStorage
+function pfLoadAll(){
+  var tok=_pfToken();
+  if(!tok) return Promise.resolve(_pfReadLocal());
+  return fetch(PF_API+'?token='+encodeURIComponent(tok)+'&scope='+encodeURIComponent(PF_SCOPE))
+    .then(function(r){return r.json();})
+    .then(function(res){ return _pfFromServer(res.portfolios); })
+    .catch(function(){ return _pfReadLocal(); });
+}
+
+// пишем весь набор — и локально, и (если токен) на сервер
+function pfStore(list){
+  _pfWriteLocal(list);
+  var tok=_pfToken();
+  if(tok){
+    return fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:tok,scope:PF_SCOPE,portfolios:_pfToServer(list)})}).then(function(){return true;}).catch(function(){return true;});
+  }
+  return Promise.resolve(true);
+}
+
+function savePortfolio(){
   var sel = LAST.filter(function(b){ return !excluded.has(b.isin); });
-  if(!sel.length) return;
+  if(!sel.length){ return; }
   var cap = parseFloat($('capital').value)||0;
   var per = cap>0 ? cap/sel.length : 0;
-  var list = sel.map(function(b){
-    var qty = 0, face = b.face || 1000;          // номинал теперь настоящий, с биржи
+  var items = sel.map(function(b){
+    var qty = 0, face = b.face || 1000;          // номинал настоящий, с биржи
     if(per>0 && b.cur==='Рубль' && b.price){ qty = Math.round(per/(b.price/100*face)); }
     return { isin:b.isin, qty: qty>0?qty:1 };
   });
-  try{ localStorage.setItem('screener_basket', JSON.stringify({ ts:Date.now(), capital:cap, items:list })); }catch(e){}
-  location.href = 'bond-portfolio.html?from=screener';
+  var def = 'Отбор ' + new Date().toLocaleDateString('ru-RU');
+  var name = prompt('Название портфеля:', def);
+  if(name==null) return;
+  name = name.trim(); if(!name) return;
+
+  pfLoadAll().then(function(list){
+    var i = list.findIndex(function(p){ return p.name===name; });
+    var rec = { name:name, items:items, updated:new Date().toISOString() };
+    if(i>=0){
+      if(!confirm('Портфель «'+name+'» уже существует. Перезаписать?')) return;
+      list[i]=rec;
+    } else {
+      list.push(rec);
+    }
+    return pfStore(list).then(function(){
+      var d=$('savePfDone');
+      if(d){ d.style.display='block'; d.textContent='Сохранено: «'+name+'» ('+items.length+' бум.). Откройте «Портфель облигаций» → список портфелей.'; }
+    });
+  });
 }
-$('toPortfolio').onclick = handoff;
+$('savePf').onclick = savePortfolio;
 
 // Кнопка «Найти» применяет фильтры. Список не дёргается на каждый ввод.
 $('findBtn').onclick=render;
@@ -625,7 +677,7 @@ fetch('bonds.json').then(function(r){
       '</b> · живых бумаг <b>'+n.live+'</b>'+
       (n.file?' · не торгуются на бирже <b>'+n.file+'</b>':'')+
       (n.ownDur?' · дюрация посчитана нами у <b>'+n.ownDur+'</b>':'')+
-      ' · G-спред посчитан у <b>'+n.spread+'</b>'+
+      ' · G-спред посчитан у <b>'+n.spread+'</b> (кривая: <b>'+src+'</b>)'+
       '. Рейтинг, ликвидность и отрасль — из недельной выгрузки, их биржа не даёт.';
     if(!GC.length){
       NO_CURVE=true;
