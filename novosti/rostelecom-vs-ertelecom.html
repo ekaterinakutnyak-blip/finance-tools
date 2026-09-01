@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+    ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ростелеком vs ЭР-Телеком: один бизнес — разные деньги. Разбор по МСФО 2025 и 1П2026</title>
+<meta name="description" content="Один и тот же проводной интернет, но кредитно — разные вселенные. Ростелеком: рейтинг AAA, ND/EBITDA 2,2×, дешёвый рефинанс, g-спред 0,1–1,3%. ЭР-Телеком: A-, капитал 6% баланса, покрытие процентов на грани (ICR 0,96×), g-спред 2,9–4,4%. Сравнительный кредитный разбор по МСФО 2025 и 1П2026.">
+<meta name="keywords" content="Ростелеком облигации, ЭР-Телеком облигации, Дом.ru, кредитный разбор, ICR, покрытие процентов, ND/EBITDA, G-спред, телеком облигации, МСФО 2025, 1П2026, Ekaterina Kutnyak">
+<link rel="canonical" href="https://investtools.pro/novosti/rostelecom-vs-ertelecom.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ростелеком vs ЭР-Телеком: один бизнес — разные деньги">
+<meta property="og:description" content="Госгигант с дешёвым рефинансом против частника на дорогом долге. Рейтинг AAA против A-, капитал 20% против 6%, g-спред в разы. Цена господдержки в одном сегменте.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7}
+.container{max-width:760px;margin:0 auto;padding:1.6rem 1.5rem 3rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+.back-link:hover{color:var(--accent)}
+.art-h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.4rem;line-height:1.25}
+.art-meta{font-size:0.8rem;color:var(--text3);margin-bottom:1.4rem}
+.art p{font-size:1.02rem;color:var(--text);margin-bottom:1.1rem}
+.art h2{font-size:1.35rem;font-weight:700;margin:2.2rem 0 0.8rem;letter-spacing:-0.01em}
+.art h3{font-size:1.02rem;font-weight:700;margin:1.4rem 0 0.5rem;color:var(--accent)}
+.lead{font-size:1.0rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.6rem}
+.art strong{font-weight:600}
+.art a{color:var(--accent2)}
+.art table{width:100%;border-collapse:collapse;margin:0.4rem 0 1.3rem;font-size:0.9rem}
+.art th,.art td{padding:0.5rem 0.65rem;border-bottom:1px solid var(--border);text-align:right;vertical-align:top}
+.art th:first-child,.art td:first-child{text-align:left}
+.art thead th{background:var(--accent-light);color:var(--accent);font-weight:600;border-bottom:1px solid var(--accent)}
+.art tbody tr:nth-child(even){background:var(--surface2)}
+.art tbody td{font-variant-numeric:tabular-nums}
+.issuer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.4rem 1.5rem;margin:0 0 1.6rem}
+.sf{display:inline-flex;align-items:center;gap:5px;vertical-align:middle}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08)}
+.dot.r{background:var(--red)}.dot.y{background:var(--yellow)}.dot.g{background:var(--green)}
+.sfbox{display:flex;align-items:center;gap:9px;background:var(--surface2);border-radius:8px;padding:0.5rem 0.8rem;margin:0.6rem 0 0.9rem;font-size:0.92rem;font-weight:600}
+.verdict{font-size:0.96rem;color:var(--text2);border-left:3px solid var(--accent);padding:0.2rem 0 0.2rem 0.9rem;margin:0.4rem 0 1.1rem;font-style:italic}
+.warnbox{background:#FDF6E8;border:1px solid #E6A100;border-radius:8px;padding:0.7rem 0.9rem;margin:0.6rem 0 1.1rem;font-size:0.94rem;color:var(--text2)}
+.cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:1.8rem 0 0;font-size:0.96rem;color:var(--text2)}
+.cta a{color:var(--accent);font-weight:600;text-decoration:none}
+.disclaimer{font-size:0.82rem;color:var(--text3);font-style:italic;margin:1.4rem 0 0;padding-top:1rem;border-top:1px solid var(--border)}
+.footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
+.footer a{color:var(--text2)}
+.plashki{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 1.5rem}
+.plashki a{display:inline-flex;align-items:center;font-size:0.86rem;font-weight:600;text-decoration:none;padding:0.5rem 0.9rem;border-radius:8px;line-height:1.2}
+.plashki .pl-free{background:#F1F6F2;color:#2D5A3D;border:1px solid #2D5A3D}
+.plashki .pl-pro{background:#2D5A3D;color:#fff;border:1px solid #2D5A3D}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0.4rem 0 1.3rem}
+.tblwrap table{margin:0}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="../novosti.html" class="back-link">← Все обзоры и новости</a>
+<h1 class="art-h1">Ростелеком vs ЭР-Телеком: один бизнес — разные деньги</h1>
+<div class="art-meta">Екатерина Кутняк · 1 сентября 2026 · сравнительный разбор по МСФО 2025 и 1П2026</div>
+<div class="plashki">
+<a class="pl-free" href="../index.html#free">Бесплатные калькуляторы →</a>
+<a class="pl-free" href="../pro/ai-analyst.html">Проверить эмитента · ИИ</a>
+<a class="pl-pro" href="../index.html#pricing">Что даёт PRO →</a>
+</div>
+<div class="art">
+<div class="lead">Один бизнес — фиксированный интернет, разные деньги. Госгигант с дешёвым рефинансом против частника на дорогом долге. Разбор по методологии Ekaterina Kutnyak (@kutnyak_invest); все суммы в млрд ₽, если не указано иное. Основа сравнения — обобщённая консолидированная МСФО-2025 обоих (Ростелеком — перевыпуск, аудит без оговорок 25.05.2026; ЭР-Телеком — аудитор ТеДо, 2024 пересмотрен). Свежий срез — МСФО 1П2026 у обоих. ЭР-Телеком переведён из тыс ₽ в млн. Финансовый долг = кредиты и займы + аренда (МСФО-16). EBITDA считаем стандартно (EBIT + амортизация); у ЭР-Телекома есть свой OIBDA.</div>
+
+<h2>Часть 1. ПАО «Ростелеком»</h2>
+
+<h3>Кто это</h3>
+<p>«Ростелеком» — крупнейший в России оператор фиксированной связи и цифровых сервисов, под контролем государства. Помимо проводного интернета и ТВ — мобильная связь (Tele2), ЦОДы, облака, кибербезопасность, госуслуги и цифровые платформы. Рейтинги — <strong>AAA(RU)</strong> АКРА и <strong>ruAAA</strong> Эксперт РА.</p>
+
+<h3>Что важно понимать про бизнес-модель</h3>
+<p>Ростелеком — капиталоёмкий инфраструктурный тяжеловес: строит и обслуживает сети, поэтому у него всегда большой долг и большой капекс. Два столпа устойчивости — диверсификация (растут цифровые направления, а не только «труба») и доступ к дешёвому рефинансу за счёт госстатуса и рейтинга AAA. Слабое место — процентная нагрузка: при высокой ставке обслуживание долга дорожает быстрее, чем растёт операционная прибыль.</p>
+
+<h3>Операционные результаты 2025</h3>
+<p>Выручка выросла на 12% — до 872,8 млрд, драйверы цифровые (ЦОД, кибербез, облака). EBITDA 327 млрд, маржа ~37% — стабильно. Но чистая прибыль снизилась на 22% (до 18,7 млрд): её съели проценты.</p>
+
+<h3>Финансовые расходы и прибыль</h3>
+<p>Вот главный нерв. Финансовые расходы за год выросли на 42% — до 123 млрд, потому что долг переоценивается под высокую ставку. Операционная прибыль 149 млрд покрывает их лишь в 1,2 раза (ICR классический 1,21×). То есть операционно компания сильна, но почти вся прибыль до налога уходит на обслуживание долга.</p>
+
+<h3>Долговая нагрузка</h3>
+<div class="tblwrap"><table>
+<thead><tr><th>Метрика</th><th>2025</th><th>2024</th></tr></thead>
+<tbody>
+<tr><td>EBITDA-маржа</td><td>37%</td><td>38%</td></tr>
+<tr><td>Чистая прибыль, млрд ₽</td><td>18,7</td><td>24,1</td></tr>
+<tr><td>Финансовый долг, млрд ₽</td><td>740</td><td>724</td></tr>
+<tr><td>Чистый долг, млрд ₽</td><td>714</td><td>677</td></tr>
+<tr><td>ND / EBITDA</td><td>2,2×</td><td>2,3×</td></tr>
+<tr><td>ICR классический</td><td>1,21×</td><td>1,43×</td></tr>
+<tr><td>ICR кассовый</td><td>2,55×</td><td>3,52×</td></tr>
+<tr><td>Капитал / активы</td><td>20%</td><td>20%</td></tr>
+<tr><td>в т.ч. короткий долг</td><td>крупный (~285 млрд)</td><td>~290 млрд</td></tr>
+</tbody></table></div>
+
+<h3>Куда уходят заёмные деньги</h3>
+<p>Ростелеком занимает, чтобы строить и обслуживать долг. Операционный поток 162 млрд почти целиком уходит на капекс (158 млрд), а на дивиденды и аренду добирается долгом и подушкой. Проценты кэшем — 128 млрд, это почти весь денежный поток до капекса. Долг понемногу растёт.</p>
+<div class="tblwrap"><table>
+<thead><tr><th>Источники, млрд ₽</th><th>Сумма</th><th>Использование, млрд ₽</th><th>Сумма</th></tr></thead>
+<tbody>
+<tr><td>CFO (после % и налога)</td><td>+162</td><td>CapEx</td><td>158</td></tr>
+<tr><td>Чистое привлечение долга</td><td>+16</td><td>Погашение аренды</td><td>27</td></tr>
+<tr><td>Снижение денежной подушки</td><td>+20</td><td>Дивиденды</td><td>19</td></tr>
+<tr><td>Итого</td><td>+198</td><td>Итого</td><td>~204</td></tr>
+</tbody></table></div>
+
+<h3>Облигационный контур</h3>
+<p>Здесь его сила: около двух десятков выпусков, ВСЕ AAA(RU)/ruAAA, с крошечным g-спредом к ОФЗ (0,1–1,3%). Рынок кредитует госгиганта почти как государство. YTM рублёвых ~14–16%.</p>
+
+<h3>Свежий срез — 1П 2026 (МСФО)</h3>
+<p>Пик ставки позади — и стало легче. Выручка 1П 436 млрд (+11%), финансовые расходы стабилизировались (60 млрд против 62 годом ранее), прибыль восстановилась до 14 млрд (+9%). Долг подрос до ~604 млрд. Тренд разворачивается в пользу эмитента.</p>
+
+<div class="sfbox"><span class="sf"><span class="dot g"></span><span class="dot y"></span></span> Светофор: жёлто-зелёный</div>
+<div class="verdict">Крупный стратегический телеком с господдержкой, умеренным долгом (ND/EBITDA 2,2×) и дешёвым доступом к деньгам. Нюанс — тонкое покрытие процентов классической прибылью и большой короткий долг; но с проходом пика ставки риск снижается. Надёжная бумага для консервативной части портфеля.</div>
+
+<h2>Часть 2. АО «ЭР-Телеком Холдинг»</h2>
+
+<h3>Кто это</h3>
+<p>«ЭР-Телеком» (бренд «Дом.ru») — крупнейший частный оператор проводного интернета и ТВ в России, растущий во многом за счёт скупки региональных операторов. Отсюда большой гудвил (~53 млрд) на балансе. Рейтинги — <strong>A-(RU)</strong> АКРА и <strong>ruA-</strong> Эксперт РА.</p>
+
+<h3>Что важно понимать про бизнес-модель</h3>
+<p>Это история агрессивного роста в долг. ЭР-Телеком годами покупал конкурентов и строил сети на заёмные деньги, поэтому у него очень тонкий капитал (лишь 6% баланса) и высокий рычаг. Операционно бизнес отличный — маржа даже выше, чем у Ростелекома. Но чем выше ставка, тем тяжелее такому балансу: почти вся операционная прибыль уходит на проценты.</p>
+
+<h3>Операционные результаты 2025</h3>
+<p>Выручка 110 млрд (+5%), EBITDA 51,8 млрд, маржа ~47% — операционно сильнее гиганта по рентабельности. Чистая прибыль 2,6 млрд (почти удвоилась к 2024), но это тонкая величина на фоне долга.</p>
+
+<h3>Финансовые расходы и прибыль</h3>
+<p>Ключевая проблема — покрытие. Финансовые расходы 34 млрд, а операционная прибыль лишь 33 млрд: ICR классический <strong>0,96×</strong> — операционка формально НЕ покрывает проценты. Прибыль вытягивается за счёт того, что в EBITDA сидит крупная амортизация (неденежная), плюс финансовые доходы. Кассовое покрытие (EBITDA/проценты) 1,55× — впритык.</p>
+
+<h3>Долговая нагрузка</h3>
+<div class="tblwrap"><table>
+<thead><tr><th>Метрика</th><th>2025</th><th>2024</th></tr></thead>
+<tbody>
+<tr><td>EBITDA-маржа</td><td>47%</td><td>43%</td></tr>
+<tr><td>Чистая прибыль, млрд ₽</td><td>2,6</td><td>1,4</td></tr>
+<tr><td>Финансовый долг, млрд ₽</td><td>158</td><td>160</td></tr>
+<tr><td>Чистый долг, млрд ₽</td><td>151</td><td>146</td></tr>
+<tr><td>ND / EBITDA</td><td>2,9×</td><td>3,2×</td></tr>
+<tr><td>ICR классический</td><td>0,96×</td><td>0,89×</td></tr>
+<tr><td>ICR кассовый</td><td>1,55×</td><td>1,69×</td></tr>
+<tr><td>Обязательства / Капитал</td><td>15,9×</td><td>16,9×</td></tr>
+<tr><td>Капитал / активы</td><td>6%</td><td>6%</td></tr>
+</tbody></table></div>
+
+<h3>Куда уходят заёмные деньги</h3>
+<p>Парадоксально, но кэш ЭР-Телеком генерит: операционного потока 19,6 млрд хватило на капекс (12,3) и даже небольшое сокращение долга. Проблема не в burn, а в том, что до процентов поток ~53 млрд, и из них 33 млрд (почти две трети) уходит на обслуживание долга. Капекс при этом урезали. Это тонкий баланс, живущий на грани покрытия.</p>
+<div class="tblwrap"><table>
+<thead><tr><th>Источники, млрд ₽</th><th>Сумма</th><th>Использование, млрд ₽</th><th>Сумма</th></tr></thead>
+<tbody>
+<tr><td>CFO (после % и налога)</td><td>+19,6</td><td>CapEx (урезан)</td><td>12,3</td></tr>
+<tr><td>Снижение денежной подушки</td><td>+7,9</td><td>Чистое погашение долга</td><td>~2,3</td></tr>
+<tr><td>—</td><td>—</td><td>Дивиденды + аренда</td><td>~5</td></tr>
+<tr><td>Итого</td><td>+27,5</td><td>Итого</td><td>~20</td></tr>
+</tbody></table></div>
+
+<h3>Облигационный контур</h3>
+<p>Выпуски серии ПБО, рейтинг A-(RU)/ruA-, с g-спредом 2,9–4,4% к ОФЗ — это в разы больше, чем у Ростелекома, и есть честная плата за риск частника с высоким рычагом. YTM рублёвых ~16–18%.</p>
+
+<h3>Свежий срез — 1П 2026 (МСФО)</h3>
+<p>С проходом пика ставки ЭР-Телеком выстрелил ярче гиганта: выручка 56 млрд (+10%), операционная прибыль +16%, финансовые расходы −15% (ставка отпустила), и прибыль подскочила в разы — до 4,1 млрд (собственникам +3,84 млрд против убытка годом ранее). Эффект рычага работает вверх. Но настораживает короткий долг: он скакнул до 59 млрд — концентрация погашений, риск рефинанса.</p>
+
+<div class="warnbox">Короткий долг ЭР-Телекома вырос до 59 млрд — это стена погашений 2026–2027. Пока рынок открыт и ставка идёт вниз, рефинанс проходит; но при таком тонком капитале именно доступ к рефинансу, а не операционка, определяет устойчивость.</div>
+
+<div class="sfbox"><span class="sf"><span class="dot y"></span></span> Светофор: жёлтый</div>
+<div class="verdict">Сильный операционный бизнес с высокой маржой, но тонкий капитал (6%), высокий рычаг и покрытие процентов на грани (ICR классический &lt;1). Держится на рефинансе и на том, что ставка пошла вниз. Устойчиво, пока рынок открыт; бумаги — под понимание рычага, с премией за риск.</div>
+
+<h2>Часть 3. Сравнение</h2>
+<p>Ростелеком и ЭР-Телеком делают одно и то же — проводной интернет и ТВ, — но кредитно это разные вселенные. У обоих высокая по природе долговая нагрузка и обоих в 2025 душили дорогие деньги. Разница в том, кто это выдерживает легче: гигант с рейтингом AAA, крепким капиталом и дешёвым рефинансом — или частник с капиталом в 6% баланса, чья операционная прибыль едва покрывает проценты.</p>
+
+<h3>Сводная таблица</h3>
+<div class="tblwrap"><table>
+<thead><tr><th>Показатель</th><th>Ростелеком 2025</th><th>ЭР-Телеком 2025</th><th>Комментарий</th></tr></thead>
+<tbody>
+<tr><td>Выручка, млрд ₽</td><td>873</td><td>110</td><td>разные весовые категории</td></tr>
+<tr><td>EBITDA-маржа</td><td>37%</td><td>47%</td><td>частник рентабельнее операционно</td></tr>
+<tr><td>Чистая прибыль, млрд ₽</td><td>18,7</td><td>2,6</td><td>обе тонкие относительно долга</td></tr>
+<tr><td>ND / EBITDA</td><td>2,2×</td><td>2,9×</td><td>у частника выше</td></tr>
+<tr><td>ICR классический</td><td>1,21×</td><td>0,96×</td><td>гигант покрывает, частник — нет</td></tr>
+<tr><td>Капитал / активы</td><td>20%</td><td>6%</td><td>ключевая разница — запас</td></tr>
+<tr><td>Рейтинг</td><td>AAA(RU)/ruAAA</td><td>A-(RU)/ruA-</td><td>несколько ступеней</td></tr>
+<tr><td>g-спред облигаций</td><td>0,1–1,3%</td><td>2,9–4,4%</td><td>цена господдержки</td></tr>
+</tbody></table></div>
+
+<h3>Справедливый спред</h3>
+<p>Рынок оценивает разницу точно. Выпуски Ростелекома идут почти без премии к ОФЗ (g-спред 0,1–1,3%) — это плата за качество AAA и госстатус, апсайда по спреду нет. У ЭР-Телекома g-спред 2,9–4,4% — и это честная компенсация за высокий рычаг, тонкий капитал и покрытие на грани. Разрыв спреда ~2–4 п.п. в одном сегменте и есть цена господдержки и запаса прочности баланса.</p>
+
+<h3>Траектория в 2026</h3>
+<p>Пик ставки прошёл — и это лечит обоих, но по-разному. Ростелеком в 1П2026 показал восстановление прибыли (+9%) при стабилизации процентов. ЭР-Телеком выстрелил ярче — прибыль в разы вверх (эффект рычага), но его короткий долг раздулся до 59 млрд, и вопрос рефинанса стоит острее. Снижение ставки — попутный ветер для обоих, но для закредитованного частника это ещё и вопрос выживания цикла.</p>
+
+<h3>Что мониторить</h3>
+<p><strong>По Ростелекому:</strong> динамика короткого долга (~285 млрд) и стоимость его рефинанса; удержание ICR классического выше 1,2×; аппетит к дивидендам при дорогом долге. Запас есть, это мониторинг дисциплины.</p>
+<p><strong>По ЭР-Телекому:</strong> ICR классический ниже 1,0× уже факт — следить, восстановится ли он с падением ставки; стена короткого долга 59 млрд и её рефинанс в 2026–2027; дальнейшая эрозия и без того тонкого капитала; замедление скупок. Порог: если ставка снова пойдёт вверх при таком рычаге — давление сразу на покрытие и на рефинанс, сигнал сокращать дюрацию.</p>
+
+<h3>Итог</h3>
+<p><strong>Ростелеком</strong> — надёжный инфраструктурный заёмщик с господдержкой: умеренный долг, дешёвый доступ к деньгам, диверсификация. Проценты давят на прибыль, но структурные риски низкие. Бумаги — консервативная часть портфеля, доходность почти как у госбумаг.</p>
+<p><strong>ЭР-Телеком</strong> — та же отрасль, но через призму высокого рычага и тонкого капитала. Операционно силён и в 2026 ярко восстановился, однако покрытие процентов на грани и всё держится на доступе к рефинансу. Бумаги дают заметную премию — это честная плата за риск, брать под понимание рычага.</p>
+<p><strong>Урок:</strong> в одном сегменте под одной высокой ставкой исход определяют не выручка и даже не маржа, а запас прочности баланса и стоимость доступа к деньгам.</p>
+
+<p class="disclaimer">Источник: обобщённая консолидированная МСФО-2025 обоих эмитентов (Ростелеком — перевыпуск, аудит без оговорок 25.05.2026; ЭР-Телеком — аудитор ТеДо, 2024 пересмотрен, переведено из тыс ₽ в млн) и консолидированная МСФО 1П2026 у обоих. Финансовый долг = кредиты и займы + аренда (МСФО-16). EBITDA стандартная = операционная прибыль + амортизация; у ЭР-Телекома есть свой OIBDA. ICR классический = операционная прибыль / финансовые расходы; кассовый = EBITDA / проценты. Параметры выпусков сверять по RusBonds/Cbonds на дату эфира. Не является индивидуальной инвестиционной рекомендацией.</p>
+</div>
+<div class="cta">Хотите так же разобрать своего эмитента? <a href="../pro/ai-analyst.html">ИИ-аналитик прочитает PDF отчёта и напишет такой разбор сам →</a></div>
+<a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:#E6F1FB;border:1px solid #1B6B9A;border-radius:14px;padding:1.2rem 1.4rem;margin:1.8rem 0 0">
+  <div style="font-size:1.05rem;font-weight:700;color:#1A1A18;margin-bottom:0.25rem">Telegram-канал «Екатерина Кутняк · инвестиции»</div>
+  <div style="font-size:0.93rem;color:#6B6A65;line-height:1.5">Разборы эмитентов, обзоры размещений и новые инструменты — первыми. <span style="color:#1B6B9A;font-weight:600">Подписаться →</span></div>
+</a>
+<div class="footer">
+Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a><br>
+<a href="https://t.me/kutnyak_invest" target="_blank">Telegram-канал</a> · © 2025–2026
+</div>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>
