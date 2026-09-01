@@ -553,8 +553,11 @@ function renderPortfolio(selected){
 
   let h='';
   if(rub){
-    h+=`<div class="big">${fmt(rub.netYear)} ₽/год</div>`;
-    h+=`<div class="lbl">купон на руки после налога, рублёвая часть · ≈ ${fmt(rub.netMonth)} ₽/мес · оценка при равных долях</div>`;
+    // Главное число — купон ДО налога (как в «Портфеле облигаций»): налога может и не быть (ИИС и т.п.).
+    // «На руки» — отдельной строкой ниже.
+    h+=`<div class="big">${fmt(rub.grossYear)} ₽/год</div>`;
+    h+=`<div class="lbl">купон за год до налога, рублёвая часть · ≈ ${fmt(rub.grossYear/12)} ₽/мес · оценка при равных долях</div>`;
+    h+=`<div class="lbl" style="margin-top:.2rem">на руки после налога ≈ ${fmt(rub.netYear)} ₽/год · ${fmt(rub.netMonth)} ₽/мес <span style="color:var(--text3)">(на ИИС и без налога — совпадает с брутто)</span></div>`;
   }
   Object.keys(agg.income).filter(c=>c!=='Рубль').forEach(c=>{
     const x=agg.income[c]; h+=`<div class="mrow"><span>${c}: купон за год</span><span class="v">${fmt(x.grossYear)} ${c}</span></div>`;
