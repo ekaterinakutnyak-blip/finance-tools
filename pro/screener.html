@@ -388,8 +388,11 @@ function applyLive(sec, today){
     }
 
     // G-спред = YTM − КБД на СРОКЕ ДО ГОРИЗОНТА (T_eff), как в bond-portfolio.
-    // На коротком хвосте не показателен — прочерк.
-    b.gspread=(b.ytm!=null&&b.term!=null&&b.term>0&&b.dur!=null&&b.dur>=0.25&&GC.length)
+    // ТОЛЬКО для рублёвых: у валютных доходность в валюте, а кривая рублёвая —
+    // считать нельзя, иначе получим бессмыслицу (доллар ~8% минус ОФЗ ~14% = минус).
+    // На коротком хвосте (дюрация < 0,25) тоже не показателен — прочерк.
+    var _isRub = !b.cur || b.cur==='Рубль';
+    b.gspread=(_isRub&&b.ytm!=null&&b.term!=null&&b.term>0&&b.dur!=null&&b.dur>=0.25&&GC.length)
       ? Math.round((b.ytm-nsRate(b.term))*100)/100 : null;
     if(b.gspread!=null) n.spread++;
   });
