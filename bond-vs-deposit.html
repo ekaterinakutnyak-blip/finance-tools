@@ -346,6 +346,15 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 #uncCard .unc-toggle{width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem;font-family:var(--sans);font-size:0.98rem;font-weight:600;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
 #uncCard .unc-toggle:hover{border-color:var(--accent)}
 #uncCard .unc-intro{font-size:0.9rem;color:var(--text2);line-height:1.6;margin:1rem 0}
+#uncCard .unc-tabs{display:flex;gap:6px;margin-bottom:1rem}
+#uncCard .unc-tab{flex:1;padding:0.5rem 0.8rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text2);font-family:var(--sans);font-size:0.85rem;font-weight:600;cursor:pointer}
+#uncCard .unc-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#uncCard .unc-ofz-item{display:flex;justify-content:space-between;gap:10px;padding:0.6rem 0.8rem;border:1px solid var(--border);border-radius:8px;margin-top:6px;cursor:pointer;background:var(--surface)}
+#uncCard .unc-ofz-item:hover{border-color:var(--accent)}
+#uncCard .unc-ofz-item.best{border-color:var(--accent)}
+#uncCard .unc-ofz-name{font-weight:600;font-size:0.9rem}
+#uncCard .unc-ofz-sub{font-size:0.75rem;color:var(--text3);font-family:var(--mono)}
+#uncCard .unc-ofz-date{text-align:right;font-size:0.82rem}
 #uncCard .unc-fan{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1rem}
 #uncCard .unc-col{border:1px solid var(--border);border-radius:10px;padding:0.9rem 0.8rem;background:var(--surface)}
 #uncCard .unc-col.mid{border-color:var(--accent)}
@@ -355,6 +364,8 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 #uncCard .unc-col .row b{font-weight:600}
 #uncCard .unc-col .vs{margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--border);font-size:0.86rem;font-weight:700}
 #uncCard .vs-win{color:var(--green)}#uncCard .vs-lose{color:var(--red)}
+#uncCard .unc-chart{margin-top:1.2rem}
+#uncCard .unc-chart svg{width:100%;height:auto;display:block}
 #uncCard .unc-lead{font-size:0.92rem;line-height:1.6;margin-top:1rem;padding:0.8rem 1rem;background:var(--surface2);border-radius:10px}
 #uncCard .unc-disc{font-size:0.74rem;color:var(--text3);line-height:1.5;margin-top:1rem}
 @media(max-width:640px){#uncCard .unc-fan{grid-template-columns:1fr}}
@@ -365,12 +376,32 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   </button>
   <div id="uncBody" class="hidden">
     <p class="unc-intro">Основной расчёт выше держит бумагу до погашения и потому сравнивает честно, «в лоб». Но длинную бумагу берут ради ставки повыше — а если её придётся продать в конце вклада, цена будет зависеть от того, какой окажется ставка на рынке к тому моменту. Здесь считаем ровно это: три сценария — ставка ниже, как сейчас и выше. Данные по бумаге берутся с Московской биржи.</p>
-    <div class="field">
-      <label>ISIN длинной облигации</label>
-      <input type="text" id="uncIsin" placeholder="Например: SU26240RMFS0" style="text-transform:uppercase">
-      <div style="margin-top:8px"><button type="button" onclick="uncLoad()" style="padding:0.5rem 1.1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-weight:600;cursor:pointer">Загрузить бумагу</button></div>
-      <div class="hint" id="uncBondHint">Любая облигация с постоянным купоном, которая гасится позже конца вклада</div>
+
+    <div class="unc-tabs">
+      <button type="button" id="uncTabIsin" class="unc-tab active" onclick="uncTab('isin')">По ISIN</button>
+      <button type="button" id="uncTabTerm" class="unc-tab" onclick="uncTab('term')">По сроку погашения</button>
     </div>
+
+    <div id="uncModeIsin">
+      <div class="field">
+        <label>ISIN длинной облигации</label>
+        <input type="text" id="uncIsin" placeholder="Например: SU26240RMFS0" style="text-transform:uppercase">
+        <div style="margin-top:8px"><button type="button" onclick="uncLoad()" style="padding:0.5rem 1.1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-weight:600;cursor:pointer">Загрузить бумагу</button></div>
+      </div>
+    </div>
+
+    <div id="uncModeTerm" class="hidden">
+      <div class="field">
+        <label>Желаемый срок до погашения, лет</label>
+        <input type="number" id="uncTermYears" value="10" step="1" min="1" max="30">
+        <div style="margin-top:8px"><button type="button" onclick="uncLoadOfz()" style="padding:0.5rem 1.1rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-weight:600;cursor:pointer">Показать ОФЗ</button></div>
+        <div class="hint">ОФЗ с постоянным купоном, что гасятся около этого срока (и позже конца вклада). Кликните — бумага загрузится.</div>
+        <div id="uncOfzList"></div>
+      </div>
+    </div>
+
+    <div class="hint" id="uncBondHint" style="margin-top:4px">Любая облигация с постоянным купоном, которая гасится позже конца вклада</div>
+
     <div id="uncParams" class="hidden">
       <div class="field">
         <label>Ставка-ориентир на конец вклада, % годовых</label>
@@ -384,6 +415,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
       <div><button type="button" onclick="uncCalc()" style="padding:0.6rem 1.3rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-weight:600;cursor:pointer">Показать сценарии</button></div>
     </div>
     <div id="uncResult" class="hidden"></div>
+    <div id="uncChart" class="unc-chart hidden"></div>
     <div class="unc-disc">Это сценарий на вашем допущении о будущей ставке, а не прогноз. Ставка берётся единой и плоской (упрощение против реальной кривой доходности). Купоны, полученные до конца вклада, реинвестируются под ставку своего сценария. Налог, если он включён в основном расчёте, здесь считается и на купоны, и на прибыль от продажи бумаги. Амортизируемые и плавающие выпуски в этом блоке не поддерживаются.</div>
   </div>
 </div>
@@ -1031,8 +1063,13 @@ function uncToggle(){
   b.classList.toggle('hidden');
   ch.textContent = b.classList.contains('hidden') ? '▾' : '▴';
 }
+function uncTab(mode){
+  document.getElementById('uncTabIsin').classList.toggle('active', mode==='isin');
+  document.getElementById('uncTabTerm').classList.toggle('active', mode==='term');
+  document.getElementById('uncModeIsin').classList.toggle('hidden', mode!=='isin');
+  document.getElementById('uncModeTerm').classList.toggle('hidden', mode!=='term');
+}
 function _uncYearFrac(from,to){ return (to-from)/86400000/365; }
-// PV набора потоков на дату settle по ставке y (годовых, доли)
 function _uncPV(cfs, settle, y){
   var s=0;
   for(var i=0;i<cfs.length;i++){
@@ -1042,7 +1079,6 @@ function _uncPV(cfs, settle, y){
   }
   return s;
 }
-// Текущая доходность к погашению из грязной цены (биссекция)
 function _uncYТМ(cfs, settle, dirty){
   var lo=0.0001, hi=3.0, flo=_uncPV(cfs,settle,lo)-dirty, fhi=_uncPV(cfs,settle,hi)-dirty;
   if(flo*fhi>0) return null;
@@ -1053,7 +1089,6 @@ function _uncYТМ(cfs, settle, dirty){
   }
   return (lo+hi)/2;
 }
-// Собрать будущие денежные потоки бумаги (купоны + номинал) как [{t:Date,a:рубли}] на 1 бумагу
 function _uncCashflows(b, after){
   var cfs=[], bad=false;
   var mat=new Date(b.matDate);
@@ -1067,15 +1102,21 @@ function _uncCashflows(b, after){
   cfs.push({t:mat, a:b.faceValue});
   return {cfs:cfs, bad:bad, mat:mat};
 }
+function _uncTermMonths(){
+  var termVal=parseFloat(document.getElementById('termValue').value);
+  var termUnit=document.getElementById('termUnit').value;
+  return termUnit==='years'?termVal*12:termVal;
+}
+function _uncFmtD(d){ return ('0'+d.getDate()).slice(-2)+'.'+('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear(); }
+
 async function uncLoad(){
   var hint=document.getElementById('uncBondHint');
-  var isin=document.getElementById('uncIsin').value.trim().toUpperCase();
+  var isin=(document.getElementById('uncIsin').value||'').trim().toUpperCase();
   if(!isin){ hint.textContent='Введите ISIN бумаги'; hint.style.color='var(--red)'; return; }
   hint.style.color='var(--text2)'; hint.innerHTML='<span class="loader"></span> Загружаем '+isin+'…';
   try{
     var b=await loadBond(isin);
     if(!b.matDate){ throw new Error('у бумаги нет даты погашения'); }
-    // проверка: гасится ли она позже конца вклада
     var termMonths=_uncTermMonths();
     var today=new Date(); today.setHours(0,0,0,0);
     var horizon=new Date(today); horizon.setMonth(horizon.getMonth()+Math.round(termMonths));
@@ -1085,11 +1126,12 @@ async function uncLoad(){
       hint.textContent='Эта бумага гасится '+_uncFmtD(mat)+' — до конца вклада ('+_uncFmtD(horizon)+'). Ценового риска на горизонте нет, она уже корректно считается в основном блоке. Возьмите бумагу длиннее.';
       document.getElementById('uncParams').classList.add('hidden');
       document.getElementById('uncResult').classList.add('hidden');
+      document.getElementById('uncChart').classList.add('hidden');
       return;
     }
-    // флоатер: если ВСЕ будущие купоны неизвестны
-    var known=b.coupons.filter(function(c){var d=new Date(c.date);return d>today && !isNaN(c.value)&&c.value>0;});
-    var unknown=b.coupons.filter(function(c){var d=new Date(c.date);return d>today && (isNaN(c.value)||c.value<=0);});
+    var today2=today;
+    var known=b.coupons.filter(function(c){var d=new Date(c.date);return d>today2 && !isNaN(c.value)&&c.value>0;});
+    var unknown=b.coupons.filter(function(c){var d=new Date(c.date);return d>today2 && (isNaN(c.value)||c.value<=0);});
     if(known.length===0 && unknown.length>0){
       hint.style.color='var(--red)';
       hint.textContent='У бумаги '+(b.shortname||isin)+' плавающий купон — будущие выплаты неизвестны, сценарий по ставке не построить.';
@@ -1097,7 +1139,6 @@ async function uncLoad(){
       return;
     }
     window._uncBond=b;
-    // текущая YTM для дефолта ориентира
     var dirty=b.price/100*b.faceValue + (b.nkd||0);
     var cf=_uncCashflows(b, today);
     var y=_uncYТМ(cf.cfs, today, dirty);
@@ -1107,96 +1148,186 @@ async function uncLoad(){
     hint.textContent=(b.shortname||isin)+' · погашение '+_uncFmtD(mat)+' · цена '+b.price+'% · текущая доходность ≈ '+(y!=null?(y*100).toFixed(1)+'%':'н/д');
     document.getElementById('uncParams').classList.remove('hidden');
     document.getElementById('uncResult').classList.add('hidden');
+    document.getElementById('uncChart').classList.add('hidden');
   }catch(e){
     hint.style.color='var(--red)';
     hint.textContent='Не удалось загрузить: '+e.message;
   }
 }
-function _uncTermMonths(){
-  var termVal=parseFloat(document.getElementById('termValue').value);
-  var termUnit=document.getElementById('termUnit').value;
-  return termUnit==='years'?termVal*12:termVal;
+
+async function uncLoadOfz(){
+  var listEl=document.getElementById('uncOfzList');
+  var years=parseFloat(document.getElementById('uncTermYears').value);
+  if(isNaN(years)||years<=0){ listEl.innerHTML='<div class="hint" style="color:var(--red)">Укажите срок в годах</div>'; return; }
+  listEl.innerHTML='<div class="ofz-loading"><span class="loader"></span> Загружаем ОФЗ с Мосбиржи…</div>';
+  try{
+    var all=await fetchOfzListFromMoex();
+    var today=new Date(); today.setHours(0,0,0,0);
+    var termMonths=_uncTermMonths();
+    var depEnd=new Date(today); depEnd.setMonth(depEnd.getMonth()+Math.round(termMonths));
+    var targetMonths=years*12;
+    var cand=all.filter(function(o){ return new Date(o.matDate)>depEnd; }).map(function(o){
+      var m=new Date(o.matDate); var mm=(m-today)/(86400000*30.44);
+      return {secid:o.secid, matDate:o.matDate, shortname:o.shortname, mm:mm, diff:Math.abs(mm-targetMonths)};
+    });
+    cand.sort(function(a,b){return a.diff-b.diff;});
+    var top=cand.slice(0,6);
+    if(top.length===0){ listEl.innerHTML='<div class="hint" style="color:var(--red)">ОФЗ длиннее вклада под этот срок не нашли</div>'; return; }
+    var html='';
+    top.forEach(function(o,i){
+      var yrs=(o.mm/12).toFixed(1);
+      html+='<div class="unc-ofz-item'+(i===0?' best':'')+'" onclick="uncPick(\''+o.secid+'\')">'
+        +'<div style="flex:1;min-width:0"><div class="unc-ofz-name">'+(o.shortname||o.secid)+'</div><div class="unc-ofz-sub">'+o.secid+'</div></div>'
+        +'<div class="unc-ofz-date"><div>'+_uncFmtD(new Date(o.matDate))+'</div><div class="unc-ofz-sub">через '+yrs+' лет</div></div>'
+        +'</div>';
+    });
+    listEl.innerHTML=html;
+  }catch(e){
+    listEl.innerHTML='<div class="hint" style="color:var(--red)">Не удалось загрузить: '+e.message+'</div>';
+  }
 }
-function _uncFmtD(d){ return ('0'+d.getDate()).slice(-2)+'.'+('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear(); }
-function uncCalc(){
-  var b=window._uncBond;
-  var res=document.getElementById('uncResult');
-  if(!b){ return; }
+function uncPick(secid){
+  uncTab('isin');
+  document.getElementById('uncIsin').value=secid;
+  uncLoad();
+}
+
+/* ---- единый расчёт исхода по ставке горизонта ---- */
+function _uncBuildCtx(){
+  var b=window._uncBond; if(!b) return {err:'Сначала загрузите бумагу.'};
   var amount=parseFloat(document.getElementById('amount').value.replace(/\s/g,'').replace(',','.'));
   var termMonths=_uncTermMonths();
   var depRate=parseFloat(document.getElementById('depRate').value);
   var depCap=document.getElementById('depCap').value;
   var useTax=document.getElementById('useTax').checked;
-  if(isNaN(amount)||amount<=0||isNaN(termMonths)||termMonths<=0||isNaN(depRate)){ res.classList.remove('hidden'); res.innerHTML='<div class="hint" style="color:var(--red)">Заполните сумму, срок и ставку вклада в основном блоке выше.</div>'; return; }
-  var center=parseFloat(document.getElementById('uncYield').value);
-  var spread=parseFloat(document.getElementById('uncSpread').value);
-  if(isNaN(center)||isNaN(spread)){ return; }
-
+  if(isNaN(amount)||amount<=0||isNaN(termMonths)||termMonths<=0||isNaN(depRate)) return {err:'Заполните сумму, срок и ставку вклада в основном блоке выше.'};
   var dep=computeDeposit(amount,depRate,termMonths,depCap,useTax);
   var today=new Date(); today.setHours(0,0,0,0);
   var horizon=new Date(today); horizon.setMonth(horizon.getMonth()+Math.round(termMonths));
   var days=Math.round((horizon-today)/86400000);
   var dirtyBuy=b.price/100*b.faceValue + (b.nkd||0);
   var numBonds=Math.floor(amount/dirtyBuy);
-  if(numBonds===0){ res.classList.remove('hidden'); res.innerHTML='<div class="hint" style="color:var(--red)">Суммы не хватает даже на одну бумагу (цена ≈ '+fmtRub(dirtyBuy)+').</div>'; return; }
-  var spent=numBonds*dirtyBuy;
-  var remainder=amount-spent;
-
-  // купоны до горизонта (на 1 бумагу): номинал и с реинвестом под ставку сценария
-  var cpnsBefore=[];
+  if(numBonds===0) return {err:'Суммы не хватает даже на одну бумагу (цена ≈ '+fmtRub(dirtyBuy)+').'};
+  var spent=numBonds*dirtyBuy, remainder=amount-spent;
+  var cpnsBefore=[], cpnNominal=0;
   for(var i=0;i<b.coupons.length;i++){
     var d=new Date(b.coupons[i].date), v=b.coupons[i].value;
-    if(d>today && d<=horizon && !isNaN(v) && v>0) cpnsBefore.push({t:d,a:v});
+    if(d>today && d<=horizon && !isNaN(v) && v>0){ cpnsBefore.push({t:d,a:v}); cpnNominal+=v; }
   }
-  var cpnNominal=cpnsBefore.reduce(function(s,c){return s+c.a;},0);
-  var future=_uncCashflows(b, horizon); // потоки строго после горизонта — для цены продажи
+  var future=_uncCashflows(b, horizon).cfs;
+  return {b:b,amount:amount,dep:dep,horizon:horizon,days:days,numBonds:numBonds,spent:spent,remainder:remainder,cpnsBefore:cpnsBefore,cpnNominal:cpnNominal,future:future,useTax:useTax,face:b.faceValue};
+}
+function _uncOutcome(ctx, y){
+  y=Math.max(0,y);
+  var cpnFV=0;
+  for(var i=0;i<ctx.cpnsBefore.length;i++){ var c=ctx.cpnsBefore[i]; cpnFV+=c.a*Math.pow(1+y,_uncYearFrac(c.t,ctx.horizon)); }
+  var salePer=_uncPV(ctx.future, ctx.horizon, y);
+  var saleTotal=salePer*ctx.numBonds;
+  var cpnFVall=cpnFV*ctx.numBonds;
+  var cpnNomAll=ctx.cpnNominal*ctx.numBonds;
+  var saleGain=saleTotal-ctx.spent;
+  var tax=ctx.useTax ? (Math.max(0,cpnNomAll)+Math.max(0,saleGain))*TAX_RATE : 0;
+  var fin=cpnFVall+saleTotal-tax+ctx.remainder;
+  var profit=fin-ctx.amount, annual=(profit/ctx.amount)/(ctx.days/365)*100;
+  return {y:y, final:fin, annual:annual, salePct:salePer/ctx.face*100, cpnFVall:cpnFVall, vs:fin-ctx.dep.finalAfterTax};
+}
 
-  var scenarios=[
-    {key:'down', label:'Ставка ниже', y:(center-spread)/100},
-    {key:'mid',  label:'Ориентир',  y:center/100},
-    {key:'up',   label:'Ставка выше', y:(center+spread)/100}
-  ];
+function uncCalc(){
+  var res=document.getElementById('uncResult');
+  var ctx=_uncBuildCtx();
+  if(ctx.err){ res.classList.remove('hidden'); res.innerHTML='<div class="hint" style="color:var(--red)">'+ctx.err+'</div>'; document.getElementById('uncChart').classList.add('hidden'); return; }
+  var center=parseFloat(document.getElementById('uncYield').value);
+  var spread=parseFloat(document.getElementById('uncSpread').value);
+  if(isNaN(center)||isNaN(spread)) return;
+
+  var scs=[{key:'down',label:'Ставка ниже',y:center-spread},{key:'mid',label:'Ориентир',y:center},{key:'up',label:'Ставка выше',y:center+spread}];
   var cols='';
-  var outMid=null, outDown=null, outUp=null;
-  scenarios.forEach(function(sc){
-    var y=Math.max(0, sc.y);
-    // реинвест купонов до горизонта под y
-    var cpnFV=0;
-    cpnsBefore.forEach(function(c){ cpnFV += c.a*Math.pow(1+y,_uncYearFrac(c.t,horizon)); });
-    // грязная цена продажи на горизонте = PV будущих потоков по y
-    var salePer=_uncPV(future.cfs, horizon, y);
-    var saleTotal=salePer*numBonds;
-    var cpnFVall=cpnFV*numBonds;
-    var cpnNomAll=cpnNominal*numBonds;
-    var saleGain=saleTotal-spent;
-    var tax=useTax ? Math.max(0,cpnNomAll)*TAX_RATE + Math.max(0,saleGain)*TAX_RATE : 0;
-    var finalAfterTax=cpnFVall+saleTotal-tax+remainder;
-    var profit=finalAfterTax-amount;
-    var annual=(profit/amount)/(days/365)*100;
-    var vs=finalAfterTax-dep.finalAfterTax;
-    var cls=vs>=0?'vs-win':'vs-lose';
-    var salePct=salePer/b.faceValue*100;
+  scs.forEach(function(sc){
+    var o=_uncOutcome(ctx, sc.y/100);
+    var cls=o.vs>=0?'vs-win':'vs-lose';
     cols+='<div class="unc-col'+(sc.key==='mid'?' mid':'')+'">'
       +'<div class="sc">'+sc.label+'</div>'
-      +'<div class="yv">'+(y*100).toFixed(1)+'%</div>'
-      +'<div class="row"><span>Цена продажи</span><b>'+salePct.toFixed(1)+'%</b></div>'
-      +'<div class="row"><span>Купоны за срок</span><b>'+fmtRub(cpnFVall)+'</b></div>'
-      +'<div class="row"><span>Итог на руках</span><b>'+fmtRub(finalAfterTax)+'</b></div>'
-      +'<div class="row"><span>Годовых</span><b>'+annual.toFixed(1)+'%</b></div>'
-      +'<div class="vs '+cls+'">'+(vs>=0?'+':'−')+fmtRub(Math.abs(vs))+' к вкладу</div>'
+      +'<div class="yv">'+Math.max(0,sc.y).toFixed(1)+'%</div>'
+      +'<div class="row"><span>Цена продажи</span><b>'+o.salePct.toFixed(1)+'%</b></div>'
+      +'<div class="row"><span>Купоны за срок</span><b>'+fmtRub(o.cpnFVall)+'</b></div>'
+      +'<div class="row"><span>Итог на руках</span><b>'+fmtRub(o.final)+'</b></div>'
+      +'<div class="row"><span>Годовых</span><b>'+o.annual.toFixed(1)+'%</b></div>'
+      +'<div class="vs '+cls+'">'+(o.vs>=0?'+':'−')+fmtRub(Math.abs(o.vs))+' к вкладу</div>'
       +'</div>';
-    if(sc.key==='mid')outMid=vs; if(sc.key==='down')outDown=vs; if(sc.key==='up')outUp=vs;
   });
-
-  var lead='';
-  var win=fmtRub(Math.abs(outDown)), lose=fmtRub(Math.abs(outUp));
-  lead='Вклад за этот срок даёт гарантированно '+fmtRub(dep.finalAfterTax)+' на руки. '
-     +'При падении ставки на '+spread+' пп бумага '+(outDown>=0?'обгоняет его на '+win:'всё равно проигрывает на '+win)+', '
-     +'при росте на '+spread+' пп '+(outUp>=0?'обгоняет на '+lose:'проигрывает на '+lose)+'. '
+  var oDown=_uncOutcome(ctx,(center-spread)/100), oUp=_uncOutcome(ctx,(center+spread)/100);
+  var lead='Вклад за этот срок даёт гарантированно '+fmtRub(ctx.dep.finalAfterTax)+' на руки. '
+     +'При падении ставки на '+spread+' пп бумага '+(oDown.vs>=0?'обгоняет его на '+fmtRub(Math.abs(oDown.vs)):'проигрывает на '+fmtRub(Math.abs(oDown.vs)))+', '
+     +'при росте на '+spread+' пп '+(oUp.vs>=0?'обгоняет на '+fmtRub(Math.abs(oUp.vs)):'проигрывает на '+fmtRub(Math.abs(oUp.vs)))+'. '
      +'Это и есть цена длины: чем длиннее бумага, тем шире разброс.';
-
   res.classList.remove('hidden');
   res.innerHTML='<div class="unc-fan">'+cols+'</div><div class="unc-lead">'+lead+'</div>';
+  _uncRenderChart(ctx, center, spread);
+}
+
+/* ---- SVG-график: итог на руках в зависимости от ставки на горизонте ---- */
+function _uncRenderChart(ctx, center, spread){
+  var host=document.getElementById('uncChart');
+  var span=Math.max(6, spread*3);
+  var ymin=Math.max(0.1, center-span), ymax=center+span;
+  var N=61, pts=[];
+  for(var i=0;i<N;i++){ var yv=ymin+(ymax-ymin)*i/(N-1); pts.push({y:yv, f:_uncOutcome(ctx, yv/100).final}); }
+  var D=ctx.dep.finalAfterTax;
+  var vals=pts.map(function(p){return p.f;}); vals.push(D);
+  var vmin=Math.min.apply(null,vals), vmax=Math.max.apply(null,vals);
+  var padV=(vmax-vmin)*0.12||1; vmin-=padV; vmax+=padV;
+  var W=720,H=300,L=64,R=16,T=16,B=40, pw=W-L-R, ph=H-T-B;
+  function X(y){ return L+(y-ymin)/(ymax-ymin)*pw; }
+  function Y(v){ return T+(1-(v-vmin)/(vmax-vmin))*ph; }
+  // точка перелома (где бумага = вклад)
+  var be=null;
+  for(var k=0;k<pts.length-1;k++){
+    var a=pts[k].f-D, b2=pts[k+1].f-D;
+    if(a===0){be=pts[k].y;break;}
+    if(a*b2<0){ be=pts[k].y+(pts[k+1].y-pts[k].y)*a/(a-b2); break; }
+  }
+  var line=pts.map(function(p,i){return (i?'L':'M')+X(p.y).toFixed(1)+' '+Y(p.f).toFixed(1);}).join(' ');
+  // зона выигрыша (бумага>=депозит): бумага убывает по ставке => слева от перелома
+  var winPath='';
+  var winPts=pts.filter(function(p){return p.f>=D;});
+  if(winPts.length){
+    var seg=winPts.map(function(p,i){return (i?'L':'M')+X(p.y).toFixed(1)+' '+Y(p.f).toFixed(1);}).join(' ');
+    var xEnd=X(winPts[winPts.length-1].y), xStart=X(winPts[0].y);
+    winPath='<path d="'+seg+' L'+xEnd.toFixed(1)+' '+Y(D).toFixed(1)+' L'+xStart.toFixed(1)+' '+Y(D).toFixed(1)+' Z" fill="var(--accent-light)" stroke="none"/>';
+  }
+  // сетка по X: несколько отметок ставки
+  var xticks='';
+  [ymin, center, ymax].forEach(function(t){
+    xticks+='<line x1="'+X(t).toFixed(1)+'" y1="'+T+'" x2="'+X(t).toFixed(1)+'" y2="'+(T+ph)+'" stroke="var(--border)" stroke-width="1"/>'
+      +'<text x="'+X(t).toFixed(1)+'" y="'+(H-14)+'" text-anchor="middle" font-size="11" fill="var(--text3)">'+t.toFixed(1)+'%</text>';
+  });
+  // маркеры сценариев
+  var marks='';
+  [{y:center-spread,c:'var(--green)'},{y:center,c:'var(--accent2)'},{y:center+spread,c:'var(--red)'}].forEach(function(m){
+    if(m.y<ymin||m.y>ymax) return;
+    var o=_uncOutcome(ctx,m.y/100);
+    marks+='<circle cx="'+X(m.y).toFixed(1)+'" cy="'+Y(o.final).toFixed(1)+'" r="4" fill="'+m.c+'"/>';
+  });
+  // линия депозита + перелом
+  var depLine='<line x1="'+L+'" y1="'+Y(D).toFixed(1)+'" x2="'+(L+pw)+'" y2="'+Y(D).toFixed(1)+'" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="5 4"/>'
+    +'<text x="'+(L+pw)+'" y="'+(Y(D)-6).toFixed(1)+'" text-anchor="end" font-size="11" fill="var(--text2)">вклад '+fmtRub(D)+'</text>';
+  var beMark='', beNote='';
+  if(be!=null){
+    beMark='<line x1="'+X(be).toFixed(1)+'" y1="'+T+'" x2="'+X(be).toFixed(1)+'" y2="'+(T+ph)+'" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3"/>'
+      +'<text x="'+X(be).toFixed(1)+'" y="'+(T-4)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)">= вклад при '+be.toFixed(1)+'%</text>';
+    beNote='Бумага сравнивается с вкладом при ставке на горизонте ≈ '+be.toFixed(1)+'%: если к концу вклада доходность окажется НИЖЕ — бумага впереди, если ВЫШЕ — позади.';
+  }else{
+    beNote = (pts[0].f>=D) ? 'Во всём диапазоне бумага впереди вклада.' : 'Во всём диапазоне вклад впереди бумаги.';
+  }
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Итог по бумаге в зависимости от ставки на горизонте">'
+    +winPath+xticks+depLine
+    +'<path d="'+line+'" fill="none" stroke="var(--accent2)" stroke-width="2.5"/>'
+    +marks+beMark
+    +'<text x="'+L+'" y="'+(T-4)+'" font-size="11" fill="var(--text3)">итог на руках, ₽</text>'
+    +'<text x="'+(L+pw)+'" y="'+(H-3)+'" text-anchor="end" font-size="10" fill="var(--text3)">ставка на конец вклада, %</text>'
+    +'</svg>';
+  host.innerHTML=svg+'<div class="unc-lead" style="margin-top:0.6rem">'+beNote+'</div>';
+  host.classList.remove('hidden');
 }
 
 </script>
