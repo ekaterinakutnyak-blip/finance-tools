@@ -1291,12 +1291,15 @@ function _uncRenderBars(ctx, center, spread){
   var scs=[{l:'Ставка ниже',y:center-spread},{l:'Ориентир',y:center},{l:'Ставка выше',y:center+spread}];
   var os=scs.map(function(s){ return _uncOutcome(ctx, Math.max(0,s.y)/100); });
   var vs=os.map(function(o){ return o.vs; });
-  var maxAbs=Math.max(1, Math.max.apply(null, vs.map(function(v){return Math.abs(v);})));
-  var W=600,H=300,L=16,R=16,T=54,B=64, pw=W-L-R, ph=H-T-B;
-  var zeroY=T+ph/2, scale=(ph/2-18)/maxAbs, barW=92;
+  var maxUp=Math.max(0, Math.max.apply(null, vs));
+  var maxDown=Math.max(0, -Math.min.apply(null, vs));
+  var total=Math.max(1, maxUp+maxDown);
+  var W=600,H=300,L=16,R=16,T=54,B=64, pw=W-L-R, ph=H-T-B, pad=18;
+  var innerH=ph-2*pad;
+  var zeroY=T+pad+(maxUp/total)*innerH, scale=innerH/total, barW=92;
   var body='';
-  body+='<line x1="'+L+'" y1="'+zeroY+'" x2="'+(W-R)+'" y2="'+zeroY+'" stroke="var(--text2)" stroke-width="1.5"/>';
-  body+='<text x="'+(W-R)+'" y="'+(zeroY-6)+'" text-anchor="end" font-size="12" fill="var(--text2)">линия вклада · '+fmtRub(ctx.dep.finalAfterTax)+'</text>';
+  body+='<line x1="'+L+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-R)+'" y2="'+zeroY.toFixed(1)+'" stroke="var(--text2)" stroke-width="1.5"/>';
+  body+='<text x="'+(W-R)+'" y="'+(zeroY-5).toFixed(1)+'" text-anchor="end" font-size="11" fill="var(--text3)">вклад</text>';
   scs.forEach(function(s,i){
     var o=os[i], v=o.vs, cx=L+pw*((i+0.5)/3);
     var win=v>=0, col=win?'var(--green)':'var(--red)';
