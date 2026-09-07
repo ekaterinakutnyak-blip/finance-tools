@@ -365,7 +365,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 #uncCard .unc-col .vs{margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--border);font-size:0.86rem;font-weight:700}
 #uncCard .vs-win{color:var(--green)}#uncCard .vs-lose{color:var(--red)}
 #uncCard .unc-chart{margin-top:1.2rem}
-#uncCard .unc-chart svg{width:100%;height:auto;display:block}
+#uncCard .unc-chart svg{width:100%;max-width:600px;height:auto;display:block;margin:0 auto}
 #uncCard .unc-lead{font-size:0.92rem;line-height:1.6;margin-top:1rem;padding:0.8rem 1rem;background:var(--surface2);border-radius:10px}
 #uncCard .unc-disc{font-size:0.74rem;color:var(--text3);line-height:1.5;margin-top:1rem}
 @media(max-width:640px){#uncCard .unc-fan{grid-template-columns:1fr}}
@@ -1255,78 +1255,61 @@ function uncCalc(){
       +'<div class="vs '+cls+'">'+(o.vs>=0?'+':'−')+fmtRub(Math.abs(o.vs))+' к вкладу</div>'
       +'</div>';
   });
-  var oDown=_uncOutcome(ctx,(center-spread)/100), oUp=_uncOutcome(ctx,(center+spread)/100);
-  var lead='Вклад за этот срок даёт гарантированно '+fmtRub(ctx.dep.finalAfterTax)+' на руки. '
-     +'При падении ставки на '+spread+' пп бумага '+(oDown.vs>=0?'обгоняет его на '+fmtRub(Math.abs(oDown.vs)):'проигрывает на '+fmtRub(Math.abs(oDown.vs)))+', '
-     +'при росте на '+spread+' пп '+(oUp.vs>=0?'обгоняет на '+fmtRub(Math.abs(oUp.vs)):'проигрывает на '+fmtRub(Math.abs(oUp.vs)))+'. '
-     +'Это и есть цена длины: чем длиннее бумага, тем шире разброс.';
+  var oDown=_uncOutcome(ctx,Math.max(0,center-spread)/100), oMid=_uncOutcome(ctx,center/100), oUp=_uncOutcome(ctx,Math.max(0,center+spread)/100);
+  var be=_uncBreakeven(ctx, center);
+  var nm=ctx.b.shortname||ctx.b.isin;
+  var mat=new Date(ctx.b.matDate);
+  var termY=(ctx.days/365);
+  var story='Вы вкладываете '+fmtRub(ctx.amount)+' на '+termY.toFixed(1).replace(/\.0$/,'')+' г. '
+    +'Вклад под '+ctx.dep.rate+'% даёт гарантированно '+fmtRub(ctx.dep.finalAfterTax)+' на руки. '
+    +'Если вместо него взять '+nm+' (гасится '+_uncFmtD(mat)+') и продать её в конце вклада: '
+    +'при доходности как сейчас ('+center.toFixed(1)+'%) на руках выйдет '+fmtRub(oMid.final)+' — это '+_uncSigned(oMid.vs)+' к вкладу. '
+    +'Если к тому времени ставка упадёт на '+spread+' пп, бумага даст '+fmtRub(oDown.final)+' ('+_uncSigned(oDown.vs)+'); если вырастет — '+fmtRub(oUp.final)+' ('+_uncSigned(oUp.vs)+'). '
+    +(be!=null ? ('Бумага сравнивается с вкладом при ставке около '+be.toFixed(1)+'% на конец срока: окажется ниже — бумага впереди, выше — позади.') : (oMid.vs>=0?'В разумном диапазоне ставок бумага обгоняет вклад.':'В разумном диапазоне ставок вклад впереди бумаги.'));
   res.classList.remove('hidden');
-  res.innerHTML='<div class="unc-fan">'+cols+'</div><div class="unc-lead">'+lead+'</div>';
-  _uncRenderChart(ctx, center, spread);
+  res.innerHTML='<div class="unc-fan">'+cols+'</div><div class="unc-lead">'+story+'</div>';
+  _uncRenderBars(ctx, center, spread);
+}
+function _uncSigned(v){ return (v>=0?'+':'−')+fmtRub(Math.abs(v)); }
+function _uncBreakeven(ctx, center){
+  var lo=Math.max(0.1, center-10), hi=center+10, N=81, prev=null, py=null;
+  for(var i=0;i<N;i++){
+    var y=lo+(hi-lo)*i/(N-1);
+    var d=_uncOutcome(ctx, y/100).final - ctx.dep.finalAfterTax;
+    if(prev!==null){
+      if(prev===0) return py;
+      if(prev*d<0) return py+(y-py)*prev/(prev-d);
+    }
+    prev=d; py=y;
+  }
+  return null;
 }
 
-/* ---- SVG-график: итог на руках в зависимости от ставки на горизонте ---- */
-function _uncRenderChart(ctx, center, spread){
+/* ---- Столбиковая диаграмма: разница с вкладом по трём сценариям ---- */
+function _uncRenderBars(ctx, center, spread){
   var host=document.getElementById('uncChart');
-  var span=Math.max(6, spread*3);
-  var ymin=Math.max(0.1, center-span), ymax=center+span;
-  var N=61, pts=[];
-  for(var i=0;i<N;i++){ var yv=ymin+(ymax-ymin)*i/(N-1); pts.push({y:yv, f:_uncOutcome(ctx, yv/100).final}); }
-  var D=ctx.dep.finalAfterTax;
-  var vals=pts.map(function(p){return p.f;}); vals.push(D);
-  var vmin=Math.min.apply(null,vals), vmax=Math.max.apply(null,vals);
-  var padV=(vmax-vmin)*0.12||1; vmin-=padV; vmax+=padV;
-  var W=720,H=300,L=64,R=16,T=16,B=40, pw=W-L-R, ph=H-T-B;
-  function X(y){ return L+(y-ymin)/(ymax-ymin)*pw; }
-  function Y(v){ return T+(1-(v-vmin)/(vmax-vmin))*ph; }
-  // точка перелома (где бумага = вклад)
-  var be=null;
-  for(var k=0;k<pts.length-1;k++){
-    var a=pts[k].f-D, b2=pts[k+1].f-D;
-    if(a===0){be=pts[k].y;break;}
-    if(a*b2<0){ be=pts[k].y+(pts[k+1].y-pts[k].y)*a/(a-b2); break; }
-  }
-  var line=pts.map(function(p,i){return (i?'L':'M')+X(p.y).toFixed(1)+' '+Y(p.f).toFixed(1);}).join(' ');
-  // зона выигрыша (бумага>=депозит): бумага убывает по ставке => слева от перелома
-  var winPath='';
-  var winPts=pts.filter(function(p){return p.f>=D;});
-  if(winPts.length){
-    var seg=winPts.map(function(p,i){return (i?'L':'M')+X(p.y).toFixed(1)+' '+Y(p.f).toFixed(1);}).join(' ');
-    var xEnd=X(winPts[winPts.length-1].y), xStart=X(winPts[0].y);
-    winPath='<path d="'+seg+' L'+xEnd.toFixed(1)+' '+Y(D).toFixed(1)+' L'+xStart.toFixed(1)+' '+Y(D).toFixed(1)+' Z" fill="var(--accent-light)" stroke="none"/>';
-  }
-  // сетка по X: несколько отметок ставки
-  var xticks='';
-  [ymin, center, ymax].forEach(function(t){
-    xticks+='<line x1="'+X(t).toFixed(1)+'" y1="'+T+'" x2="'+X(t).toFixed(1)+'" y2="'+(T+ph)+'" stroke="var(--border)" stroke-width="1"/>'
-      +'<text x="'+X(t).toFixed(1)+'" y="'+(H-14)+'" text-anchor="middle" font-size="11" fill="var(--text3)">'+t.toFixed(1)+'%</text>';
+  var scs=[{l:'Ставка ниже',y:center-spread},{l:'Ориентир',y:center},{l:'Ставка выше',y:center+spread}];
+  var os=scs.map(function(s){ return _uncOutcome(ctx, Math.max(0,s.y)/100); });
+  var vs=os.map(function(o){ return o.vs; });
+  var maxAbs=Math.max(1, Math.max.apply(null, vs.map(function(v){return Math.abs(v);})));
+  var W=600,H=300,L=16,R=16,T=54,B=64, pw=W-L-R, ph=H-T-B;
+  var zeroY=T+ph/2, scale=(ph/2-18)/maxAbs, barW=92;
+  var body='';
+  body+='<line x1="'+L+'" y1="'+zeroY+'" x2="'+(W-R)+'" y2="'+zeroY+'" stroke="var(--text2)" stroke-width="1.5"/>';
+  body+='<text x="'+(W-R)+'" y="'+(zeroY-6)+'" text-anchor="end" font-size="12" fill="var(--text2)">линия вклада · '+fmtRub(ctx.dep.finalAfterTax)+'</text>';
+  scs.forEach(function(s,i){
+    var o=os[i], v=o.vs, cx=L+pw*((i+0.5)/3);
+    var win=v>=0, col=win?'var(--green)':'var(--red)';
+    var h=Math.abs(v)*scale, top=win?(zeroY-h):zeroY;
+    body+='<rect x="'+(cx-barW/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+barW+'" height="'+Math.max(2,h).toFixed(1)+'" rx="4" fill="'+col+'" opacity="0.92"/>';
+    body+='<text x="'+cx.toFixed(1)+'" y="22" text-anchor="middle" font-size="12" fill="var(--text3)">'+s.l+'</text>';
+    body+='<text x="'+cx.toFixed(1)+'" y="42" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text)">'+Math.max(0,s.y).toFixed(1)+'%</text>';
+    var ly=win?(top-9):(zeroY+h+18);
+    body+='<text x="'+cx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" font-size="13" font-weight="700" fill="'+col+'">'+_uncSigned(v)+'</text>';
+    body+='<text x="'+cx.toFixed(1)+'" y="'+(H-14)+'" text-anchor="middle" font-size="12" fill="var(--text2)">итог '+fmtRub(o.final)+'</text>';
   });
-  // маркеры сценариев
-  var marks='';
-  [{y:center-spread,c:'var(--green)'},{y:center,c:'var(--accent2)'},{y:center+spread,c:'var(--red)'}].forEach(function(m){
-    if(m.y<ymin||m.y>ymax) return;
-    var o=_uncOutcome(ctx,m.y/100);
-    marks+='<circle cx="'+X(m.y).toFixed(1)+'" cy="'+Y(o.final).toFixed(1)+'" r="4" fill="'+m.c+'"/>';
-  });
-  // линия депозита + перелом
-  var depLine='<line x1="'+L+'" y1="'+Y(D).toFixed(1)+'" x2="'+(L+pw)+'" y2="'+Y(D).toFixed(1)+'" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="5 4"/>'
-    +'<text x="'+(L+pw)+'" y="'+(Y(D)-6).toFixed(1)+'" text-anchor="end" font-size="11" fill="var(--text2)">вклад '+fmtRub(D)+'</text>';
-  var beMark='', beNote='';
-  if(be!=null){
-    beMark='<line x1="'+X(be).toFixed(1)+'" y1="'+T+'" x2="'+X(be).toFixed(1)+'" y2="'+(T+ph)+'" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 3"/>'
-      +'<text x="'+X(be).toFixed(1)+'" y="'+(T-4)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)">= вклад при '+be.toFixed(1)+'%</text>';
-    beNote='Бумага сравнивается с вкладом при ставке на горизонте ≈ '+be.toFixed(1)+'%: если к концу вклада доходность окажется НИЖЕ — бумага впереди, если ВЫШЕ — позади.';
-  }else{
-    beNote = (pts[0].f>=D) ? 'Во всём диапазоне бумага впереди вклада.' : 'Во всём диапазоне вклад впереди бумаги.';
-  }
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Итог по бумаге в зависимости от ставки на горизонте">'
-    +winPath+xticks+depLine
-    +'<path d="'+line+'" fill="none" stroke="var(--accent2)" stroke-width="2.5"/>'
-    +marks+beMark
-    +'<text x="'+L+'" y="'+(T-4)+'" font-size="11" fill="var(--text3)">итог на руках, ₽</text>'
-    +'<text x="'+(L+pw)+'" y="'+(H-3)+'" text-anchor="end" font-size="10" fill="var(--text3)">ставка на конец вклада, %</text>'
-    +'</svg>';
-  host.innerHTML=svg+'<div class="unc-lead" style="margin-top:0.6rem">'+beNote+'</div>';
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Разница с вкладом по трём сценариям">'+body+'</svg>';
+  host.innerHTML=svg+'<div class="hint" style="margin-top:6px;text-align:center">Высота столбца — насколько бумага обгоняет (зелёный, вверх) или проигрывает (красный, вниз) вкладу в каждом сценарии.</div>';
   host.classList.remove('hidden');
 }
 
