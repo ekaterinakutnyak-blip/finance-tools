@@ -629,104 +629,66 @@ function renderModels(mi, industry){
   card.style.display='block';
 }
 
-/* ===== Движок кредитных метрик и светофора (порт credit_engine.py, 1:1) ===== */
-var BANDS=["🔴 дефолтная зона","🟡🔴 своих денег не хватает","🟡 устойчиво, но со слабостями","🟡🟢 крепко с нюансом","🟢🟡 крепко","🟢 надёжно"];
-var FLOOR=2;
+/* ===== Светофор — считаем в коде (детерминированно), не берём у модели ===== */
+var SVET=['🔴','🟡🔴','🟡','🟡🟢','🟢🟡','🟢'];   // индекс 0..5
 function _n(x){ return (typeof x==='number' && isFinite(x)) ? x : null; }
-function _bandND(nd){ if(nd<=1)return 5; if(nd<=2)return 4; if(nd<=3)return 3; if(nd<=4)return 2; if(nd<=6)return 1; return 0; }
-function _bandICR(icr){ if(icr>=6)return 5; if(icr>=3)return 4; if(icr>=2)return 3; if(icr>=1.5)return 2; if(icr>=1)return 1; return 0; }
-function _cmMap(data){ var o={}; (data.core_metrics||[]).forEach(function(m){ if(m&&m.key) o[m.key]=m; }); return o; }
-
-function _mapInputs(data){
-  var mi=data.model_inputs||{}, cm=_cmMap(data);
-  var parts=[mi.st_loans,mi.lt_loans,mi.st_lease,mi.lt_lease,mi.bonds].map(_n).filter(function(x){return x!=null;});
-  var gross=parts.length?parts.reduce(function(a,b){return a+b;},0):(cm.gross_debt?_n(cm.gross_debt.current):null);
-  var npc=_n(mi.net_profit_change_pct);
-  if(npc==null&&cm.net_income){ var c=_n(cm.net_income.current),p=_n(cm.net_income.prior); if(c!=null&&p!=null&&p!==0) npc=(c-p)/Math.abs(p); }
-  var t=String(data.industry||mi.company_type||'corporate').toLowerCase();
-  var isDev=(t.indexOf('девелоп')>-1||t.indexOf('застрой')>-1||t.indexOf('develop')>-1);
-  return {
-    company_type:isDev?'developer':'corporate',
-    period_months:_n(mi.period_months)||6,
-    disclosed_ebitda_ltm:_n(mi.disclosed_ebitda_ltm),
-    disclosed_net_debt:_n(mi.disclosed_net_debt),
-    ebitda_period:(_n(mi.ebitda_period)!=null?_n(mi.ebitda_period):(cm.ebitda?_n(cm.ebitda.current):null)),
-    gross_debt:gross,
-    cash:(_n(mi.cash)!=null?_n(mi.cash):0),
-    interest_pl_period:_n(mi.interest_expense),
-    interest_accrued_period:_n(mi.interest_accrued_period),
-    interest_ltm_total:_n(mi.interest_ltm_total),
-    current_assets:_n(mi.current_assets),
-    current_liabilities:_n(mi.current_liabilities),
-    equity:_n(mi.equity),
-    assets:(_n(mi.total_assets)!=null?_n(mi.total_assets):_n(mi.assets)),
-    ocf:(_n(mi.ocf)!=null?_n(mi.ocf):(cm.operating_cf?_n(cm.operating_cf.current):null)),
-    debt_project:_n(mi.debt_project),
-    debt_corporate:_n(mi.debt_corporate),
-    escrow:_n(mi.escrow),
-    net_profit_change_pct:npc,
-    audit_qualified:(mi.audit_qualified===true),
-    going_concern_doubt:(mi.going_concern_doubt===true),
-    negative_equity:(_n(mi.equity)!=null&&mi.equity<0),
-    covenant_default:(mi.covenant_breach===true)
-  };
+function _fmt(x){ return (x==null)?'—':(Math.round(x*100)/100).toString().replace('.',','); }
+function _cmMap(data){
+  var o={}; (data.core_metrics||[]).forEach(function(m){ if(m&&m.key) o[m.key]=m; }); return o;
 }
-
-function _engine(inp){
-  var m={type:inp.company_type||"corporate",source:{},flags:[],gates:[]};
-  var cash=_n(inp.cash)||0, ebitda=null;
-  if(_n(inp.disclosed_ebitda_ltm)!=null){ ebitda=inp.disclosed_ebitda_ltm; m.source.ebitda="раскрыта компанией (LTM)"; }
-  else if(_n(inp.ebitda_period)!=null){ var f=12/(inp.period_months||12); ebitda=inp.ebitda_period*f; m.source.ebitda="оценка: аннуализ."; }
-  m.ebitda_used=ebitda;
-  var ndTotal=null;
-  if(_n(inp.disclosed_net_debt)!=null){ ndTotal=inp.disclosed_net_debt; m.source.net_debt="раскрыт компанией"; }
-  else if(_n(inp.gross_debt)!=null){ ndTotal=inp.gross_debt-cash; m.source.net_debt="расчёт"; }
-  m.net_debt_total=ndTotal;
-  var ndLever;
-  if(inp.company_type==="developer"&&_n(inp.debt_corporate)!=null&&ebitda){ ndLever=inp.debt_corporate-cash; m.source.leverage_base="корпоративный контур"; }
-  else { ndLever=ndTotal; m.source.leverage_base="весь чистый долг"; }
-  m.nd_ebitda_total=(ebitda&&ndTotal!=null)?ndTotal/ebitda:null;
-  m.nd_ebitda_lever=(ebitda&&ndLever!=null)?ndLever/ebitda:null;
-  var icr=null;
-  if(_n(inp.disclosed_ebitda_ltm)!=null&&_n(inp.interest_ltm_total)){ icr=ebitda/inp.interest_ltm_total; m.source.icr="LTM / начисл. проценты"; }
-  else { var interest=_n(inp.interest_accrued_period)||_n(inp.interest_pl_period); var baseE=_n(inp.ebitda_period)!=null?inp.ebitda_period:ebitda; icr=(baseE&&interest)?baseE/interest:null; m.source.icr="за период"; }
-  m.icr=icr;
-  m.current_ratio=(_n(inp.current_assets)&&_n(inp.current_liabilities))?inp.current_assets/inp.current_liabilities:null;
-  m.capital_to_assets=(_n(inp.equity)&&_n(inp.assets))?inp.equity/inp.assets:null;
-  m.escrow_coverage=(_n(inp.escrow)&&_n(inp.debt_project))?inp.escrow/inp.debt_project:null;
-  var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
-  var pb=[]; if(ndForLight!=null)pb.push(_bandND(ndForLight)); if(icr!=null)pb.push(_bandICR(icr));
-  var base=pb.length?Math.min.apply(null,pb):2; m.base_band=BANDS[base];
-  var soft=[];
-  if(inp.audit_qualified) soft.push("оговорка аудитора");
-  if(m.current_ratio!=null&&m.current_ratio<1) soft.push("текущая ликвидность < 1");
-  if(_n(inp.net_profit_change_pct)!=null&&inp.net_profit_change_pct<=-0.20) soft.push("падение чистой прибыли > 20%");
-  if(inp.company_type==="developer"){
-    if(m.escrow_coverage!=null&&m.escrow_coverage<0.30) soft.push("покрытие эскроу "+Math.round(m.escrow_coverage*100)+"% (< 30%)");
-    if(_n(inp.ocf)!=null&&inp.ocf<0) soft.push("отрицательный операционный поток");
-  }
-  m.flags=soft;
-  var color=base;
-  if(soft.length) color=(base>FLOOR)?Math.max(base-1,FLOOR):base;
-  if(inp.covenant_default){ color=Math.min(color,1); m.gates.push("нарушение ковенантов"); }
-  if(inp.going_concern_doubt||inp.negative_equity){ color=0; m.gates.push("непрерывность/отриц. капитал → 🔴"); }
-  m.svetofor=BANDS[color];
-  return m;
+function _baseTier(nd,icr){
+  // сверху вниз, первая подходящая ступень (тай-брейк по худшей метрике)
+  if(nd<=1 && icr>=6) return 5;                       // 🟢
+  if(nd<=2 && icr>=3) return 4;                       // 🟢🟡
+  if((nd>2&&nd<=3) || (icr>=2&&icr<3)) return 3;      // 🟡🟢
+  if((nd>3&&nd<=4) || (icr>=1.5&&icr<2)) return 2;    // 🟡
+  if((nd>4&&nd<=6) || (icr>=1&&icr<1.5)) return 1;    // 🟡🔴
+  return 0;                                           // 🔴  (nd>6 или icr<1)
 }
-
 function computeSvetofor(data){
-  var m=_engine(_mapInputs(data));
-  if(m.nd_ebitda_total==null&&m.nd_ebitda_lever==null&&m.icr==null&&!m.gates.length) return null;
-  var band=m.svetofor, idx=band.indexOf(' ');
-  var reason='База '+m.base_band;
-  if(m.flags.length) reason+='; понижено за: '+m.flags.join(', ');
-  if(m.gates.length) reason+='; '+m.gates.join('; ');
-  reason+=' → '+band;
-  m.level=idx>0?band.slice(0,idx):band;
-  m.label=idx>0?band.slice(idx+1):'';
-  m.reason=reason;
-  m.nd=m.nd_ebitda_total; m.cr=m.current_ratio;
-  return m;
+  var mi=data.model_inputs||{}, cm=_cmMap(data);
+  // --- долг: сумма строк, а НЕ «итого обязательства»; иначе fallback на core_metrics ---
+  var parts=[mi.st_loans,mi.lt_loans,mi.st_lease,mi.lt_lease,mi.bonds].map(_n).filter(function(x){return x!=null;});
+  var gross = parts.length ? parts.reduce(function(a,b){return a+b;},0) : (cm.gross_debt?_n(cm.gross_debt.current):null);
+  var cash=_n(mi.cash);
+  var net = (gross!=null&&cash!=null) ? (gross-cash) : (cm.net_debt?_n(cm.net_debt.current):null);
+  // --- EBITDA за период + аннуализация ---
+  var ebit=_n(mi.ebitda_period); if(ebit==null&&cm.ebitda) ebit=_n(cm.ebitda.current);
+  var pm=_n(mi.period_months)||12; var ebitA=(ebit!=null)?ebit*12/pm:null;
+  // --- коэффициенты ---
+  var nd=(net!=null&&ebitA!=null&&ebitA!==0)?net/ebitA:null;
+  var interest=_n(mi.interest_expense);
+  var icr=(ebit!=null&&interest!=null&&interest>0)?ebit/interest:null;
+  var ca=_n(mi.current_assets), cl=_n(mi.current_liabilities);
+  var cr=(ca!=null&&cl!=null&&cl!==0)?ca/cl:null;
+  // --- гейты (перебивают всё) ---
+  var eq=_n(mi.equity);
+  var negEq=(eq!=null&&eq<0);
+  var gc=(mi.going_concern_doubt===true);
+  var cov=(mi.covenant_breach===true);
+  if(negEq||gc){ return {level:'🔴', reason:'Жёсткий гейт: '+(gc?'оговорка о непрерывности деятельности':'отрицательный капитал')+' → 🔴', nd:nd, icr:icr, cr:cr}; }
+  // без ND/EBITDA и ICR базу не построить — отдаём null, клиент оставит светофор модели
+  if(nd==null||icr==null) return null;
+  var base=_baseTier(nd,icr);
+  // --- понижающие флаги (одна ступень, не суммируются, пол 🟡) ---
+  var flags=[];
+  if(mi.audit_qualified===true) flags.push('оговорку аудитора');
+  if(cr!=null&&cr<1) flags.push('текущую ликвидность ниже 1');
+  var ni=cm.net_income, rev=cm.revenue, drop=false;
+  if(ni){ var c=_n(ni.current),p=_n(ni.prior); if(c!=null&&p!=null&&p>0&&(p-c)/p*100>20) drop=true; }
+  if(!drop&&ni&&rev){ var mc=(_n(ni.current)!=null&&_n(rev.current))?_n(ni.current)/_n(rev.current)*100:null,
+                          mp=(_n(ni.prior)!=null&&_n(rev.prior))?_n(ni.prior)/_n(rev.prior)*100:null;
+                       if(mc!=null&&mp!=null&&(mp-mc)>3) drop=true; }
+  if(drop) flags.push('падение чистой прибыли');
+  var lvl=base;
+  if(flags.length && base>2) lvl=base-1;              // пол 🟡: флагами ниже не опускаемся
+  if(cov) lvl=Math.min(lvl,1);                        // ковенанты → не выше 🟡🔴
+  var reason='База '+SVET[base]+' по ND/EBITDA '+_fmt(nd)+'× и ICR '+_fmt(icr)+'×';
+  if(flags.length && base>2) reason+='; понижено за '+flags.join(' и ');
+  else if(flags.length) reason+='; флаги: '+flags.join(', ')+' (уже на 🟡, ниже не опускаем)';
+  if(cov) reason+='; ковенанты → не выше 🟡🔴';
+  reason+=' → '+SVET[lvl];
+  return {level:SVET[lvl], reason:reason, nd:nd, icr:icr, cr:cr, base:SVET[base], flags:flags};
 }
 
 function renderReal(res, fromSaved){
@@ -737,7 +699,9 @@ function renderReal(res, fromSaved){
   var S = computeSvetofor(data);
   var v = document.getElementById('verdict');
   var lvl = S ? S.level : (data.svetofor && data.svetofor.level);
-  var sub = S ? S.reason : ((data.svetofor && data.svetofor.summary) || '');
+  var sub = (data.svetofor && data.svetofor.summary) || '';
+  if(S && data.svetofor && data.svetofor.level && data.svetofor.level!==S.level) sub = S.reason; // модель промахнулась цветом — показываем расчёт
+  if(S && !sub) sub = S.reason;
   if(lvl){
     v.style.background = svetBg(lvl);
     v.innerHTML = '<span class="v-emoji">'+lvl+'</span><div><div class="v-text">'+(data.company||'Разбор')+'</div><div class="v-sub">'+sub+'</div></div>';
