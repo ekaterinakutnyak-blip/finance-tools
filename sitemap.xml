@@ -143,6 +143,26 @@
     <priority>0.7</priority>
   </url>
 
+  <!-- ===== Разборы ИИ-аналитика ===== -->
+  <url>
+    <loc>https://investtools.pro/razbory-ii-analitika.html</loc>
+    <lastmod>2026-09-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/novosti/razbor-polyplast-2025.html</loc>
+    <lastmod>2026-09-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/novosti/razbor-gazprom-2025.html</loc>
+    <lastmod>2026-09-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- ===== Иностранные рынки ===== -->
   <url>
     <loc>https://investtools.pro/inostrannye-rynki.html</loc>
