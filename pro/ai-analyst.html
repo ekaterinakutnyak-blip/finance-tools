@@ -629,15 +629,82 @@ function renderModels(mi, industry){
   card.style.display='block';
 }
 
+/* ===== Светофор — считаем в коде (детерминированно), не берём у модели ===== */
+var SVET=['🔴','🟡🔴','🟡','🟡🟢','🟢🟡','🟢'];   // индекс 0..5
+function _n(x){ return (typeof x==='number' && isFinite(x)) ? x : null; }
+function _fmt(x){ return (x==null)?'—':(Math.round(x*100)/100).toString().replace('.',','); }
+function _cmMap(data){
+  var o={}; (data.core_metrics||[]).forEach(function(m){ if(m&&m.key) o[m.key]=m; }); return o;
+}
+function _baseTier(nd,icr){
+  // сверху вниз, первая подходящая ступень (тай-брейк по худшей метрике)
+  if(nd<=1 && icr>=6) return 5;                       // 🟢
+  if(nd<=2 && icr>=3) return 4;                       // 🟢🟡
+  if((nd>2&&nd<=3) || (icr>=2&&icr<3)) return 3;      // 🟡🟢
+  if((nd>3&&nd<=4) || (icr>=1.5&&icr<2)) return 2;    // 🟡
+  if((nd>4&&nd<=6) || (icr>=1&&icr<1.5)) return 1;    // 🟡🔴
+  return 0;                                           // 🔴  (nd>6 или icr<1)
+}
+function computeSvetofor(data){
+  var mi=data.model_inputs||{}, cm=_cmMap(data);
+  // --- долг: сумма строк, а НЕ «итого обязательства»; иначе fallback на core_metrics ---
+  var parts=[mi.st_loans,mi.lt_loans,mi.st_lease,mi.lt_lease,mi.bonds].map(_n).filter(function(x){return x!=null;});
+  var gross = parts.length ? parts.reduce(function(a,b){return a+b;},0) : (cm.gross_debt?_n(cm.gross_debt.current):null);
+  var cash=_n(mi.cash);
+  var net = (gross!=null&&cash!=null) ? (gross-cash) : (cm.net_debt?_n(cm.net_debt.current):null);
+  // --- EBITDA за период + аннуализация ---
+  var ebit=_n(mi.ebitda_period); if(ebit==null&&cm.ebitda) ebit=_n(cm.ebitda.current);
+  var pm=_n(mi.period_months)||12; var ebitA=(ebit!=null)?ebit*12/pm:null;
+  // --- коэффициенты ---
+  var nd=(net!=null&&ebitA!=null&&ebitA!==0)?net/ebitA:null;
+  var interest=_n(mi.interest_expense);
+  var icr=(ebit!=null&&interest!=null&&interest>0)?ebit/interest:null;
+  var ca=_n(mi.current_assets), cl=_n(mi.current_liabilities);
+  var cr=(ca!=null&&cl!=null&&cl!==0)?ca/cl:null;
+  // --- гейты (перебивают всё) ---
+  var eq=_n(mi.equity);
+  var negEq=(eq!=null&&eq<0);
+  var gc=(mi.going_concern_doubt===true);
+  var cov=(mi.covenant_breach===true);
+  if(negEq||gc){ return {level:'🔴', reason:'Жёсткий гейт: '+(gc?'оговорка о непрерывности деятельности':'отрицательный капитал')+' → 🔴', nd:nd, icr:icr, cr:cr}; }
+  // без ND/EBITDA и ICR базу не построить — отдаём null, клиент оставит светофор модели
+  if(nd==null||icr==null) return null;
+  var base=_baseTier(nd,icr);
+  // --- понижающие флаги (одна ступень, не суммируются, пол 🟡) ---
+  var flags=[];
+  if(mi.audit_qualified===true) flags.push('оговорку аудитора');
+  if(cr!=null&&cr<1) flags.push('текущую ликвидность ниже 1');
+  var ni=cm.net_income, rev=cm.revenue, drop=false;
+  if(ni){ var c=_n(ni.current),p=_n(ni.prior); if(c!=null&&p!=null&&p>0&&(p-c)/p*100>20) drop=true; }
+  if(!drop&&ni&&rev){ var mc=(_n(ni.current)!=null&&_n(rev.current))?_n(ni.current)/_n(rev.current)*100:null,
+                          mp=(_n(ni.prior)!=null&&_n(rev.prior))?_n(ni.prior)/_n(rev.prior)*100:null;
+                       if(mc!=null&&mp!=null&&(mp-mc)>3) drop=true; }
+  if(drop) flags.push('падение чистой прибыли');
+  var lvl=base;
+  if(flags.length && base>2) lvl=base-1;              // пол 🟡: флагами ниже не опускаемся
+  if(cov) lvl=Math.min(lvl,1);                        // ковенанты → не выше 🟡🔴
+  var reason='База '+SVET[base]+' по ND/EBITDA '+_fmt(nd)+'× и ICR '+_fmt(icr)+'×';
+  if(flags.length && base>2) reason+='; понижено за '+flags.join(' и ');
+  else if(flags.length) reason+='; флаги: '+flags.join(', ')+' (уже на 🟡, ниже не опускаем)';
+  if(cov) reason+='; ковенанты → не выше 🟡🔴';
+  reason+=' → '+SVET[lvl];
+  return {level:SVET[lvl], reason:reason, nd:nd, icr:icr, cr:cr, base:SVET[base], flags:flags};
+}
+
 function renderReal(res, fromSaved){
   var data = res.data || {};
   document.getElementById('companyTitle').textContent = data.company || 'Разбор отчётности';
 
-  // светофор
+  // светофор — считаем в коде; модель используем только как запасной вариант
+  var S = computeSvetofor(data);
   var v = document.getElementById('verdict');
-  if(data.svetofor && data.svetofor.level){
-    v.style.background = svetBg(data.svetofor.level);
-    v.innerHTML = '<span class="v-emoji">'+data.svetofor.level+'</span><div><div class="v-text">'+(data.company||'Разбор')+'</div><div class="v-sub">'+(data.svetofor.summary||'')+'</div></div>';
+  var lvl = S ? S.level : (data.svetofor && data.svetofor.level);
+  var sub = (data.svetofor && data.svetofor.summary) || '';
+  if(S && data.svetofor && data.svetofor.level && data.svetofor.level!==S.level) sub = S.reason; // модель промахнулась цветом — показываем расчёт
+  if(S && !sub) sub = S.reason;
+  if(lvl){
+    v.style.background = svetBg(lvl);
+    v.innerHTML = '<span class="v-emoji">'+lvl+'</span><div><div class="v-text">'+(data.company||'Разбор')+'</div><div class="v-sub">'+sub+'</div></div>';
     v.style.display = 'flex';
   } else { v.style.display = 'none'; }
 
@@ -650,7 +717,9 @@ function renderReal(res, fromSaved){
 
   // разбор (проза от ИИ)
   document.getElementById('razborName').textContent = 'Разбор';
-  document.getElementById('razborBody').innerHTML = marked.parse((res.prose || '').split(/```json/i)[0]);
+  var proseTxt = (res.prose || '').split(/```json/i)[0];
+  if(S){ proseTxt = proseTxt.replace(/(^|\n)([*_> \t]*)(?:🟢|🟡|🟠|🔴)+(?=\s)/g, function(m,a,b){ return a+b+S.level; }); }
+  document.getElementById('razborBody').innerHTML = marked.parse(proseTxt);
 
   // график core_metrics
   var cm = (data.core_metrics || []).filter(function(m){ return m.current !== null && m.current !== undefined; });
@@ -671,7 +740,17 @@ function renderReal(res, fromSaved){
   } else { chartCard.style.display = 'none'; }
 
   // коэффициенты
-  var ratios = data.ratios || [];
+  var ratios = (data.ratios || []).slice();
+  if(S){
+    ratios = ratios.map(function(x){
+      var lab=(x.label||'').toLowerCase();
+      function set(val){ return Object.assign({}, x, {value:(Math.round(val*100)/100).toString().replace('.',','), unit:'x', approx:false}); }
+      if(S.nd!=null && lab.indexOf('ebitda')>-1 && (lab.indexOf('долг')>-1||lab.indexOf('nd')>-1)) return set(S.nd);
+      if(S.icr!=null && (lab.indexOf('покрыт')>-1||lab.indexOf('icr')>-1||lab.indexOf('процент')>-1)) return set(S.icr);
+      if(S.cr!=null && lab.indexOf('ликвидн')>-1 && (lab.indexOf('тек')>-1||lab.indexOf('current')>-1)) return set(S.cr);
+      return x;
+    });
+  }
   var gridCard = document.getElementById('gridCard');
   if(ratios.length){
     gridCard.style.display = 'block';
