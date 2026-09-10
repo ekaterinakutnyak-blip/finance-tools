@@ -735,8 +735,9 @@ function _engine(inp){
   if(m.current_ratio!=null&&m.current_ratio<1) soft.push("текущая ликвидность < 1");
   if(_n(inp.net_profit_change_pct)!=null&&inp.net_profit_change_pct<=-0.20) soft.push("падение чистой прибыли > 20%");
   if(isDev){
-    if(icrCorp==null&&icrTotal!=null&&icrTotal<1.5) soft.push("тонкое покрытие процентов по всему долгу ("+icrTotal.toFixed(2)+"×) — корп. проценты уточнить");
-    if(_n(inp.ocf)!=null&&inp.ocf<0) soft.push("отрицательный операционный поток");
+    if(icrCorp==null&&icrTotal!=null&&icrTotal<1.5) soft.push("тонкое покрытие процентов ("+icrTotal.toFixed(2)+"×)");
+    // OCF<0 у застройщика на эскроу — структурная норма (деньги дольщиков на эскроу, стройка на кредитах),
+    // НЕ повод понижать светофор. Держим справочно в прозе, но не как понижающий флаг.
   }
   m.flags=soft;
   var color=base;
@@ -827,8 +828,9 @@ function renderReal(res, fromSaved){
   if(S){
     ratios = ratios.map(function(x){
       var lab=(x.label||'').toLowerCase();
-      function set(val){ return Object.assign({}, x, {value:(Math.round(val*100)/100).toString().replace('.',','), unit:'x', approx:false}); }
-      if(S.nd!=null && lab.indexOf('ebitda')>-1 && (lab.indexOf('долг')>-1||lab.indexOf('nd')>-1)) return set(S.nd);
+      var isDev=(S.type==='developer');
+      function set(val,newLab){ var o=Object.assign({}, x, {value:(Math.round(val*100)/100).toString().replace('.',','), unit:'x', approx:false}); if(newLab) o.label=newLab; return o; }
+      if(S.nd!=null && lab.indexOf('ebitda')>-1 && (lab.indexOf('долг')>-1||lab.indexOf('nd')>-1)) return set(S.nd, isDev?'Плечо (корп. контур)':null);
       if(S.icr!=null && (lab.indexOf('покрыт')>-1||lab.indexOf('icr')>-1||lab.indexOf('процент')>-1)) return set(S.icr);
       if(S.cr!=null && lab.indexOf('ликвидн')>-1 && (lab.indexOf('тек')>-1||lab.indexOf('current')>-1)) return set(S.cr);
       return x;
