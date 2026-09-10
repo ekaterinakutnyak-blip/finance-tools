@@ -644,7 +644,16 @@ function _mapInputs(data){
   var npc=_n(mi.net_profit_change_pct); // только очищенная динамика от ИИ; сами из core_metrics не выводим (иначе ложный флаг падения)
   var t=String(data.industry||mi.company_type||'corporate').toLowerCase();
   var isDev=(t.indexOf('девелоп')>-1||t.indexOf('застрой')>-1||t.indexOf('develop')>-1);
+  // выручка: за период (для маржи период/период) и LTM (для маржи по раскрытой LTM EBITDA)
+  var revPeriod=(_n(mi.revenue_period)!=null?_n(mi.revenue_period):(cm.revenue?_n(cm.revenue.current):null));
+  var revLtm=_n(mi.revenue_ltm);
+  if(revLtm==null){
+    var rpf=_n(mi.revenue_prior_fy), rc=(cm.revenue?_n(cm.revenue.current):null), rp=(cm.revenue?_n(cm.revenue.prior):null);
+    if(rpf!=null && rc!=null && rp!=null) revLtm=rpf-rp+rc;  // LTM = год − тот же период прошлого года + текущий период
+  }
   return {
+    revenue_period:revPeriod,
+    revenue_ltm:revLtm,
     company_type:isDev?'developer':'corporate',
     period_months:_n(mi.period_months)||6,
     disclosed_ebitda_ltm:_n(mi.disclosed_ebitda_ltm),
@@ -725,6 +734,12 @@ function _engine(inp){
   m.current_ratio=(_n(inp.current_assets)&&_n(inp.current_liabilities))?inp.current_assets/inp.current_liabilities:null;
   m.capital_to_assets=(_n(inp.equity)&&_n(inp.assets))?inp.equity/inp.assets:null;
   m.escrow_coverage=(_n(inp.escrow)&&_n(inp.debt_project))?inp.escrow/inp.debt_project:null;
+  // EBITDA-маржа: СТРОГО один период. LTM EBITDA / LTM выручку, либо период/период. Никогда LTM ÷ 6 мес.
+  var margin=null;
+  if(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm)) margin=inp.disclosed_ebitda_ltm/inp.revenue_ltm;
+  else if(_n(inp.ebitda_period)!=null && _n(inp.revenue_period)) margin=inp.ebitda_period/inp.revenue_period;
+  m.ebitda_margin=margin;
+  m.margin_is_ltm=(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm))?true:false;
   // база светофора: худшая из размерностей; для девелопера ICR в базу — только корпоративный
   var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
   var icrForLight=isDev?m.icr_corp:icrTotal;
@@ -823,26 +838,34 @@ function renderReal(res, fromSaved){
     });
   } else { chartCard.style.display = 'none'; }
 
-  // коэффициенты
-  var ratios = (data.ratios || []).slice();
-  if(S){
-    ratios = ratios.map(function(x){
-      var lab=(x.label||'').toLowerCase();
-      var isDev=(S.type==='developer');
-      function set(val,newLab){ var o=Object.assign({}, x, {value:(Math.round(val*100)/100).toString().replace('.',','), unit:'x', approx:false}); if(newLab) o.label=newLab; return o; }
-      if(S.nd!=null && lab.indexOf('ebitda')>-1 && (lab.indexOf('долг')>-1||lab.indexOf('nd')>-1)) return set(S.nd, isDev?'Плечо (корп. контур)':null);
-      if(S.icr!=null && (lab.indexOf('покрыт')>-1||lab.indexOf('icr')>-1||lab.indexOf('процент')>-1)) return set(S.icr);
-      if(S.cr!=null && lab.indexOf('ликвидн')>-1 && (lab.indexOf('тек')>-1||lab.indexOf('current')>-1)) return set(S.cr);
-      return x;
+  // коэффициенты — плитки СТРОИМ ИЗ ДВИЖКА (детерминированно), а не из ratios ИИ.
+  // Это убирает задвоение, гарантирует ICR и не даёт ИИ соврать в марже.
+  var gridCard = document.getElementById('gridCard');
+  var tiles = [];
+  if(S && !S.incomplete){
+    var isDev=(S.type==='developer');
+    var zBand=function(b){ return b>=4?'green':(b===3?'yellow':(b===2?'orange':'red')); };
+    var fx=function(v){ return (Math.round(v*100)/100).toString().replace('.',',')+'×'; };
+    var fp=function(v){ return (Math.round(v*1000)/10).toString().replace('.',',')+' %'; };
+    if(S.nd!=null) tiles.push({label:isDev?'Плечо (корп. контур)':'Чистый долг / EBITDA', value:fx(S.nd), zone:zBand(_bandND(S.nd))});
+    if(S.icr!=null) tiles.push({label:'Покрытие процентов', value:fx(S.icr), zone:zBand(_bandICR(S.icr))});
+    if(S.ebitda_margin!=null){ var mp=S.ebitda_margin*100;
+      tiles.push({label:'EBITDA-маржа'+(S.margin_is_ltm?' (LTM)':''), value:fp(S.ebitda_margin), zone:(mp>=20?'green':(mp>=10?'yellow':'orange'))}); }
+    if(S.capital_to_assets!=null){ var cp=S.capital_to_assets*100;
+      tiles.push({label:'Капитал / активы', value:fp(S.capital_to_assets), zone:(cp>=30?'green':(cp>=15?'yellow':'orange'))}); }
+    if(isDev && S.escrow_coverage!=null){ var ec=S.escrow_coverage*100;
+      tiles.push({label:'Эскроу-покрытие', value:fp(S.escrow_coverage), zone:(ec>=70?'green':(ec>=50?'yellow':'red'))}); }
+  } else {
+    // фолбэк: движок не считал (напр. светофор «не рассчитан») — показываем коэффициенты ИИ как есть
+    tiles = (data.ratios||[]).map(function(x){
+      var unit = x.unit ? (' ' + x.unit).replace(' x','×') : '';
+      return {label:x.label, value:(x.value===null||x.value===undefined)?'—':(x.value+unit), zone:x.zone, approx:x.approx};
     });
   }
-  var gridCard = document.getElementById('gridCard');
-  if(ratios.length){
+  if(tiles.length){
     gridCard.style.display = 'block';
-    document.getElementById('grid').innerHTML = ratios.map(function(x){
-      var unit = x.unit ? (' ' + x.unit).replace(' x','×') : '';
-      var val = (x.value===null||x.value===undefined) ? '—' : (x.value + unit);
-      return '<div class="metric '+zoneClass(x.zone)+'"><span class="metric-label">'+x.label+'</span><span class="metric-value">'+val+'</span><span class="metric-sub">'+(x.approx?'≈ ориентир':'')+'</span></div>';
+    document.getElementById('grid').innerHTML = tiles.map(function(x){
+      return '<div class="metric '+zoneClass(x.zone)+'"><span class="metric-label">'+x.label+'</span><span class="metric-value">'+x.value+'</span><span class="metric-sub">'+(x.approx?'≈ ориентир':'')+'</span></div>';
     }).join('');
   } else { gridCard.style.display = 'none'; }
 
