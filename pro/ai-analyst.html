@@ -589,21 +589,21 @@ function computeModels(mi){
   var WC=(CA!=null&&CL!=null)?CA-CL:null; var o={};
   if(MC!=null&&TA&&TL&&WC!=null&&RE!=null&&EBIT!=null&&REV!=null){
     var Z5=1.2*(WC/TA)+1.4*(RE/TA)+3.3*(EBIT/TA)+0.6*(MC/TL)+1.0*(REV/TA);
-    o.altman={version:'Z (5ф)',value:+Z5.toFixed(2),zone:Z5>2.99?'green':(Z5>=1.81?'yellow':'red'),pd:Z5>2.99?'низкая':(Z5>=1.81?'30–50%':'80–100%'),note:'публичная · X4 = рыночный капитал/обязательства'};
+    o.altman={version:'Z (5ф)',value:Z5.toFixed(2),zone:Z5>2.99?'green':(Z5>=1.81?'yellow':'red'),pd:Z5>2.99?'низкая':(Z5>=1.81?'30–50%':'80–100%'),note:'публичная · X4 = рыночный капитал/обязательства'};
   } else if(TA&&TL&&WC!=null&&RE!=null&&EBIT!=null&&E!=null){
     var Z2=3.25+6.56*(WC/TA)+3.26*(RE/TA)+6.72*(EBIT/TA)+1.05*(E/TL);
     var rating='D'; for(var i=0;i<ALT_LADDER.length;i++){ if(Z2>=ALT_LADDER[i][0]){rating=ALT_LADDER[i][1];break;} }
     var pdv=SP_PD[ratGroup(rating)];
-    o.altman={version:'Z″',value:+Z2.toFixed(2),rating:rating,pd:(pdv==null?'высокая (D)':(String(pdv).replace('.',',')+'%/год')),zone:zoneByRating(rating),note:'непубличная · рейтинг-proxy PD (S&P по классу)'};
+    o.altman={version:'Z″',value:Z2.toFixed(2),rating:rating,pd:(pdv==null?'высокая (D)':(String(pdv).replace('.',',')+'%/год')),zone:zoneByRating(rating),note:'непубличная · рейтинг-proxy PD (S&P по классу)'};
   } else o.altman={value:null};
   if(TA&&CL&&TL&&PBT!=null&&CA!=null&&REV!=null){
     var Zt=0.53*(PBT/CL)+0.13*(CA/TL)+0.18*(CL/TA)+0.16*(REV/TA);
-    o.taffler={value:+Zt.toFixed(3),zone:Zt>0.3?'green':(Zt>=0.2?'yellow':'red'),verdict:Zt>0.3?'устойчиво':(Zt>=0.2?'погранично':'зона риска')};
+    o.taffler={value:Zt.toFixed(3),zone:Zt>0.3?'green':(Zt>=0.2?'yellow':'red'),verdict:Zt>0.3?'устойчиво':(Zt>=0.2?'погранично':'зона риска')};
   } else o.taffler={value:null};
   if(TA&&E&&TC&&WC!=null&&NI!=null&&REV!=null){
     var R=8.38*(WC/TA)+1.0*(NI/E)+0.054*(REV/TA)+0.63*(NI/TC); var pd,zn;
     if(R<0){pd='90–100%';zn='red';}else if(R<0.18){pd='60–80%';zn='red';}else if(R<0.32){pd='35–50%';zn='orange';}else if(R<0.42){pd='15–20%';zn='yellow';}else{pd='< 10%';zn='green';}
-    o.igea={value:+R.toFixed(2),pd:pd,zone:zn};
+    o.igea={value:R.toFixed(2),pd:pd,zone:zn};
   } else o.igea={value:null};
   return o;
 }
@@ -817,7 +817,11 @@ function renderReal(res, fromSaved){
   document.getElementById('razborName').textContent = 'Разбор';
   var proseTxt = (res.prose || '').split(/```json/i)[0];
   if(S && S.incomplete){ proseTxt = proseTxt.replace(/(^|\n)[ \t*_>]*(?:🟢|🟡|🟠|🔴)+[^\n]*/g, '$1'); }
-  else if(S){ proseTxt = proseTxt.replace(/(^|\n)([*_> \t]*)(?:🟢|🟡|🟠|🔴)+(?=\s)/g, function(m,a,b){ return a+b+S.level; }); }
+  else if(S){ proseTxt = proseTxt.replace(/(^|\n)([*_> \t]*)(?:🟢|🟡|🟠|🔴)+([^\n]*)/g, function(m,a,b,rest){
+      // предохранитель №6: подпись строго по карте движка — подменяем И цвет, И ярлык, оставляя обоснование после «—»
+      var lab=(S.label||''); var d=rest.indexOf('—'); var tail=(d>-1)?(' '+rest.slice(d)):'';
+      return a+b+S.level+(lab?(' '+lab):'')+tail;
+    }); }
   document.getElementById('razborBody').innerHTML = marked.parse(proseTxt);
 
   // график core_metrics
