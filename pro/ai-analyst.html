@@ -659,6 +659,9 @@ function _mapInputs(data){
   return {
     revenue_period:revPeriod,
     revenue_ltm:revLtm,
+    revenue_prior:(_n(mi.revenue_prior)!=null?_n(mi.revenue_prior):(cm.revenue?_n(cm.revenue.prior):null)),
+    gross_profit_period:_n(mi.gross_profit_period),
+    gross_profit_prior:_n(mi.gross_profit_prior),
     company_type:isDev?'developer':'corporate',
     period_months:_n(mi.period_months)||6,
     disclosed_ebitda_ltm:_n(mi.disclosed_ebitda_ltm),
@@ -716,6 +719,18 @@ function _engine(inp){
     } else if(rate>2.0 || rate<0.0005){
       m._icr_unit_bad=true;
     }
+  })();
+  // ===== v3.4 предохранитель единиц EBITDA =====
+  // Раскрытая/периодная EBITDA иногда приходит в рублях, а выручка/долг — в тысячах (×1000):
+  // EBITDA-маржа тогда абсурдна (>150%), а плечо схлопывается в «0×». Сверяем маржу, промах кратен 1000 → чиним.
+  (function(){
+    var refRev=_n(inp.revenue_ltm)||_n(inp.revenue_period); if(!refRev||refRev<=0) return;
+    ['disclosed_ebitda_ltm','ebitda_period'].forEach(function(k){
+      var e=_n(inp[k]); if(e==null||e<=0) return;
+      var mg=e/refRev;
+      if(mg>1.5 && (e/1000)/refRev<=1.5){ inp[k]=e/1000; m.warnings.push("EBITDA приведена к единицам выручки (÷1000): исходная давала маржу "+Math.round(mg*100)+"% — сверьте"); }
+      else if(mg<0.0005 && (e*1000)/refRev<=1.5){ inp[k]=e*1000; m.warnings.push("EBITDA приведена к единицам выручки (×1000) — сверьте"); }
+    });
   })();
   // EBITDA: приоритет раскрытой (предохранитель 1)
   if(_n(inp.disclosed_ebitda_ltm)!=null){ ebitda=inp.disclosed_ebitda_ltm; m.source.ebitda="раскрыта компанией (LTM)"; }
@@ -783,6 +798,16 @@ function _engine(inp){
   }
   m.ebitda_margin=margin;
   m.margin_is_ltm=(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm))?true:false;
+  // Валовая маржа: считает ДВИЖОК (не проза). Уровень и знак г/г — строго по арифметике.
+  var gpN=_n(inp.gross_profit_period), gpP=_n(inp.gross_profit_prior);
+  var revN=_n(inp.revenue_period), revP=_n(inp.revenue_prior);
+  m.gross_margin=(gpN!=null&&revN&&revN>0)?gpN/revN:null;
+  m.gross_margin_prior=(gpP!=null&&revP&&revP>0)?gpP/revP:null;
+  m.gross_margin_dir=null;
+  if(m.gross_margin!=null&&m.gross_margin_prior!=null){
+    var dgm=m.gross_margin-m.gross_margin_prior;
+    m.gross_margin_dir=(Math.abs(dgm)<0.002)?"стабильна":(dgm>0?"выросла":"снизилась");
+  }
   // база светофора: худшая из размерностей; для девелопера ICR в базу — только корпоративный
   var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
   var icrForLight=isDev?m.icr_corp:icrTotal;
@@ -909,6 +934,8 @@ function renderReal(res, fromSaved){
     if(S.icr!=null) tiles.push({label:'Покрытие процентов', value:fx(S.icr), zone:zBand(_bandICR(S.icr))});
     if(S.ebitda_margin!=null){ var mp=S.ebitda_margin*100;
       tiles.push({label:'EBITDA-маржа'+(S.margin_is_ltm?' (LTM)':''), value:fp(S.ebitda_margin), zone:(mp>=20?'green':(mp>=10?'yellow':'orange'))}); }
+    if(S.gross_margin!=null){ var gmp=S.gross_margin*100;
+      tiles.push({label:'Валовая маржа'+(S.gross_margin_dir?' ('+S.gross_margin_dir+')':''), value:fp(S.gross_margin), zone:(gmp>=30?'green':(gmp>=15?'yellow':'orange'))}); }
     if(S.capital_to_assets!=null){ var cp=S.capital_to_assets*100;
       tiles.push({label:'Капитал / активы', value:fp(S.capital_to_assets), zone:(cp>=30?'green':(cp>=15?'yellow':'orange'))}); }
     if(isDev && S.escrow_coverage!=null){ var ec=S.escrow_coverage*100;
