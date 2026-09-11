@@ -267,6 +267,7 @@ textarea{width:100%;min-height:90px;font-family:var(--mono);font-size:0.82rem;pa
   <div class="res-head">
     <h2 id="companyTitle"></h2>
     <div class="res-actions">
+      <button class="pbtn" id="resetTop">↺ Новый разбор</button>
       <button class="pbtn" id="saveBtn" style="display:none">💾 Сохранить на устройство</button>
       <button class="pbtn" id="printBtn">🖨 Печать / Сохранить в PDF</button>
     </div>
@@ -452,11 +453,15 @@ fileInput.onchange = function(){ if(fileInput.files[0]){ chosenFile = fileInput.
 drop.addEventListener('drop',function(ev){ if(ev.dataTransfer.files[0]){ chosenFile = ev.dataTransfer.files[0]; document.getElementById('fname').textContent = '📎 ' + chosenFile.name; } });
 
 document.getElementById('goBtn').onclick = analyze;
-document.getElementById('resetBtn').onclick = function(){
+function doReset(){
   document.getElementById('results').classList.remove('on');
   document.getElementById('intake').style.display = 'block';
+  // чистим выбранный файл, чтобы следующий разбор стартовал начисто
+  try{ chosenFile = null; var fi=document.getElementById('fileInput'); if(fi) fi.value=''; var fn=document.getElementById('fname'); if(fn) fn.textContent=''; }catch(e){}
   window.scrollTo({top:0,behavior:'smooth'});
-};
+}
+document.getElementById('resetBtn').onclick = doReset;
+document.getElementById('resetTop').onclick = doReset;
 
 /* ===================== АНИМАЦИЯ ЧТЕНИЯ ===================== */
 function startReading(loop){
@@ -743,8 +748,14 @@ function _engine(inp){
   // база светофора: худшая из размерностей; для девелопера ICR в базу — только корпоративный
   var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
   var icrForLight=isDev?m.icr_corp:icrTotal;
-  var pb=[]; if(ndForLight!=null)pb.push(_bandND(ndForLight)); if(icrForLight!=null)pb.push(_bandICR(icrForLight));
-  var base=pb.length?Math.min.apply(null,pb):2; m.base_band=BANDS[base];
+  var ndBand=(ndForLight!=null)?_bandND(ndForLight):null;
+  var icrBand=(icrForLight!=null)?_bandICR(icrForLight):null;
+  var pb=[]; if(ndBand!=null)pb.push(ndBand); if(icrBand!=null)pb.push(icrBand);
+  var base=pb.length?Math.min.apply(null,pb):2; m.base_band=BANDS[base]; m.base_idx=base;
+  // что ВЕДЁТ базу (худшая размерность) — для честной причины в подписи
+  if(ndBand!=null&&icrBand!=null) m.base_driver=(icrBand<ndBand)?"покрытие процентов":(ndBand<icrBand?"плечо (долг/EBITDA)":"плечо и покрытие процентов");
+  else if(icrBand!=null) m.base_driver="покрытие процентов";
+  else if(ndBand!=null) m.base_driver="плечо (долг/EBITDA)";
   var soft=[];
   if(inp.audit_qualified) soft.push("оговорка аудитора");
   if(m.current_ratio!=null&&m.current_ratio<1) soft.push("текущая ликвидность < 1");
@@ -759,6 +770,7 @@ function _engine(inp){
   if(soft.length) color=(base>FLOOR)?Math.max(base-1,FLOOR):base;
   if(inp.covenant_default){ color=Math.min(color,1); m.gates.push("нарушение ковенантов"); }
   if(inp.going_concern_doubt||inp.negative_equity){ color=0; m.gates.push("непрерывность/отриц. капитал → 🔴"); }
+  m.color_idx=color;
   m.svetofor=BANDS[color];
   return m;
 }
@@ -774,8 +786,9 @@ function computeSvetofor(data){
   var m=_engine(inp);
   if(m.nd_ebitda_total==null&&m.nd_ebitda_lever==null&&m.icr==null&&!m.gates.length) return null;
   var band=m.svetofor, idx=band.indexOf(' ');
-  var reason='База '+m.base_band;
-  if(m.flags.length) reason+='; понижено за: '+m.flags.join(', ');
+  var reason='База '+m.base_band+(m.base_driver?(' (ведёт '+m.base_driver+')'):'');
+  // «понижено за» — ТОЛЬКО если флаг реально опустил цвет ниже базы; иначе флаг не драйвер
+  if(m.flags.length && m.color_idx<m.base_idx) reason+='; понижено за: '+m.flags.join(', ');
   if(m.gates.length) reason+='; '+m.gates.join('; ');
   reason+=' → '+band;
   m.level=idx>0?band.slice(0,idx):band;
