@@ -689,17 +689,42 @@ function _mapInputs(data){
 }
 
 function _engine(inp){
-  var m={type:inp.company_type||"corporate",source:{},flags:[],gates:[]};
+  // Порт credit_engine v3.2 1:1 (py = js = витрина). Витринные добавки (base_idx, color_idx,
+  // base_driver, margin_is_ltm) цвет НЕ меняют — только питают подпись/плитки.
+  var m={type:inp.company_type||"corporate",source:{},flags:[],gates:[],notes:[],warnings:[]};
   var isDev=(inp.company_type==="developer");
   var period=_n(inp.period_months)||6;
   var cash=_n(inp.cash)||0, ebitda=null;
+  // ===== v3.3 предохранитель единиц процентов =====
+  // Проценты иногда приходят от ИИ в других единицах, чем долг/EBITDA (×1000): покрытие тогда абсурдно.
+  // Сверяем неявную ставку (годовые проценты ÷ долг): норма 0,5–200%. Промах кратен 1000 → движок чинит;
+  // не кратен и ставка дикая → покрытие в светофор не пускаем + warning. На нормальных данных не срабатывает.
+  (function(){
+    var gd=_n(inp.gross_debt);
+    if(gd==null||gd<=0){ gd=(_n(inp.debt_project)||0)+(_n(inp.debt_corporate)||0); }
+    if(!gd||gd<=0) return;
+    var pm=_n(inp.period_months)||6, ann=12/pm, primary=_n(inp.interest_ltm_total);
+    if(primary==null){ var ip=_n(inp.interest_accrued_period); if(ip==null) ip=_n(inp.interest_pl_period); if(ip!=null) primary=ip*ann; }
+    if(primary==null){ var ic=_n(inp.interest_corporate_ltm); if(ic!=null) primary=ic; else { var icp=_n(inp.interest_corporate_period); if(icp!=null) primary=icp*ann; } }
+    if(primary==null||primary<=0) return;
+    var rate=primary/gd, scale=1;
+    if(rate>2.0 && rate/1000>=0.005 && rate/1000<=2.0) scale=1/1000;
+    else if(rate<0.005 && rate*1000>=0.005 && rate*1000<=2.0) scale=1000;
+    if(scale!==1){
+      ['interest_ltm_total','interest_accrued_period','interest_pl_period','interest_corporate_ltm','interest_corporate_period'].forEach(function(k){ if(_n(inp[k])!=null) inp[k]=inp[k]*scale; });
+      m.warnings.push("проценты приведены к единицам долга (×"+(scale===1000?"1000":"1/1000")+"): исходная ставка выглядела "+Math.round(rate*100)+"% — сверьте с отчётом");
+    } else if(rate>2.0 || rate<0.0005){
+      m._icr_unit_bad=true;
+    }
+  })();
+  // EBITDA: приоритет раскрытой (предохранитель 1)
   if(_n(inp.disclosed_ebitda_ltm)!=null){ ebitda=inp.disclosed_ebitda_ltm; m.source.ebitda="раскрыта компанией (LTM)"; }
-  else if(_n(inp.ebitda_period)!=null){ var f0=12/period; ebitda=inp.ebitda_period*f0; m.source.ebitda="оценка: аннуализ."; }
+  else if(_n(inp.ebitda_period)!=null){ var f0=12/period; ebitda=inp.ebitda_period*f0; m.source.ebitda="оценка: EBITDA за "+period+" мес ×"+f0; }
   m.ebitda_used=ebitda;
   // чистый долг всего
   var ndTotal=null;
   if(_n(inp.disclosed_net_debt)!=null){ ndTotal=inp.disclosed_net_debt; m.source.net_debt="раскрыт компанией"; }
-  else if(_n(inp.gross_debt)!=null){ ndTotal=inp.gross_debt-cash; m.source.net_debt="расчёт"; }
+  else if(_n(inp.gross_debt)!=null){ ndTotal=inp.gross_debt-cash; m.source.net_debt="расчёт: валовый долг − деньги"; }
   m.net_debt_total=ndTotal;
   // девелопер: база плеча по корп. контуру + непокрытая эскроу часть проектного долга
   var ndLever, escrowShortfall=null;
@@ -707,15 +732,22 @@ function _engine(inp){
     var escrow=_n(inp.escrow)||0, proj=_n(inp.debt_project)||0;
     escrowShortfall=Math.max(0, proj-escrow);
     ndLever=(inp.debt_corporate-cash)+escrowShortfall;
-    m.source.leverage_base=escrowShortfall>0?"корп. долг − деньги + непокрытый эскроу проектный долг":"корп. долг − деньги; проектный под эскроу за скобки";
+    m.source.leverage_base=escrowShortfall>0?"корп. долг − деньги + НЕПОКРЫТЫЙ эскроу проектный долг (девелопер)":"корп. долг − деньги; проектный долг ПОЛНОСТЬЮ под эскроу — за скобки (девелопер)";
   } else { ndLever=ndTotal; m.source.leverage_base="весь чистый долг"; }
   m.escrow_shortfall=escrowShortfall;
   m.nd_ebitda_total=(ebitda&&ndTotal!=null)?ndTotal/ebitda:null;
   m.nd_ebitda_lever=(ebitda&&ndLever!=null)?ndLever/ebitda:null;
-  // ICR по всему долгу (для корпоратов и справочно для девелоперов)
+  // ICR — ВСЕГДА EBITDA / проценты. НИКОГДА не операционная прибыль и не «0×».
+  // Если процентов нет (null или 0) — ICR = null (не 0!), в светофор не идёт (это НЕ дефолт).
   var icrTotal=null;
-  if(_n(inp.disclosed_ebitda_ltm)!=null&&_n(inp.interest_ltm_total)){ icrTotal=ebitda/inp.interest_ltm_total; m.source.icr="LTM / начисл. проценты"; }
-  else { var interest=_n(inp.interest_accrued_period)||_n(inp.interest_pl_period); var baseE=_n(inp.ebitda_period)!=null?inp.ebitda_period:ebitda; icrTotal=(baseE&&interest)?baseE/interest:null; m.source.icr="за период"; }
+  if(_n(inp.disclosed_ebitda_ltm)!=null&&_n(inp.interest_ltm_total)){ icrTotal=ebitda/inp.interest_ltm_total; m.source.icr="LTM EBITDA / начисленные проценты LTM (вкл. капитализ.)"; }
+  else {
+    var interest=_n(inp.interest_accrued_period)||_n(inp.interest_pl_period);
+    var baseE=_n(inp.ebitda_period)!=null?inp.ebitda_period:ebitda;
+    if(baseE&&interest&&interest>0){ icrTotal=baseE/interest; }
+    else { icrTotal=null; if(!interest) m.warnings.push("проценты не раскрыты/ноль — ICR не считаем; НЕ приравнивать к 0× и не трактовать как дефолт"); }
+    m.source.icr="EBITDA / начисленные проценты за период";
+  }
   m.icr_total=icrTotal;
   // ICR корпоративного контура (девелопер): корп. проценты + проценты по непокрытой части
   var icrCorp=null;
@@ -725,29 +757,36 @@ function _engine(inp){
     if(_n(inp.interest_corporate_ltm)!=null){
       var ci=inp.interest_corporate_ltm+shortfallInt;
       icrCorp=(ebitda&&ci)?ebitda/ci:null;
-      m.source.icr_corp="LTM EBITDA / (корп. проценты + проценты по непокрытой части)";
+      m.source.icr_corp="LTM EBITDA / (корп. проценты + проценты по непокрытой части проектного долга)";
     } else if(_n(inp.interest_corporate_period)!=null){
       var f1=12/period, ci2=inp.interest_corporate_period*f1+shortfallInt;
       var be=_n(inp.disclosed_ebitda_ltm)!=null?ebitda:(_n(inp.ebitda_period)?inp.ebitda_period*f1:null);
       icrCorp=(be&&ci2)?be/ci2:null;
       m.source.icr_corp="EBITDA(год) / (корп. проценты(год) + проценты по непокрытой части)";
-    } else { m.source.icr_corp="корп. проценты не раскрыты — в базу светофора не идёт"; }
+    } else { m.source.icr_corp="корп. проценты не раскрыты — ICR по всему долгу справочно, в базу светофора не идёт"; }
   }
   m.icr_corp=icrCorp;
   m.icr=(isDev&&icrCorp!=null)?icrCorp:icrTotal;
+  if(m._icr_unit_bad){ m.icr=null; m.warnings.push("покрытие процентов не рассчитано: сумма процентов в неясных единицах — проверьте вручную"); }
   // ликвидность / капитал / эскроу
   m.current_ratio=(_n(inp.current_assets)&&_n(inp.current_liabilities))?inp.current_assets/inp.current_liabilities:null;
   m.capital_to_assets=(_n(inp.equity)&&_n(inp.assets))?inp.equity/inp.assets:null;
   m.escrow_coverage=(_n(inp.escrow)&&_n(inp.debt_project))?inp.escrow/inp.debt_project:null;
-  // EBITDA-маржа: СТРОГО один период. LTM EBITDA / LTM выручку, либо период/период. Никогда LTM ÷ 6 мес.
+  // EBITDA-маржа: ТОЛЬКО в одном периоде. LTM EBITDA / LTM выручку, либо период/период. Никогда LTM ÷ 6 мес.
   var margin=null;
-  if(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm)) margin=inp.disclosed_ebitda_ltm/inp.revenue_ltm;
-  else if(_n(inp.ebitda_period)!=null && _n(inp.revenue_period)) margin=inp.ebitda_period/inp.revenue_period;
+  if(_n(inp.disclosed_ebitda_ltm)!=null){
+    if(_n(inp.revenue_ltm)){ margin=inp.disclosed_ebitda_ltm/inp.revenue_ltm; m.source.ebitda_margin="LTM EBITDA / LTM выручка"; }
+    else m.warnings.push("EBITDA-маржа: раскрыта LTM-EBITDA, но нет LTM-выручки — маржу не считаем (НЕ делить LTM-EBITDA на выручку за 6 мес)");
+  } else if(_n(inp.ebitda_period)!=null){
+    if(_n(inp.revenue_period)){ margin=inp.ebitda_period/inp.revenue_period; m.source.ebitda_margin="EBITDA за период / выручка за тот же период"; }
+    else m.warnings.push("EBITDA-маржа: нет выручки за тот же период");
+  }
   m.ebitda_margin=margin;
   m.margin_is_ltm=(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm))?true:false;
   // база светофора: худшая из размерностей; для девелопера ICR в базу — только корпоративный
   var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
   var icrForLight=isDev?m.icr_corp:icrTotal;
+  if(m._icr_unit_bad) icrForLight=null; // абсурдная ставка не кратна 1000 — покрытие в базу светофора не пускаем
   var ndBand=(ndForLight!=null)?_bandND(ndForLight):null;
   var icrBand=(icrForLight!=null)?_bandICR(icrForLight):null;
   var pb=[]; if(ndBand!=null)pb.push(ndBand); if(icrBand!=null)pb.push(icrBand);
@@ -761,17 +800,18 @@ function _engine(inp){
   if(m.current_ratio!=null&&m.current_ratio<1) soft.push("текущая ликвидность < 1");
   if(_n(inp.net_profit_change_pct)!=null&&inp.net_profit_change_pct<=-0.20) soft.push("падение чистой прибыли > 20%");
   if(isDev){
-    if(icrCorp==null&&icrTotal!=null&&icrTotal<1.5) soft.push("тонкое покрытие процентов ("+icrTotal.toFixed(2)+"×)");
-    // OCF<0 у застройщика на эскроу — структурная норма (деньги дольщиков на эскроу, стройка на кредитах),
-    // НЕ повод понижать светофор. Держим справочно в прозе, но не как понижающий флаг.
+    if(icrCorp==null&&icrTotal!=null&&icrTotal<1.5){ soft.push("тонкое покрытие процентов ("+icrTotal.toFixed(2)+"×)"); m.notes.push("ICR по всему долгу включает проектные проценты и завышает нагрузку — уточнить корпоративные проценты"); }
+    // OCF<0 у застройщика на эскроу — структурная норма, цвет НЕ понижает, только справочно
+    if(_n(inp.ocf)!=null&&inp.ocf<0) m.notes.push("отрицательный операционный поток — структурная норма для эскроу-девелопера, цвет не понижает");
   }
   m.flags=soft;
   var color=base;
   if(soft.length) color=(base>FLOOR)?Math.max(base-1,FLOOR):base;
-  if(inp.covenant_default){ color=Math.min(color,1); m.gates.push("нарушение ковенантов"); }
+  if(inp.covenant_default){ color=Math.min(color,1); m.gates.push("нарушение ковенантов → не выше 🟡🔴"); }
   if(inp.going_concern_doubt||inp.negative_equity){ color=0; m.gates.push("непрерывность/отриц. капитал → 🔴"); }
   m.color_idx=color;
   m.svetofor=BANDS[color];
+  m.label=BANDS[color];
   return m;
 }
 
@@ -791,6 +831,7 @@ function computeSvetofor(data){
   if(m.flags.length && m.color_idx<m.base_idx) reason+='; понижено за: '+m.flags.join(', ');
   if(m.gates.length) reason+='; '+m.gates.join('; ');
   reason+=' → '+band;
+  if(m.warnings&&m.warnings.length) reason+=' · ⚠ '+m.warnings.join('; ');
   m.level=idx>0?band.slice(0,idx):band;
   m.label=idx>0?band.slice(idx+1):'';
   m.reason=reason;
