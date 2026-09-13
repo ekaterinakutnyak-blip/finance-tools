@@ -143,76 +143,12 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== Разборы ИИ-аналитика ===== -->
-  <url>
-    <loc>https://investtools.pro/razbory-ii-analitika.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/razbor-novye-tehnologii-2026.html</loc>
-    <lastmod>2026-09-08</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/razbor-polyplast-2025.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/razbor-gazprom-2025.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- ===== Иностранные рынки ===== -->
-  <url>
-    <loc>https://investtools.pro/inostrannye-rynki.html</loc>
-    <lastmod>2026-09-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/reits-i-etf.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/illumina-vs-pacbio.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/genomika-prostymi-slovami.html</loc>
-    <lastmod>2026-09-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
   <!-- ===== Новости и обзоры ===== -->
   <url>
     <loc>https://investtools.pro/novosti.html</loc>
-    <lastmod>2026-09-06</lastmod>
+    <lastmod>2026-08-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/developery-setl-brusnika-etalon-1p2026.html</loc>
-    <lastmod>2026-09-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://investtools.pro/novosti/obzor-razmeshcheniy-7-15-sentyabrya-2026.html</loc>
-    <lastmod>2026-09-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://investtools.pro/novosti/valyutnye-obligacii-avgust-2026.html</loc>
@@ -241,6 +177,12 @@
   <url>
     <loc>https://investtools.pro/novosti/pozitiv-vs-softline.html</loc>
     <lastmod>2026-08-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://investtools.pro/novosti/obzor-razmeshcheniy-15-25-sentyabrya-2026.html</loc>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
