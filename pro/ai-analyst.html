@@ -656,6 +656,13 @@ function _mapInputs(data){
     var rpf=_n(mi.revenue_prior_fy), rc=(cm.revenue?_n(cm.revenue.current):null), rp=(cm.revenue?_n(cm.revenue.prior):null);
     if(rpf!=null && rc!=null && rp!=null) revLtm=rpf-rp+rc;  // LTM = год − тот же период прошлого года + текущий период
   }
+  // v3.5 (П-H): восстановление LTM-EBITDA из кусков, если раскрытой LTM нет:
+  // LTM = полный прошлый год + текущее полугодие − аналогичное полугодие прошлого года (напр. 137,6+42,3−78,7=101,3).
+  var disEbLtm=_n(mi.disclosed_ebitda_ltm);
+  if(disEbLtm==null){
+    var efy=_n(mi.ebitda_fy_prior), ecur=_n(mi.ebitda_period), epri=_n(mi.ebitda_prior_period);
+    if(efy!=null && ecur!=null && epri!=null) disEbLtm=efy+ecur-epri;
+  }
   return {
     revenue_period:revPeriod,
     revenue_ltm:revLtm,
@@ -664,7 +671,8 @@ function _mapInputs(data){
     gross_profit_prior:_n(mi.gross_profit_prior),
     company_type:isDev?'developer':'corporate',
     period_months:_n(mi.period_months)||6,
-    disclosed_ebitda_ltm:_n(mi.disclosed_ebitda_ltm),
+    disclosed_ebitda_ltm:disEbLtm,
+    disclosed_leverage:_n(mi.disclosed_leverage),
     disclosed_net_debt:_n(mi.disclosed_net_debt),
     ebitda_period:(_n(mi.ebitda_period)!=null?_n(mi.ebitda_period):(cm.ebitda?_n(cm.ebitda.current):null)),
     gross_debt:gross,
@@ -744,8 +752,16 @@ function _engine(inp){
     m.source.leverage_base=escrowShortfall>0?"корп. долг − деньги + НЕПОКРЫТЫЙ эскроу проектный долг (девелопер)":"корп. долг − деньги; проектный долг ПОЛНОСТЬЮ под эскроу — за скобки (девелопер)";
   } else { ndLever=ndTotal; m.source.leverage_base="весь чистый долг"; }
   m.escrow_shortfall=escrowShortfall;
-  m.nd_ebitda_total=(ebitda&&ndTotal!=null)?ndTotal/ebitda:null;
-  m.nd_ebitda_lever=(ebitda&&ndLever!=null)?ndLever/ebitda:null;
+  // v3.5 (П-H): раскрытую компанией долговую нагрузку (Чистый долг/EBITDA из прим.) берём НАПРЯМУЮ,
+  // не пересобираем из баланса — это авторитетнее самосчёта (и не путает 6-мес EBITDA с LTM).
+  var disLev=_n(inp.disclosed_leverage);
+  if(disLev!=null){
+    m.nd_ebitda_total=disLev; m.nd_ebitda_lever=disLev; m._nd_disclosed=true;
+    m.source.leverage="раскрыта компанией (Чистый долг/EBITDA, прим.)";
+  } else {
+    m.nd_ebitda_total=(ebitda&&ndTotal!=null)?ndTotal/ebitda:null;
+    m.nd_ebitda_lever=(ebitda&&ndLever!=null)?ndLever/ebitda:null;
+  }
   // ICR — ВСЕГДА EBITDA / проценты. НИКОГДА не операционная прибыль и не «0×».
   // Если процентов нет (null или 0) — ICR = null (не 0!), в светофор не идёт (это НЕ дефолт).
   var icrTotal=null;
@@ -782,16 +798,20 @@ function _engine(inp){
   m.capital_to_assets=(_n(inp.equity)&&_n(inp.assets))?inp.equity/inp.assets:null;
   m.escrow_coverage=(_n(inp.escrow)&&_n(inp.debt_project))?inp.escrow/inp.debt_project:null;
   // EBITDA-маржа: ТОЛЬКО в одном периоде. LTM EBITDA / LTM выручку, либо период/период. Никогда LTM ÷ 6 мес.
-  var margin=null;
-  if(_n(inp.disclosed_ebitda_ltm)!=null){
-    if(_n(inp.revenue_ltm)){ margin=inp.disclosed_ebitda_ltm/inp.revenue_ltm; m.source.ebitda_margin="LTM EBITDA / LTM выручка"; }
-    else m.warnings.push("EBITDA-маржа: раскрыта LTM-EBITDA, но нет LTM-выручки — маржу не считаем (НЕ делить LTM-EBITDA на выручку за 6 мес)");
+  // Маржа: приоритет ПЕРИОД/ПЕРИОД (это и раскрывает компания, и оба числа за одно полугодие — без риска перепутать
+  // единицы LTM). LTM-пара — только запасной вариант, если периодной нет.
+  var margin=null, marginLtm=false;
+  if(_n(inp.ebitda_period)!=null && _n(inp.revenue_period)){
+    margin=inp.ebitda_period/inp.revenue_period; m.source.ebitda_margin="EBITDA за период / выручка за тот же период";
+  } else if(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm)){
+    margin=inp.disclosed_ebitda_ltm/inp.revenue_ltm; marginLtm=true; m.source.ebitda_margin="LTM EBITDA / LTM выручка";
+  } else if(_n(inp.disclosed_ebitda_ltm)!=null){
+    m.warnings.push("EBITDA-маржа: раскрыта LTM-EBITDA, но нет LTM-выручки — маржу не считаем (НЕ делить LTM-EBITDA на выручку за 6 мес)");
   } else if(_n(inp.ebitda_period)!=null){
-    if(_n(inp.revenue_period)){ margin=inp.ebitda_period/inp.revenue_period; m.source.ebitda_margin="EBITDA за период / выручка за тот же период"; }
-    else m.warnings.push("EBITDA-маржа: нет выручки за тот же период");
+    m.warnings.push("EBITDA-маржа: нет выручки за тот же период");
   }
   m.ebitda_margin=margin;
-  m.margin_is_ltm=(_n(inp.disclosed_ebitda_ltm)!=null && _n(inp.revenue_ltm))?true:false;
+  m.margin_is_ltm=marginLtm;
   // Валовая маржа: считает ДВИЖОК (не проза). Уровень и знак г/г — строго по арифметике.
   var gpN=_n(inp.gross_profit_period), gpP=_n(inp.gross_profit_prior);
   var revN=_n(inp.revenue_period), revP=_n(inp.revenue_prior);
@@ -815,7 +835,11 @@ function _engine(inp){
   // если сработал gate, светофор 🔴 остаётся (это настоящая беда, а не кривые тысячи).
   m._sanity_hits=[];
   if(ndForLight!=null && Math.abs(ndForLight)>50){ m._sanity_fail=true; m._nd_implausible=true; m._sanity_hits.push("плечо (долг/EBITDA) "+Math.round(ndForLight)+"× — вне ±50×"); ndForLight=null; icrForLight=null; }
-  if(m.ebitda_margin!=null && Math.abs(m.ebitda_margin)>1.0){ m._sanity_fail=true; m._margin_implausible=true; m._sanity_hits.push("EBITDA-маржа "+Math.round(m.ebitda_margin*100)+"% — вне ±100%"); ndForLight=null; icrForLight=null; }
+  if(m.ebitda_margin!=null && Math.abs(m.ebitda_margin)>1.0){
+    m._margin_implausible=true; m._sanity_hits.push("EBITDA-маржа "+Math.round(m.ebitda_margin*100)+"% — вне ±100%");
+    // если плечо НЕ раскрыто — кривая маржа топит весь светофор (EBITDA под подозрением). Если раскрыто — прячем только плитку маржи.
+    if(!m._nd_disclosed){ m._sanity_fail=true; ndForLight=null; icrForLight=null; }
+  }
   if(m.capital_to_assets!=null && Math.abs(m.capital_to_assets)>1.0){ m._sanity_fail=true; m._cap_implausible=true; m._sanity_hits.push("капитал/активы "+Math.round(m.capital_to_assets*100)+"% — вне ±100%"); }
   if(icrForLight!=null && Math.abs(icrForLight)>100){ m._sanity_fail=true; m._icr_implausible=true; m._sanity_hits.push("покрытие процентов "+Math.round(icrForLight)+"× — вне ±100×"); icrForLight=null; }
   var ndBand=(ndForLight!=null)?_bandND(ndForLight):null;
@@ -882,6 +906,10 @@ function computeSvetofor(data){
   m.label=idx>0?band.slice(idx+1):'';
   m.reason=reason;
   m.nd=(m._nd_implausible)?null:((m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total); m.cr=m.current_ratio;
+  // прячем плитки с абсурдными единицами и в обычном светофоре (не только в «не рассчитано»):
+  if(m._margin_implausible) m.ebitda_margin=null;
+  if(m._cap_implausible) m.capital_to_assets=null;
+  if(m._icr_implausible) m.icr=null;
   return m;
 }
 
