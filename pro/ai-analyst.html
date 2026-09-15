@@ -720,18 +720,12 @@ function _engine(inp){
       m._icr_unit_bad=true;
     }
   })();
-  // ===== v3.4 предохранитель единиц EBITDA =====
-  // Раскрытая/периодная EBITDA иногда приходит в рублях, а выручка/долг — в тысячах (×1000):
-  // EBITDA-маржа тогда абсурдна (>150%), а плечо схлопывается в «0×». Сверяем маржу, промах кратен 1000 → чиним.
-  (function(){
-    var refRev=_n(inp.revenue_ltm)||_n(inp.revenue_period); if(!refRev||refRev<=0) return;
-    ['disclosed_ebitda_ltm','ebitda_period'].forEach(function(k){
-      var e=_n(inp[k]); if(e==null||e<=0) return;
-      var mg=e/refRev;
-      if(mg>1.5 && (e/1000)/refRev<=1.5){ inp[k]=e/1000; m.warnings.push("EBITDA приведена к единицам выручки (÷1000): исходная давала маржу "+Math.round(mg*100)+"% — сверьте"); }
-      else if(mg<0.0005 && (e*1000)/refRev<=1.5){ inp[k]=e*1000; m.warnings.push("EBITDA приведена к единицам выручки (×1000) — сверьте"); }
-    });
-  })();
+  // ===== v3.4 предохранитель единиц EBITDA — ОТКЛЮЧЁН в v3.5 (П-F) =====
+  // Раньше тут постфактум делили EBITDA на 1000 при марже >150%. Именно этот латч и сломал Северсталь:
+  // выручка пришла в кривых единицах → маржа 11944% → движок поделил ВЕРНУЮ EBITDA → плечо взорвалось до 2351× → ложный 🔴.
+  // П-F: латать сломанную цифру делением и всё равно выдавать светофор ЗАПРЕЩЕНО. Абсурд теперь ловит предохранитель v3.5 ниже:
+  // светофор не выдаём, честно просим переизвлечь. Блок оставлен закомментированным как памятник багу.
+  // (function(){ ... ÷1000 ... })();
   // EBITDA: приоритет раскрытой (предохранитель 1)
   if(_n(inp.disclosed_ebitda_ltm)!=null){ ebitda=inp.disclosed_ebitda_ltm; m.source.ebitda="раскрыта компанией (LTM)"; }
   else if(_n(inp.ebitda_period)!=null){ var f0=12/period; ebitda=inp.ebitda_period*f0; m.source.ebitda="оценка: EBITDA за "+period+" мес ×"+f0; }
@@ -812,6 +806,18 @@ function _engine(inp){
   var ndForLight=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total;
   var icrForLight=isDev?m.icr_corp:icrTotal;
   if(m._icr_unit_bad) icrForLight=null; // абсурдная ставка не кратна 1000 — покрытие в базу светофора не пускаем
+  // ===== v3.5 ПРЕДОХРАНИТЕЛЬ ЗДРАВОГО СМЫСЛА (П-F) =====
+  // Абсурдный коэффициент — это ошибка ЕДИНИЦ/извлечения, а НЕ финансовый сигнал. Реакция по П-F:
+  // светофор НЕ выдаём (честное «не рассчитано, проверьте единицы»), а НЕ красим дефолт по мусору и НЕ латаем ÷1000.
+  // Здравые диапазоны: |ND/EBITDA| ≤ 50×, |EBITDA-маржа| ≤ 100%, |капитал/активы| ≤ 100%.
+  // Любой промах ⇒ вся EBITDA/извлечение под подозрением ⇒ _sanity_fail; computeSvetofor уводит в «не рассчитано».
+  // Исключение: реальные жёсткие сигналы (отриц. капитал, going concern, ковенанты) от единиц НЕ зависят —
+  // если сработал gate, светофор 🔴 остаётся (это настоящая беда, а не кривые тысячи).
+  m._sanity_hits=[];
+  if(ndForLight!=null && Math.abs(ndForLight)>50){ m._sanity_fail=true; m._nd_implausible=true; m._sanity_hits.push("плечо (долг/EBITDA) "+Math.round(ndForLight)+"× — вне ±50×"); ndForLight=null; icrForLight=null; }
+  if(m.ebitda_margin!=null && Math.abs(m.ebitda_margin)>1.0){ m._sanity_fail=true; m._margin_implausible=true; m._sanity_hits.push("EBITDA-маржа "+Math.round(m.ebitda_margin*100)+"% — вне ±100%"); ndForLight=null; icrForLight=null; }
+  if(m.capital_to_assets!=null && Math.abs(m.capital_to_assets)>1.0){ m._sanity_fail=true; m._cap_implausible=true; m._sanity_hits.push("капитал/активы "+Math.round(m.capital_to_assets*100)+"% — вне ±100%"); }
+  if(icrForLight!=null && Math.abs(icrForLight)>100){ m._sanity_fail=true; m._icr_implausible=true; m._sanity_hits.push("покрытие процентов "+Math.round(icrForLight)+"× — вне ±100×"); icrForLight=null; }
   var ndBand=(ndForLight!=null)?_bandND(ndForLight):null;
   var icrBand=(icrForLight!=null)?_bandICR(icrForLight):null;
   var pb=[]; if(ndBand!=null)pb.push(ndBand); if(icrBand!=null)pb.push(icrBand);
@@ -849,6 +855,21 @@ function computeSvetofor(data){
     return {incomplete:true, reason:'Светофор не рассчитан: в отчёте застройщика не хватает раскрытой EBITDA или разбивки долга на проектный и корпоративный. Ниже — коэффициенты и скоринг для самостоятельной оценки; сверяйтесь с отчётом.'};
   }
   var m=_engine(inp);
+  // v3.5 (П-F): показатели вне здравого диапазона ⇒ светофор НЕ выдаём. Но если сработал жёсткий gate
+  // (отриц. капитал / going concern / ковенанты) — это реальный сигнал, не единицы: цвет оставляем.
+  if(m._sanity_fail && !m.gates.length){
+    return {
+      incomplete:true, _sf:true, type:m.type,
+      reason:'Светофор не рассчитан: '+m._sanity_hits.join('; ')+'. Похоже, в отчёте смешаны единицы (тыс/млн/млрд) или строка извлечена неверно — переизвлеките и проверьте, не латайте делением. Коэффициенты ниже даны справочно.',
+      // на плитки — ТОЛЬКО здравые размерности; абсурдные скрыты
+      nd:(m._nd_implausible)?null:((m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total),
+      icr:(m._nd_implausible||m._icr_implausible||m._icr_unit_bad)?null:m.icr,
+      ebitda_margin:(m._margin_implausible)?null:m.ebitda_margin, margin_is_ltm:m.margin_is_ltm,
+      gross_margin:m.gross_margin, gross_margin_dir:m.gross_margin_dir,
+      capital_to_assets:(m._cap_implausible)?null:m.capital_to_assets,
+      escrow_coverage:m.escrow_coverage, cr:m.current_ratio
+    };
+  }
   if(m.nd_ebitda_total==null&&m.nd_ebitda_lever==null&&m.icr==null&&!m.gates.length) return null;
   var band=m.svetofor, idx=band.indexOf(' ');
   var reason='База '+m.base_band+(m.base_driver?(' (ведёт '+m.base_driver+')'):'');
@@ -860,7 +881,7 @@ function computeSvetofor(data){
   m.level=idx>0?band.slice(0,idx):band;
   m.label=idx>0?band.slice(idx+1):'';
   m.reason=reason;
-  m.nd=(m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total; m.cr=m.current_ratio;
+  m.nd=(m._nd_implausible)?null:((m.nd_ebitda_lever!=null)?m.nd_ebitda_lever:m.nd_ebitda_total); m.cr=m.current_ratio;
   return m;
 }
 
@@ -925,7 +946,7 @@ function renderReal(res, fromSaved){
   // Это убирает задвоение, гарантирует ICR и не даёт ИИ соврать в марже.
   var gridCard = document.getElementById('gridCard');
   var tiles = [];
-  if(S && !S.incomplete){
+  if(S && (!S.incomplete || S._sf)){
     var isDev=(S.type==='developer');
     var zBand=function(b){ return b>=4?'green':(b===3?'yellow':(b===2?'orange':'red')); };
     var fx=function(v){ return (Math.round(v*100)/100).toString().replace('.',',')+'×'; };
