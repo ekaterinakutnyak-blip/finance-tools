@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Северсталь · разбор 1П2026</title>
+<meta name="description" content="Финансовый разбор отчётности ПАО «Северсталь» по МСФО за 6 мес. 2026 простым языком: чистый долг 0,87× EBITDA, капитал 60% активов, покрытие процентов 3,9×, но прибыль −89% и денежный поток в минусе на дне цикла. Светофор риска 🟡🟢. Подготовлен ИИ-аналитиком, проверен автором. Не рекомендация.">
+<meta name="keywords" content="разбор отчётности Северсталь, Северсталь МСФО 2026, металлургия, долговая нагрузка, покрытие процентов, EBITDA-маржа, светофор риска, ИИ-аналитик, AAA">
+<link rel="canonical" href="https://investtools.pro/novosti/razbor-severstal-6m2026.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/razbor-severstal-6m2026.html">
+<meta property="og:title" content="Разбор отчётности Северсталь 🟡🟢 — ИИ-аналитик">
+<meta property="og:description" content="Баланс крепкий (чистый долг 0,87×, капитал 60% активов, AAA), но прибыль вдвое ниже и денежный поток в минусе на дне цикла. Финансовое состояние по МСФО 6м2026 простым языком, со светофором риска.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{
+    --plane:#f9f9f7; --card:#fff; --ink:#0b0b0b; --ink2:#4c4b48; --muted:#8a8883;
+    --grid:#e6e5df; --axis:#b9b8b1; --border:rgba(11,11,11,.10);
+    --c25:#2f6fb0; --c26:#2f8f5b; --good:#0ca30c; --warn:#e0a01a; --crit:#d03b3b;
+    --hair:#ecebe6;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --plane:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#8a8883;
+      --grid:#2c2c2a; --axis:#3d3d3a; --border:rgba(255,255,255,.12);
+      --c25:#3f88cf; --c26:#3aa76a; --good:#12b312; --warn:#d0a028; --crit:#e35a5a;
+      --hair:#242422;
+    }
+  }
+  :root[data-theme="dark"]{
+      --plane:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#8a8883;
+      --grid:#2c2c2a; --axis:#3d3d3a; --border:rgba(255,255,255,.12);
+      --c25:#3f88cf; --c26:#3aa76a; --good:#12b312; --warn:#d0a028; --crit:#e35a5a;
+      --hair:#242422;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--plane);color:var(--ink);margin:0;
+    font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 18px 56px}
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:16px}
+  .back-link:hover{color:var(--c26)}
+  .top{color:var(--ink2);font-size:13.5px;margin:0 0 22px}
+  .top b{color:var(--ink)}
+  h1{font-size:27px;line-height:1.15;margin:0 0 16px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:18px 20px;margin:14px 0}
+  .badge{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:16px;
+    border:1px solid var(--border);border-radius:999px;padding:.3em .85em;margin:0 0 12px}
+  .lead b{color:var(--ink)}
+  .owner{color:var(--ink2);font-size:13px;margin:12px 0 0}
+  .voice{color:var(--muted);font-style:italic;font-size:12.5px;margin:16px 0 2px}
+  h2{font-size:15px;margin:26px 0 8px}
+  p{margin:.55em 0}
+  /* график */
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:12px system-ui;fill:var(--muted)}
+  .vlbl{font:600 12px system-ui;fill:var(--ink)}
+  .legend{display:flex;gap:20px;justify-content:center;font-size:13px;color:var(--ink2);margin-top:6px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  /* плитки коэффициентов */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .tile .l{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .tile .v{font-size:26px;font-weight:700;color:var(--c26);margin-top:6px;letter-spacing:-.5px}
+  .tile .n{font-size:12px;color:var(--ink2);margin-top:3px}
+  /* скоринг */
+  .score{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+    padding:16px 0;border-top:1px solid var(--hair)}
+  .score:first-of-type{border-top:0}
+  .score .name{font-weight:700;font-size:15px}
+  .score .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .score .r{text-align:right;white-space:nowrap}
+  .score .val{font:700 20px ui-monospace,"SF Mono",Menlo,monospace}
+  .score .rmeta{color:var(--ink2);font-size:12.5px;margin-top:1px}
+  .pill{display:inline-block;font-size:12px;margin-top:5px}
+  .pill .d{display:inline-block;width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
+  .note{color:var(--ink2);font-size:12.5px;margin-top:14px}
+  /* таблица */
+  .rows{margin-top:4px}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hair)}
+  .row:first-child{border-top:0}
+  .row .k{font-size:14px}
+  .row .k .s{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+  .row .val{font:600 15px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  ul{margin:.4em 0;padding-left:1.2em} li{margin:.28em 0;color:var(--ink2);font-size:14px}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}
+  .sitenav a{color:var(--ink2);text-decoration:none}
+  .sitenav a:hover{color:var(--c26)}
+  .gh{color:var(--good)} .wh{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../razbory-ii-analitika.html" class="back-link">← Разборы ИИ-аналитика</a>
+  <p class="top"><b>ИИ-аналитик отчётности.</b> Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает
+    его за вас, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком:
+    насколько бизнес устойчив и где риск. Методология Екатерины Кутняк.</p>
+
+  <h1>ПАО «Северсталь»</h1>
+
+  <div class="card lead">
+    <div class="badge">🟡🟢 крепко с нюансом</div>
+    <p>База <b>🟢🟡 крепко</b> — нагрузка низкая (чистый долг 0,87× EBITDA за 12 мес), капитал 60% активов,
+      покрытие процентов около 3,9×, рейтинг AAA(RU). Понижено на один шаг за два флага: текущая ликвидность
+      ниже 1 (0,87) и падение чистой прибыли (−89%) на спаде цикла. Это <b>не</b> дефолтная зона и <b>не</b>
+      слабость баланса — это циклический провал прибыли и денежного потока при крепком балансе.</p>
+    <p class="owner"><b>Владелец:</b> контролирующий акционер — Алексей Мордашов через свои структуры (около 77%).
+      Компания частная, госгарантий по выпускам нет; системообразующий металлург с рейтингом AAA(RU).</p>
+    <p class="voice">РАЗБОР ИИ · голос Екатерины</p>
+  </div>
+
+  <p><b>Определил тип компании: КОРПОРАТ (металлургия — сталь и горнорудный сегмент «Северсталь Ресурс»).</b></p>
+
+  <h2>1. Масштаб</h2>
+  <p>Выручка за полугодие — 314,9 млрд ₽, на 13,5% меньше прошлогодней (364,2 млрд). Спрос на металлопродукцию
+    ослаб, а крепкий рубль урезал рублёвую выручку. Бизнес сжался.</p>
+  <h2>2. Прибыль</h2>
+  <p>Операционная прибыль упала с 56,0 до 16,0 млрд ₽ (−71,5%), чистая — с 36,7 до 4,1 млрд (−89%). На спаде
+    операционный рычаг работает против компании: постоянные расходы остались, а выручка просела.</p>
+  <h2>3. Рентабельность</h2>
+  <p>EBITDA снизилась с 78,7 до 42,3 млрд ₽ (−46%), EBITDA-маржа сжалась с 21,6% до 13,4%. Каждый рубль выручки
+    приносит вдвое меньше, чем год назад.</p>
+  <h2>4. Денежный поток</h2>
+  <p>Операционный поток ушёл в минус: −17,7 млрд ₽ против +47,5 млрд годом ранее. Прибыль просела, и деньги
+    застряли в обороте — торговая дебиторка выросла с 33,3 до 81,9 млрд (+48,6). Сверху капвложения 54 млрд.
+    Свободный денежный поток −70,2 млрд. Разрыв закрыли, слив деньги со счетов (38,4 → 7,3 млрд) и нарастив
+    долг (+35,6 млрд).</p>
+  <h2>5. Долговая нагрузка</h2>
+  <p>Общий долг вырос с 60,1 до 95,7 млрд ₽, чистый — с 21,7 до 88,4 млрд (вчетверо). Но относительно масштаба
+    это мало: чистый долг к годовой EBITDA — 0,87×. Годовая EBITDA больше всего чистого долга; для металлурга
+    это низко (тревога обычно за 2–3×). Нюанс — долг ушёл в короткую: 90,6 млрд краткосрочного против 5,1 млрд
+    долгосрочного, эту часть придётся рефинансировать.</p>
+  <h2>6. Покрытие процентов</h2>
+  <p>EBITDA за полугодие (42,3 млрд) покрывает уплаченные проценты (11,0 млрд) примерно в 3,9 раза. Запас есть,
+    но меньше прошлогоднего. Начисленные проценты в урезанном отчёте не показаны, берём уплаченные из отчёта
+    о движении денег — это близкий ориентир.</p>
+  <h2>7. Ликвидность</h2>
+  <p>Текущая ликвидность 0,87: короткие активы (243,4 млрд) меньше коротких обязательств (280,1 млрд). Для
+    металлурга с запасами 111,5 млрд это рабочая норма, но подушка тонкая, и разрыв закрывается рефинансированием.</p>
+  <h2>8. Общая устойчивость</h2>
+  <p>Баланс крепкий: капитал 532,6 млрд — 60% активов, долг к капиталу 0,18, рейтинг AAA. Денежная генерация на
+    спаде слабая. Компания проходит нижнюю точку цикла: инвестирует в долг, пока живых денег от работы не хватает.</p>
+
+  <div class="card" style="margin-top:24px">
+    <p><span class="gh">✅ Сильное:</span> чистый долг покрывается годовой EBITDA меньше чем за год (0,87×);
+      капитал 60% активов и почти без долга к капиталу (0,18×); покрытие процентов около 3,9×; рейтинг AAA(RU).</p>
+    <p><span class="wh">⚠️ Что нервирует:</span> прибыль и EBITDA вдвое ниже на спаде; операционный и свободный
+      денежный поток глубоко в минусе (−17,7 и −70,2 млрд); чистый долг за полгода вырос вчетверо; деньги на счетах
+      слились с 38 до 7 млрд; долг ушёл в короткую (90,6 млрд); текущая ликвидность 0,87.</p>
+    <p>🧭 <b>Общий вывод.</b> Баланс надёжный, деньги — под напряжением. По балансу компания крепкая, но на дне
+      цикла зарабатывает вдвое меньше, а живых денег от работы не остаётся — их забрали оборотка и стройка новых
+      мощностей. Пока это циклическая слабость при сильном балансе, а не долговой риск.</p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Ключевые показатели</p>
+    <svg viewBox="0 0 900 360" role="img" aria-label="Ключевые показатели 2025 и 2026, млрд рублей">
+<line x1="64" y1="300.0" x2="884" y2="300.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="304.0" text-anchor="end" class="axlbl">-50</text>
+<line x1="64" y1="268.9" x2="884" y2="268.9" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="272.9" text-anchor="end" class="axlbl">0</text>
+<line x1="64" y1="237.8" x2="884" y2="237.8" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="241.8" text-anchor="end" class="axlbl">50</text>
+<line x1="64" y1="206.7" x2="884" y2="206.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="210.7" text-anchor="end" class="axlbl">100</text>
+<line x1="64" y1="175.6" x2="884" y2="175.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="179.6" text-anchor="end" class="axlbl">150</text>
+<line x1="64" y1="144.4" x2="884" y2="144.4" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="148.4" text-anchor="end" class="axlbl">200</text>
+<line x1="64" y1="113.3" x2="884" y2="113.3" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="117.3" text-anchor="end" class="axlbl">250</text>
+<line x1="64" y1="82.2" x2="884" y2="82.2" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="86.2" text-anchor="end" class="axlbl">300</text>
+<line x1="64" y1="51.1" x2="884" y2="51.1" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="55.1" text-anchor="end" class="axlbl">350</text>
+<line x1="64" y1="20.0" x2="884" y2="20.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="24.0" text-anchor="end" class="axlbl">400</text>
+<line x1="64" y1="268.9" x2="884" y2="268.9" stroke="var(--axis)" stroke-width="1.5"/>
+<rect x="95.3" y="42.3" width="34" height="226.6" rx="3" fill="var(--c25)"/>
+<text x="112.3" y="37.3" text-anchor="middle" class="vlbl">364,2</text>
+<rect x="135.3" y="73.0" width="34" height="195.9" rx="3" fill="var(--c26)"/>
+<text x="152.3" y="68.0" text-anchor="middle" class="vlbl">314,9</text>
+<text x="132.3" y="320" text-anchor="middle" class="axlbl">Выручка</text>
+<rect x="232.0" y="219.9" width="34" height="49.0" rx="3" fill="var(--c25)"/>
+<text x="249.0" y="214.9" text-anchor="middle" class="vlbl">78,7</text>
+<rect x="272.0" y="242.6" width="34" height="26.3" rx="3" fill="var(--c26)"/>
+<text x="289.0" y="237.6" text-anchor="middle" class="vlbl">42,3</text>
+<text x="269.0" y="320" text-anchor="middle" class="axlbl">EBITDA</text>
+<rect x="368.7" y="246.1" width="34" height="22.8" rx="3" fill="var(--c25)"/>
+<text x="385.7" y="241.1" text-anchor="middle" class="vlbl">36,7</text>
+<rect x="408.7" y="266.3" width="34" height="2.6" rx="3" fill="var(--c26)"/>
+<text x="425.7" y="261.3" text-anchor="middle" class="vlbl">4,1</text>
+<text x="405.7" y="320" text-anchor="middle" class="axlbl">Чистая прибыль</text>
+<rect x="505.3" y="239.3" width="34" height="29.6" rx="3" fill="var(--c25)"/>
+<text x="522.3" y="234.3" text-anchor="middle" class="vlbl">47,5</text>
+<rect x="545.3" y="268.9" width="34" height="11.0" rx="3" fill="var(--c26)"/>
+<text x="562.3" y="293.9" text-anchor="middle" class="vlbl">-17,7</text>
+<text x="542.3" y="320" text-anchor="middle" class="axlbl">Опер. поток</text>
+<rect x="642.0" y="231.5" width="34" height="37.4" rx="3" fill="var(--c25)"/>
+<text x="659.0" y="226.5" text-anchor="middle" class="vlbl">60,1</text>
+<rect x="682.0" y="209.3" width="34" height="59.5" rx="3" fill="var(--c26)"/>
+<text x="699.0" y="204.3" text-anchor="middle" class="vlbl">95,7</text>
+<text x="679.0" y="320" text-anchor="middle" class="axlbl">Валовый долг</text>
+<rect x="778.7" y="255.4" width="34" height="13.5" rx="3" fill="var(--c25)"/>
+<text x="795.7" y="250.4" text-anchor="middle" class="vlbl">21,7</text>
+<rect x="818.7" y="213.9" width="34" height="55.0" rx="3" fill="var(--c26)"/>
+<text x="835.7" y="208.9" text-anchor="middle" class="vlbl">88,4</text>
+<text x="815.7" y="320" text-anchor="middle" class="axlbl">Чистый долг</text>
+</svg>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--c25)"></span>2025</span>
+      <span><span class="dot" style="background:var(--c26)"></span>2026</span>
+    </div>
+    <p class="note" style="text-align:center">1П2025 → 1П2026, млрд ₽. Балансовые статьи (долг) — на конец периода.</p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Коэффициенты из отчёта</p>
+    <div class="tiles">
+      <div class="tile"><div class="l">Чистый долг / EBITDA</div><div class="v">0,87×</div><div class="n">за 12 мес · низко</div></div>
+      <div class="tile"><div class="l">Покрытие процентов</div><div class="v">3,86×</div><div class="n">EBITDA / проценты</div></div>
+      <div class="tile"><div class="l">Капитал / активы</div><div class="v">59,7 %</div><div class="n">баланс крепкий</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sect">Скоринговые модели риска банкротства</p>
+    <p class="note" style="margin:0 0 6px">По цифрам одного отчёта. Скрининг — «посмотреть внимательнее», а не приговор и не индивидуальный PD.</p>
+    <div class="score">
+      <div><div class="name">Альтман Z″</div><div class="meta">непубличная · рейтинг-proxy PD (S&amp;P по классу)</div></div>
+      <div class="r"><div class="val">6.28</div><div class="rmeta">≈ BBB+ · PD 0,14%/год</div>
+        <div class="pill"><span class="d" style="background:var(--good)"></span>низкий</div></div>
+    </div>
+    <div class="score">
+      <div><div class="name">Таффлер</div><div class="meta">порог 0,3 / 0,2</div></div>
+      <div class="r"><div class="val">0.226</div><div class="rmeta">погранично · PD — нужна калибровка</div>
+        <div class="pill"><span class="d" style="background:var(--warn)"></span>умеренный</div></div>
+    </div>
+    <div class="score">
+      <div><div class="name">ИГЭА (Иркутская)</div><div class="meta">авторские бэнды</div></div>
+      <div class="r"><div class="val">−0.31</div><div class="rmeta">вероятность 90–100%</div>
+        <div class="pill"><span class="d" style="background:var(--crit)"></span>высокий</div></div>
+    </div>
+    <p class="note">Модели расходятся — это сигнал, а не приговор. Для прибыльного металлурга с низкой нагрузкой на
+      дне цикла генеричные модели, завязанные на нижний результат, переоценивают риск (ложно-красный сигнал, как на
+      девелоперах ложно-зелёный). Ориентир — светофор выше.</p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Что ИИ взял из отчёта — сверьте с первоисточником</p>
+    <div class="rows">
+      <div class="row"><div class="k">Выручка (6 мес)<span class="s">прим. 3 / 9</span></div><div class="val">314 875 млн ₽</div></div>
+      <div class="row"><div class="k">EBITDA (6 мес, раскрыта)<span class="s">прим. 10</span></div><div class="val">42 340 млн ₽</div></div>
+      <div class="row"><div class="k">EBITDA за 12 мес (LTM)<span class="s">137 612 − 78 654 + 42 340</span></div><div class="val">101 298 млн ₽</div></div>
+      <div class="row"><div class="k">Прибыль за период (чистая)<span class="s">отчёт о совокупном доходе</span></div><div class="val">4 119 млн ₽</div></div>
+      <div class="row"><div class="k">Прибыль за период, 1П2025<span class="s">отчёт о совокупном доходе</span></div><div class="val">36 746 млн ₽</div></div>
+      <div class="row"><div class="k">Чистый операционный поток<span class="s">ОДДС (после %/налога)</span></div><div class="val">−17 688 млн ₽</div></div>
+      <div class="row"><div class="k">Свободный денежный поток<span class="s">прим. 10</span></div><div class="val">−70 195 млн ₽</div></div>
+      <div class="row"><div class="k">Чистый долг (раскрыт)<span class="s">прим. 10</span></div><div class="val">88 442 млн ₽</div></div>
+      <div class="row"><div class="k">Денежные средства<span class="s">баланс</span></div><div class="val">7 255 млн ₽</div></div>
+      <div class="row"><div class="k">Краткосрочный долг<span class="s">баланс</span></div><div class="val">90 621 млн ₽</div></div>
+      <div class="row"><div class="k">Долгосрочный долг<span class="s">баланс</span></div><div class="val">5 076 млн ₽</div></div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:26px">Чего не хватило в отчёте</h2>
+  <ul>
+    <li>Раскрываемая версия: лицо отчёта о прибылях урезано — выручку, EBITDA и чистый долг брали из примечаний 3/9/10.</li>
+    <li>Начисленные проценты не раскрыты — покрытие считали по уплаченным (ОДДС), это близкий прокси.</li>
+    <li>Аренда (IFRS 16) отдельной строкой не выделена — чистый долг по определению компании.</li>
+    <li>LTM-выручка отдельно не раскрыта — EBITDA-маржу считали период/период (13,4%), это корректно.</li>
+  </ul>
+
+  <p class="foot">Данные: раскрываемая консолидированная промежуточная сокращённая отчётность ПАО «Северсталь» по
+    МСФО за 6 мес. 2026 (аудитор АО «Кэпт», обзорная проверка без оговорок). Коэффициенты считает детерминированный
+    движок; ИИ извлекает строки. Это разбор отчётности, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+  <p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a> · <a href="../razbory-ii-analitika.html">Разборы ИИ</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>
