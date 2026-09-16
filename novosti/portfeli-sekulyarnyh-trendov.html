@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Два портфеля секулярных трендов · investtools.pro</title>
+<meta name="description" content="Два модельных портфеля долгих трендов — «Стабильность» и «Ставка» — плюс контрольная смесь 50/50. История идеи, состав с логикой и живой трекер пути против рынка. Не индивидуальная рекомендация.">
+<style>
+  :root{
+    --plane:#f9f9f7; --card:#fff; --ink:#0b0b0b; --ink2:#4c4b48; --muted:#8a8883;
+    --grid:#e6e5df; --axis:#b9b8b1; --border:rgba(11,11,11,.10);
+    --c25:#2f6fb0; --c26:#2f8f5b; --good:#0ca30c; --warn:#e0a01a; --crit:#d03b3b; --hair:#ecebe6;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+      --plane:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#8a8883;
+      --grid:#2c2c2a; --axis:#3d3d3a; --border:rgba(255,255,255,.12);
+      --c25:#3f88cf; --c26:#3aa76a; --good:#12b312; --warn:#d0a028; --crit:#e35a5a; --hair:#242422;}}
+  :root[data-theme="dark"]{
+      --plane:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#8a8883;
+      --grid:#2c2c2a; --axis:#3d3d3a; --border:rgba(255,255,255,.12);
+      --c25:#3f88cf; --c26:#3aa76a; --good:#12b312; --warn:#d0a028; --crit:#e35a5a; --hair:#242422;}
+  *{box-sizing:border-box}
+  body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:880px;margin:0 auto;padding:26px 18px 60px}
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:14px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
+  h1{font-size:30px;line-height:1.12;margin:0 0 8px;letter-spacing:-.5px}
+  .sub{color:var(--ink2);font-size:14.5px;margin:0 0 6px}
+  .meta{color:var(--muted);font-size:12.5px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:16px 0}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 12px}
+  h2{font-size:19px;margin:30px 0 8px}
+  p{margin:.55em 0}
+  .disc{font-size:12.5px;color:var(--ink2);background:var(--card);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:10px;padding:11px 14px;margin:8px 0 0}
+  .lead b,.lead strong{color:var(--ink)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  @media(max-width:640px){.two{grid-template-columns:1fr}}
+  .charc{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--card)}
+  .charc .h{font-weight:700;display:flex;align-items:center;gap:.5em;margin-bottom:4px}
+  .charc .h .d{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .charc p{font-size:13.5px;color:var(--ink2);margin:.3em 0 0}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:11px system-ui;fill:var(--muted)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:12.5px;color:var(--ink2);margin-top:8px}
+  .legend .k{display:inline-block;width:14px;height:0;border-top:3px solid;margin-right:6px;vertical-align:3px}
+  .cap{font-size:12.5px;color:var(--muted);margin:10px 0 0;text-align:center}
+  .crow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;padding:10px 0;border-top:1px solid var(--hair);font-size:13.5px;align-items:center}
+  .crow:first-of-type{border-top:0}
+  .chead{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;border-top:0}
+  .cv{text-align:right;font-variant-numeric:tabular-nums}
+  .cn{display:flex;align-items:center;gap:.5em}
+  .cdot{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+  .hrow{padding:12px 0;border-top:1px solid var(--hair)}
+  .hrow:first-child{border-top:0}
+  .htop{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .htop .tk{font:700 14px ui-monospace,Menlo,monospace}
+  .htop .co{font-weight:600}
+  .htop .th{font-size:11.5px;color:var(--muted);background:var(--hair);padding:1px 7px;border-radius:20px}
+  .htop .wt{margin-left:auto;font:700 14px system-ui;color:var(--c26)}
+  .hlog{font-size:13px;color:var(--ink2);margin-top:5px;line-height:1.5}
+  .hlog .up{color:var(--good);font-weight:600} .hlog .dn{color:var(--crit);font-weight:600}
+  .tw{display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:13.5px}
+  .tw .th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .tw .v{text-align:right;font-variant-numeric:tabular-nums}
+  .cta{background:var(--card);border:1px solid var(--c25);border-radius:12px;padding:14px 16px;margin:18px 0 0;font-size:14px}
+  .cta a{color:var(--c25);font-weight:600;text-decoration:none}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+
+  .tblwrap{overflow-x:auto;margin:2px 0}
+  table.trk{width:100%;border-collapse:collapse;font-size:13.5px}
+  .trk th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
+  .trk td{padding:8px;border-bottom:1px solid var(--hair);vertical-align:top}
+  .trk td.r,.trk th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .trk td.k .co{color:var(--ink2)} .trk td.th{color:var(--muted);font-size:12px;white-space:nowrap}
+  .trk td.muted{color:var(--muted)}
+  .trk tr.tot td{border-top:2px solid var(--axis);border-bottom:0;font-weight:700;padding-top:10px}
+  .logic{margin-top:12px} .logic summary{cursor:pointer;font-size:13px;color:var(--c25);font-weight:600;padding:4px 0}
+  .logic .lg{font-size:12.5px;color:var(--ink2);line-height:1.5;padding:8px 0;border-top:1px solid var(--hair)}
+  .logic .lg .up{color:var(--good);font-weight:700}.logic .lg .dn{color:var(--crit);font-weight:700}
+
+  .mk{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  .mk th{text-align:right;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:600;padding:5px 6px;border-bottom:1px solid var(--grid)}
+  .mk th:first-child{text-align:left}
+  .mk td{padding:7px 6px;border-bottom:1px solid var(--hair);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .mk td:first-child{text-align:left}
+  .mk tr.you td{font-weight:700;background:rgba(47,143,91,.06)}
+  .mk .sub{color:var(--muted);font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../portfeli-idei.html" class="back-link">← Портфели-идеи</a>
+  <p class="kicker">Портфель-идея · публичное наблюдение</p>
+  <h1>Два портфеля секулярных трендов</h1>
+  <p class="sub">«Стабильность» и «Ставка» — плюс контрольная смесь 50/50. Геном · биотехнологии · долголетие · ИИ · вода · материалы.</p>
+  <p class="meta">Дата фиксации состава и цен: 14 сентября 2026. Трекер обновляется раз в неделю.</p>
+  <div class="disc">Это исследовательские модельные портфели для публичного наблюдения и сравнения, а не индивидуальная инвестиционная рекомендация. Состав отобран сегодня — исторический тест знает будущих победителей и не доказывает, что доходность повторится.</div>
+
+  <p class="lead">Это <b>не один портфель, разрезанный пополам</b> — это два разных характера. «Стабильность» покупает уже работающие денежные машины, которые зарабатывают на долгих трендах <b>сегодня</b>. «Ставка» покупает право на <b>очень большой будущий результат</b> — и принимает, что часть идей не доедет. А контрольная смесь 50/50 нужна, чтобы честно измерить: сколько лишней доходности дала рискованная половина — и какой ценой в просадках и нервах.</p>
+  <div class="two">
+    <div class="charc"><div class="h"><span class="d" style="background:#2f8f5b"></span>Стабильность</div>
+      <p>Прибыльные лидеры трендов: Microsoft, TSMC, ASML, Eli Lilly, Linde, Xylem. Зарабатывают деньги уже сейчас, растут медленнее, падают мягче.</p></div>
+    <div class="charc"><div class="h"><span class="d" style="background:#e0731a"></span>Ставка</div>
+      <p>Компании, у которых главный результат ещё впереди: Intellia, Beam, BioAge, IperionX. Огромный потенциал — и реальный риск, что идея не доедет.</p></div>
+  </div>
+
+  <h2 id="tracker">Живой трекер · портфели и цены</h2>
+  <p style="color:var(--ink2);font-size:13.5px;margin:.2em 0 4px">Состав и цены зафиксированы 14 сентября 2026 года. Ниже — как каждая позиция и портфель целиком идут с этой точки. Раздел обновляется раз в неделю; вся история идеи и сравнение с рынком — под трекером.</p>
+  <div class="card" style="border-left:4px solid var(--c26)"><p class="sect" style="margin:0 0 6px">С фиксации 14.09.2026 по сегодня</p><p style="margin:0;font-size:15px">Стабильность <span style="color:var(--crit);font-weight:600">-0,1%</span> · Ставка <span style="color:var(--crit);font-weight:600">-2,4%</span> <span style="color:var(--muted);font-size:13px">— короткий срок, это просто первый шаг наблюдения.</span></p></div><h2>Портфель «Стабильность» · состав и трекер</h2><p style="color:var(--ink2);font-size:13.5px;margin:.2em 0 10px">Уже работающие лидеры трендов. Условный капитал <b>$20 000</b>, цены зафиксированы <b>14.09.2026</b>; текущие — на момент обновления.</p><div class="card"><div class="tblwrap"><table class="trk"><thead><tr><th>Тикер · компания</th><th>Тема</th><th class="r">Доля</th><th class="r">Старт (14.09)</th><th class="r">Сейчас</th><th class="r">Доходн.</th></tr></thead><tbody><tr><td class="k"><b>MSFT</b> <span class="co">Microsoft</span></td><td class="th">ИИ</td><td class="r">9%</td><td class="r">$505,41</td><td class="r">$497,12</td><td class="r"><span style="color:var(--crit);font-weight:600">-1,6%</span></td></tr><tr><td class="k"><b>TSM</b> <span class="co">TSMC</span></td><td class="th">ИИ</td><td class="r">8%</td><td class="r">$418,01</td><td class="r">$413,75</td><td class="r"><span style="color:var(--crit);font-weight:600">-1,0%</span></td></tr><tr><td class="k"><b>ASML</b> <span class="co">ASML</span></td><td class="th">ИИ</td><td class="r">7%</td><td class="r">$1 575,15</td><td class="r">$1 591,48</td><td class="r"><span style="color:var(--good);font-weight:600">+1,0%</span></td></tr><tr><td class="k"><b>AVGO</b> <span class="co">Broadcom</span></td><td class="th">ИИ</td><td class="r">6%</td><td class="r">$344,72</td><td class="r">$339,27</td><td class="r"><span style="color:var(--crit);font-weight:600">-1,6%</span></td></tr><tr><td class="k"><b>TMO</b> <span class="co">Thermo Fisher Scientific</span></td><td class="th">Геном и биотехнологии</td><td class="r">8%</td><td class="r">$613,62</td><td class="r">$641,39</td><td class="r"><span style="color:var(--good);font-weight:600">+4,5%</span></td></tr><tr><td class="k"><b>VRTX</b> <span class="co">Vertex Pharmaceuticals</span></td><td class="th">Геном и биотехнологии</td><td class="r">8%</td><td class="r">$519,51</td><td class="r">$514,63</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,9%</span></td></tr><tr><td class="k"><b>LLY</b> <span class="co">Eli Lilly</span></td><td class="th">Долголетие</td><td class="r">8%</td><td class="r">$1 138,28</td><td class="r">$1 136,11</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,2%</span></td></tr><tr><td class="k"><b>ISRG</b> <span class="co">Intuitive Surgical</span></td><td class="th">Долголетие</td><td class="r">8%</td><td class="r">$377,94</td><td class="r">$377,16</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,2%</span></td></tr><tr><td class="k"><b>XYL</b> <span class="co">Xylem</span></td><td class="th">Вода</td><td class="r">8%</td><td class="r">$107,49</td><td class="r">$107,50</td><td class="r"><span style="color:var(--muted);font-weight:600">+0,0%</span></td></tr><tr><td class="k"><b>ECL</b> <span class="co">Ecolab</span></td><td class="th">Вода</td><td class="r">7%</td><td class="r">$275,51</td><td class="r">$274,60</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,3%</span></td></tr><tr><td class="k"><b>AWK</b> <span class="co">American Water Works</span></td><td class="th">Вода</td><td class="r">7%</td><td class="r">$138,92</td><td class="r">$138,02</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,6%</span></td></tr><tr><td class="k"><b>LIN</b> <span class="co">Linde</span></td><td class="th">Материалы</td><td class="r">10%</td><td class="r">$464,41</td><td class="r">$462,96</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,3%</span></td></tr><tr><td class="k"><b>FCX</b> <span class="co">Freeport-McMoRan</span></td><td class="th">Материалы</td><td class="r">6%</td><td class="r">$69,34</td><td class="r">$69,38</td><td class="r"><span style="color:var(--good);font-weight:600">+0,1%</span></td></tr><tr class="tot"><td>Портфель целиком</td><td></td><td class="r">100%</td><td class="r">$20 000</td><td class="r">$19 982</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,1%</span></td></tr></tbody></table></div><details class="logic"><summary>Логика по позициям — что должно случиться и что ломает идею</summary><div class="lg"><b>MSFT</b> — <span class="up">▲</span> Рост Azure, загрузка дата-центров и монетизация Copilot. <span class="dn">▼</span> Расходы на дата-центры могут расти быстрее отдачи; антимонопольное регулирование.</div><div class="lg"><b>TSM</b> — <span class="up">▲</span> Новые техпроцессы и сохраняющийся дефицит передовых мощностей. <span class="dn">▼</span> Тайваньский геополитический риск, капиталоёмкость и цикличность полупроводников.</div><div class="lg"><b>ASML</b> — <span class="up">▲</span> Спрос на EUV/High-NA и расширение мощностей фабрик. <span class="dn">▼</span> Экспортные ограничения, дорогая оценка и паузы в капитальных расходах клиентов.</div><div class="lg"><b>AVGO</b> — <span class="up">▲</span> Рост AI-semiconductor revenue и новые заказчики ASIC. <span class="dn">▼</span> Очень высокие ожидания и концентрация на нескольких крупных клиентах.</div><div class="lg"><b>TMO</b> — <span class="up">▲</span> Нормализация спроса в биофарме и рост сервисного бизнеса. <span class="dn">▼</span> Слабый бюджет лабораторий, интеграционные риски и давление на маржу.</div><div class="lg"><b>VRTX</b> — <span class="up">▲</span> Рост продаж CASGEVY и JOURNAVX, расширение показаний. <span class="dn">▼</span> Концентрация на ключевых франшизах, цены и клинические неудачи.</div><div class="lg"><b>LLY</b> — <span class="up">▲</span> Рост Mounjaro/Zepbound и новые препараты, включая таблетки и комбинации. <span class="dn">▼</span> Высокая оценка, конкуренция, производственные ограничения и вопросы компенсации.</div><div class="lg"><b>ISRG</b> — <span class="up">▲</span> Рост числа операций и внедрение da Vinci 5. <span class="dn">▼</span> Цена систем, конкуренция и чувствительность к объёму плановых операций.</div><div class="lg"><b>XYL</b> — <span class="up">▲</span> Инфраструктурные программы, цифровизация сетей и синергии Evoqua. <span class="dn">▼</span> Муниципальные циклы закупок, интеграция и промышленная цикличность.</div><div class="lg"><b>ECL</b> — <span class="up">▲</span> Рост водных решений и повышение цен. <span class="dn">▼</span> Слабость промышленного спроса, сырьё и валюты.</div><div class="lg"><b>AWK</b> — <span class="up">▲</span> Капитальные вложения в старые сети и расширение клиентской базы. <span class="dn">▼</span> Регуляторные задержки, ставки и политическое сопротивление росту тарифов.</div><div class="lg"><b>LIN</b> — <span class="up">▲</span> Проектный портфель, электроника и водород. <span class="dn">▼</span> Промышленный спад, стоимость энергии и перенос крупных проектов.</div><div class="lg"><b>FCX</b> — <span class="up">▲</span> Рост добычи, восстановление Grasberg и дефицит новых месторождений. <span class="dn">▼</span> Цена меди, Индонезия, аварии и рост затрат.</div></details></div><h2>Портфель «Ставка» · состав и трекер</h2><p style="color:var(--ink2);font-size:13.5px;margin:.2em 0 10px">Компании, у которых главный результат впереди — выше потенциал и выше риск. Условный капитал <b>$20 000</b>, цены зафиксированы <b>14.09.2026</b>.</p><div class="card"><div class="tblwrap"><table class="trk"><thead><tr><th>Тикер · компания</th><th>Тема</th><th class="r">Доля</th><th class="r">Старт (14.09)</th><th class="r">Сейчас</th><th class="r">Доходн.</th></tr></thead><tbody><tr><td class="k"><b>NTLA</b> <span class="co">Intellia Therapeutics</span></td><td class="th">Геном и биотехнологии</td><td class="r">13%</td><td class="r">$11,87</td><td class="r">$11,36</td><td class="r"><span style="color:var(--crit);font-weight:600">-4,3%</span></td></tr><tr><td class="k"><b>BEAM</b> <span class="co">Beam Therapeutics</span></td><td class="th">Геном и биотехнологии</td><td class="r">11%</td><td class="r">$24,12</td><td class="r">$23,22</td><td class="r"><span style="color:var(--crit);font-weight:600">-3,7%</span></td></tr><tr><td class="k"><b>CRSP</b> <span class="co">CRISPR Therapeutics</span></td><td class="th">Геном и биотехнологии</td><td class="r">8%</td><td class="r">$52,96</td><td class="r">$51,83</td><td class="r"><span style="color:var(--crit);font-weight:600">-2,1%</span></td></tr><tr><td class="k"><b>BIOA</b> <span class="co">BioAge Labs</span></td><td class="th">Долголетие</td><td class="r">10%</td><td class="r">$8,48</td><td class="r">$8,18</td><td class="r"><span style="color:var(--crit);font-weight:600">-3,5%</span></td></tr><tr><td class="k"><b>MRNA</b> <span class="co">Moderna</span></td><td class="th">Геном и биотехнологии</td><td class="r">8%</td><td class="r">$146,69</td><td class="r">$143,77</td><td class="r"><span style="color:var(--crit);font-weight:600">-2,0%</span></td></tr><tr><td class="k"><b>POET</b> <span class="co">POET Technologies</span></td><td class="th">ИИ</td><td class="r">10%</td><td class="r">$7,43</td><td class="r">$7,21</td><td class="r"><span style="color:var(--crit);font-weight:600">-3,0%</span></td></tr><tr><td class="k"><b>AMBA</b> <span class="co">Ambarella</span></td><td class="th">ИИ</td><td class="r">8%</td><td class="r">$63,98</td><td class="r">$64,33</td><td class="r"><span style="color:var(--good);font-weight:600">+0,5%</span></td></tr><tr><td class="k"><b>ERII</b> <span class="co">Energy Recovery</span></td><td class="th">Вода</td><td class="r">8%</td><td class="r">$7,09</td><td class="r">$7,06</td><td class="r"><span style="color:var(--crit);font-weight:600">-0,4%</span></td></tr><tr><td class="k"><b>CWCO</b> <span class="co">Consolidated Water</span></td><td class="th">Вода</td><td class="r">4%</td><td class="r">$28,03</td><td class="r">$28,15</td><td class="r"><span style="color:var(--good);font-weight:600">+0,4%</span></td></tr><tr><td class="k"><b>IPX</b> <span class="co">IperionX</span></td><td class="th">Материалы</td><td class="r">7%</td><td class="r">$18,13</td><td class="r">$18,16</td><td class="r"><span style="color:var(--good);font-weight:600">+0,2%</span></td></tr><tr><td class="k"><b>IE</b> <span class="co">Ivanhoe Electric</span></td><td class="th">Материалы</td><td class="r">7%</td><td class="r">$9,66</td><td class="r">$9,29</td><td class="r"><span style="color:var(--crit);font-weight:600">-3,8%</span></td></tr><tr><td class="k"><b>UUUU</b> <span class="co">Energy Fuels</span></td><td class="th">Материалы</td><td class="r">6%</td><td class="r">$12,34</td><td class="r">$11,86</td><td class="r"><span style="color:var(--crit);font-weight:600">-3,9%</span></td></tr><tr class="tot"><td>Портфель целиком</td><td></td><td class="r">100%</td><td class="r">$20 000</td><td class="r">$19 518</td><td class="r"><span style="color:var(--crit);font-weight:600">-2,4%</span></td></tr></tbody></table></div><details class="logic"><summary>Логика по позициям — что должно случиться и что ломает идею</summary><div class="lg"><b>NTLA</b> — <span class="up">▲</span> Решение FDA по lonvo-z; дата PDUFA — 10 марта 2027 года. <span class="dn">▼</span> Отказ/задержка регулятора, безопасность, коммерческий запуск и расход денежных средств.</div><div class="lg"><b>BEAM</b> — <span class="up">▲</span> Регистрационная когорта BEAM-302 и новые данные по эффективности. <span class="dn">▼</span> Ранние стадии, безопасность, производство и большой расход капитала.</div><div class="lg"><b>CRSP</b> — <span class="up">▲</span> Рост числа центров и пациентов CASGEVY, онкологические программы. <span class="dn">▼</span> Сложное лечение, медленное возмещение расходов и клинические неудачи.</div><div class="lg"><b>BIOA</b> — <span class="up">▲</span> Данные фазы 2 QUELL-CV во второй половине 2026 года; затем данные QUELL-DME и переход программ APJ к испытаниям. <span class="dn">▼</span> Компания уже закрывала прежнюю программу после проблем безопасности. Новая молекула может не подтвердить пользу; выручка минимальна, возможны новые выпуски акций.</div><div class="lg"><b>MRNA</b> — <span class="up">▲</span> Дальнейшие данные фазы 3 по intismeran с Keytruda и развитие программ для других опухолей. <span class="dn">▼</span> Большие убытки и расход денежных средств; отдельные программы уже не достигали целей; хороший результат частично учтён после резкого роста 19 августа.</div><div class="lg"><b>POET</b> — <span class="up">▲</span> Квалификация продуктов и превращение заказов в серийную выручку. <span class="dn">▼</span> Текущая выручка очень мала; риск задержек, зависимости от партнёров и разводнения.</div><div class="lg"><b>AMBA</b> — <span class="up">▲</span> Рост семейства CVflow, новые автомобильные и робототехнические проекты и повышение средней цены чипа. <span class="dn">▼</span> Долгие циклы запуска у клиентов, конкуренция крупных производителей и зависимость от электроники/авторынка.</div><div class="lg"><b>ERII</b> — <span class="up">▲</span> Новые опреснительные проекты и диверсификация технологий. <span class="dn">▼</span> Небольшая компания, волатильные заказы и геополитика проектов.</div><div class="lg"><b>CWCO</b> — <span class="up">▲</span> Новые концессии и проекты на островах и в засушливых регионах. <span class="dn">▼</span> Небольшой масштаб, проектные задержки и зависимость от отдельных юрисдикций.</div><div class="lg"><b>IPX</b> — <span class="up">▲</span> Выход на темп 200 тонн порошка в год, квалификация деталей клиентами и масштабирование до 1 400 тонн. <span class="dn">▼</span> Производство только разгоняется; возможны простои, задержки квалификации, новые выпуски акций и перерасход капитала.</div><div class="lg"><b>IE</b> — <span class="up">▲</span> Обновлённое технико-экономическое исследование, финансирование EXIM и переход к строительству; первый металл ожидается не раньше 2029 года. <span class="dn">▼</span> До выручки годы: разрешения, финансирование, стоимость строительства и цена меди могут полностью изменить экономику проекта.</div><div class="lg"><b>UUUU</b> — <span class="up">▲</span> Интеграция приобретений, запуск разделения Tb/Dy и магнитного производства. <span class="dn">▼</span> Одновременно много капиталоёмких проектов, сырьевые цены и исполнение интеграции.</div></details></div>
+
+  <hr style="border:0;border-top:1px solid var(--grid);margin:34px 0 0">
+  <h2 style="margin-top:38px">Идея целиком</h2>
+  <p>За обоими портфелями стоит одна мысль. Несколько трендов — геном и биотехнологии, долголетие, искусственный интеллект, вода и материалы — разворачиваются годами и уже меняют экономику, а не ждут где-то в будущем. Вопрос не в том, случатся ли они, а в том, как в них зайти: через компании, которые на этих трендах <b>уже зарабатывают</b>, или через те, чей главный результат <b>ещё впереди</b>. Отсюда и два характера — и контрольная смесь 50/50, которая покажет, что реально дала рискованная половина.</p>
+  <p>«Стабильность» — это выручка, денежный поток, масштаб и понятная роль в цепочке. Microsoft, TSMC, ASML и Broadcom стоят в основании ИИ; Eli Lilly, Intuitive Surgical, Thermo Fisher и Vertex — в биотехнологиях и долголетии; Xylem, Ecolab и American Water — в воде; Linde и Freeport — в материалах. Это всё ещё портфель акций: в широком кризисе он может просесть на 20–30%. Но падает он мягче, потому что за каждой бумагой стоит уже работающий бизнес.</p>
+  <p>«Ставка» ищет асимметрию. Успешное лекарство, новый стандарт связи, запуск опреснителя или американской цепочки редкоземов способны увеличить стоимость бизнеса в разы. Обратная сторона честная: клинические неудачи, задержки регулятора, долги, разводнение капитала и обвал котировок. Чтобы это не превратилось в лотерею на копеечных бумагах, действовал фильтр «без penny stocks» — на дату фиксации все выбранные акции стоили дороже $5. Ближе всего к границе POET и ERII, и риск у них соответственно повышенный.</p>
+
+  <h2>Почему прошлое здесь особенно опасно принимать за прогноз</h2>
+  <p>Общая история этих портфелей начинается только <b>26 сентября 2024 года</b> — в тот день на биржу вышла BioAge Labs, самая молодая компания набора. Мы заранее знаем, кто прошёл отбор и оказался внутри, а состав собран уже после многих рыночных событий. Поэтому график ниже честно отвечает на вопрос «как такая корзина <i>вела бы себя</i>», но не доказывает, что темп повторится. Практический вывод простой: просадка около 40% для «Ставки» — не поломка модели, а нормальный возможный режим, и отдельная её бумага в тяжёлом рынке может потерять 60–80%, даже если долгосрочная идея жива.</p>
+
+  <div class="card">
+    <p class="sect">Путь портфелей · старт = 100</p>
+    <svg viewBox="0 0 920 360" role="img" aria-label="Путь двух портфелей и SPY, старт=100">
+<line x1="60" y1="320.0" x2="884" y2="320.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="52" y="324.0" text-anchor="end" class="axlbl">60</text>
+<line x1="60" y1="266.9" x2="884" y2="266.9" stroke="var(--grid)" stroke-width="1"/>
+<text x="52" y="270.9" text-anchor="end" class="axlbl">80</text>
+<line x1="60" y1="213.8" x2="884" y2="213.8" stroke="var(--axis)" stroke-width="1.3"/>
+<text x="52" y="217.8" text-anchor="end" class="axlbl">100</text>
+<line x1="60" y1="160.7" x2="884" y2="160.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="52" y="164.7" text-anchor="end" class="axlbl">120</text>
+<line x1="60" y1="107.6" x2="884" y2="107.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="52" y="111.6" text-anchor="end" class="axlbl">140</text>
+<line x1="60" y1="54.5" x2="884" y2="54.5" stroke="var(--grid)" stroke-width="1"/>
+<text x="52" y="58.5" text-anchor="end" class="axlbl">160</text>
+<text x="60.0" y="342" text-anchor="middle" class="axlbl">сен-24</text>
+<text x="257.8" y="342" text-anchor="middle" class="axlbl">мар-25</text>
+<text x="455.5" y="342" text-anchor="middle" class="axlbl">сен-25</text>
+<text x="653.3" y="342" text-anchor="middle" class="axlbl">мар-26</text>
+<text x="884.0" y="342" text-anchor="middle" class="axlbl">сен-26</text>
+<polyline fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="4 4" points="60.0,213.8 93.0,213.1 125.9,215.5 158.9,199.8 191.8,206.5 224.8,199.2 257.8,202.7 290.7,218.1 323.7,220.4 356.6,204.2 389.6,190.0 422.6,183.3 455.5,177.3 488.5,166.5 521.4,159.1 554.4,158.4 587.4,158.2 620.3,153.5 653.3,156.3 686.2,172.2 719.2,140.0 752.2,122.1 785.1,125.8 818.1,125.7 851.0,116.2 884.0,119.1"/>
+<polyline fill="none" stroke="#2f6fb0" stroke-width="1.8" opacity="0.55" points="60.0,213.8 93.0,213.3 125.9,226.4 158.9,212.8 191.8,235.1 224.8,237.9 257.8,244.3 290.7,268.5 323.7,257.5 356.6,257.3 389.6,231.3 422.6,213.0 455.5,210.2 488.5,173.5 521.4,157.9 554.4,170.5 587.4,155.4 620.3,118.2 653.3,107.8 686.2,150.3 719.2,123.5 752.2,100.4 785.1,81.8 818.1,131.7 851.0,87.5 884.0,110.1"/>
+<polyline fill="none" stroke="#2f8f5b" stroke-width="2.6" points="60.0,213.8 93.0,217.1 125.9,229.3 158.9,228.4 191.8,233.5 224.8,220.1 257.8,218.8 290.7,232.2 323.7,229.0 356.6,219.0 389.6,206.0 422.6,203.3 455.5,202.4 488.5,191.9 521.4,177.3 554.4,168.1 587.4,166.5 620.3,156.2 653.3,148.0 686.2,173.2 719.2,161.2 752.2,148.4 785.1,136.9 818.1,141.1 851.0,124.8 884.0,134.5"/>
+<polyline fill="none" stroke="#e0731a" stroke-width="2.6" points="60.0,213.8 93.0,209.7 125.9,223.7 158.9,197.0 191.8,238.7 224.8,257.2 257.8,270.1 290.7,302.5 323.7,286.2 356.6,293.7 389.6,259.4 422.6,229.2 455.5,224.8 488.5,165.0 521.4,148.9 554.4,184.9 587.4,157.6 620.3,94.3 653.3,82.0 686.2,142.7 719.2,100.9 752.2,67.0 785.1,41.0 818.1,145.6 851.0,76.9 884.0,112.1"/>
+<circle cx="884.0" cy="134.5" r="3.2" fill="#2f8f5b"/>
+<circle cx="884.0" cy="112.1" r="3.2" fill="#e0731a"/>
+</svg>
+    <div class="legend">
+      <span><span class="k" style="border-color:#2f8f5b"></span>Стабильность</span>
+      <span><span class="k" style="border-color:#e0731a"></span>Ставка</span>
+      <span><span class="k" style="border-color:#2f6fb0;opacity:.6"></span>50 / 50</span>
+      <span><span class="k" style="border-color:var(--muted);border-top-style:dashed"></span>SPY</span>
+    </div>
+    <p class="cap">Помесячно, 26.09.2024 → 14.09.2026. Скорр. цены Yahoo Finance, ежемесячная ребалансировка, без комиссий и налогов.</p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Итог, риск и просадка за общий период</p>
+    <div class="crow chead"><div>Портфель</div><div class="cv">Доходность</div><div class="cv">Волатильность</div><div class="cv">Макс. просадка</div></div>
+    <div class="crow"><div class="cn"><span class="cdot" style="background:#2f8f5b"></span>Стабильность</div><div class="cv">+29,9%</div><div class="cv">17,5%</div><div class="cv" style="color:var(--crit)">−17,0%</div></div>
+<div class="crow"><div class="cn"><span class="cdot" style="background:#e0731a"></span>Ставка</div><div class="cv">+38,3%</div><div class="cv">49,3%</div><div class="cv" style="color:var(--crit)">−47,4%</div></div>
+<div class="crow"><div class="cn"><span class="cdot" style="background:#2f6fb0"></span>50 / 50</div><div class="cv">+39,1%</div><div class="cv">30,8%</div><div class="cv" style="color:var(--crit)">−32,6%</div></div>
+<div class="crow"><div class="cn"><span class="cdot" style="background:var(--muted)"></span>SPY (весь рынок США)</div><div class="cv">+35,7%</div><div class="cv">16,6%</div><div class="cv" style="color:var(--crit)">−18,8%</div></div>
+    <p class="cap" style="text-align:left;margin-top:12px">«Ставка» дала больше рынка, но была почти <b>втрое волатильнее</b> «Стабильности» и переживала просадку <b>около половины капитала</b>. 50/50 сглаживает крайности, но это всё ещё агрессивный портфель акций.</p>
+  </div>
+
+  <div class="disc" style="border-left-color:var(--crit)">Честно о риске: просадка ~40% для «Ставки» — не авария модели, а нормальный возможный режим. В тяжёлом рынке отдельная акция этой части может потерять 60–80%, даже если долгосрочная идея жива. История коротка (с IPO BioAge 26.09.2024) и знает победителей заранее — принимайте её как «как такая корзина вела бы себя», а не как прогноз.</div>
+
+  <h2>Что сознательно не вошло в «Ставку»</h2>
+  <p>Applied Digital, Credo, United Therapeutics, MP Materials, GRAIL, 10x Genomics — интересные компании, но к сентябрю 2026 года их котировки уже заметно переоценились относительно недавних уровней. Они могут расти и дальше, однако это уже не чистая ставка на <i>ещё не случившийся</i> результат. Поэтому в рискованную корзину вошли истории, где ключевой этап впереди: решение регулятора, результат испытания, коммерческое масштабирование технологии, первый крупный выпуск продукции или запуск будущего рудника.</p>
+
+  <h2>Правила публичного эксперимента</h2>
+  <p>Старт — цена закрытия 14 сентября 2026 года, по условным <b>$20 000</b> на каждый портфель. Веса зафиксированы на старте; плановая ребалансировка — раз в квартал, в первый торговый день. Дивиденды считаются реинвестированными; налоги, комиссии и спреды в модель не входят. Замена компании возможна только после публичного объяснения: тезис сломан, компанию купили, делистинг или смена стратегии. Сравниваем с широким рынком США (SPY) и публикуем не только доходность, но и максимальную просадку с волатильностью — чтобы риск был виден так же ясно, как результат.</p>
+
+  <h2>Что сказал оптимизатор · Марковиц</h2>
+  <p>Прогнали оба набора через <a href="../pro/markowitz-us.html" style="color:var(--c25);font-weight:600;text-decoration:none">Марковиц США</a> — он строит границу эффективности и сравнивает портфель с математическими оптимумами. И независимо подтвердил разницу характеров.</p>
+
+  <div class="card"><p class="sect">Стабильность · против оптимумов</p>
+  <table class="mk"><thead><tr><th>Стратегия</th><th>Доходн.</th><th>Вол.</th><th>Просадка</th><th>Sharpe</th></tr></thead><tbody><tr class="you"><td>Ваш портфель «Стабильность»</td><td>25,4%</td><td>16,9%</td><td style="color:var(--crit)">−18,8%</td><td>1,24</td></tr><tr><td>Max Sharpe<span class="sub"> · мат. оптимум</span></td><td>42,9%</td><td>19,1%</td><td style="color:var(--crit)">−22,6%</td><td>2,01</td></tr><tr><td>Equal Weight<span class="sub"> · равные веса</span></td><td>26,5%</td><td>17,5%</td><td style="color:var(--crit)">−19,5%</td><td>1,25</td></tr><tr><td>Min Volatility<span class="sub"> · ≈ кэш</span></td><td>15,7%</td><td>12,6%</td><td style="color:var(--crit)">−13,1%</td><td>0,89</td></tr></tbody></table>
+  <p style="font-size:13px;color:var(--ink2);margin:12px 0 0;line-height:1.55">Стабильность легла почти <b>вплотную к Equal Weight</b> (Sharpe 1,24 против 1,25) и стоит у самой границы. Средняя корреляция бумаг — <b>0,22</b>, то есть реальная диверсификация, а не набор дубликатов. Математический Max Sharpe обещает больше (2,01), но за счёт концентрации.</p></div>
+
+  <div class="card"><p class="sect">Ставка · против оптимумов</p>
+  <table class="mk"><thead><tr><th>Стратегия</th><th>Доходн.</th><th>Вол.</th><th>Просадка</th><th>Sharpe</th></tr></thead><tbody><tr class="you"><td>Ваш портфель «Ставка»</td><td>4,0%</td><td>47,7%</td><td style="color:var(--crit)">−47,7%</td><td>−0,01</td></tr><tr><td>Max Sharpe<span class="sub"> · мат. оптимум</span></td><td>34,8%</td><td>45,1%</td><td style="color:var(--crit)">−46,0%</td><td>0,67</td></tr><tr><td>Equal Weight<span class="sub"> · равные веса</span></td><td>6,8%</td><td>44,0%</td><td style="color:var(--crit)">−44,9%</td><td>0,05</td></tr><tr><td>Min Volatility<span class="sub"> · ≈ кэш</span></td><td>4,3%</td><td>25,4%</td><td style="color:var(--crit)">−27,3%</td><td>−0,01</td></tr></tbody></table>
+  <p style="font-size:13px;color:var(--ink2);margin:12px 0 0;line-height:1.55">Здесь вывод жёсткий и честный: Sharpe <b>около нуля</b> при волатильности <b>48%</b> — за этот период рынок <b>не заплатил премии</b> за принятый риск. Это и есть суть «Ставки»: право на результат, которого ещё нет. Даже лучший из возможных наборов этих имён вытягивает Sharpe лишь до 0,67.</p></div>
+
+  <div class="disc">Важная оговорка самого оптимизатора: «оптимумы» Min Volatility и Min Drawdown почти целиком состоят из денежного инструмента (короткие гособлигации SGOV) — это математический угол кривой, а не портфель, которым стоит владеть. Цифры показывают границу возможного и служат ориентиром для сравнения, а не рекомендацией.</div>
+
+  <div class="cta">📈 Полный отчёт по каждому набору — граница эффективности, VaR/CVaR, Шарп/Сортино/Кальмар, крупнейшие просадки и корреляции — считает <a href="../pro/markowitz-us.html">Марковиц США</a>. Прогоните свой портфель и сравните.</div>
+
+  <p class="foot">Данные: скорректированные цены Yahoo Finance. Модельные портфели с условным капиталом $20 000 на каждый; ежемесячная ребалансировка, без комиссий и налогов. Это исследовательский публичный эксперимент, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+</div>
+</body>
+</html>
