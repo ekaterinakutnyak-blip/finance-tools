@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Уральская кузница · разбор 1П2026</title>
+<meta name="description" content="Финансовый разбор отчётности ПАО «Уральская кузница» (URKZ) по МСФО 6м2026 простым языком: формально крепость (капитал 87% активов, почти нет долга), но 86% активов — займы группе «Мечел», а поручительства за группу (72 млрд ₽) больше всего капитала. Прибыль — проценты от Мечела, а не металлургия. Реальный риск равен риску Мечела. Светофор 🟡🔴. Проверено автором. Не рекомендация.">
+<meta name="keywords" content="разбор отчётности Уральская кузница, Уралкуз, URKZ, Мечел, внутригрупповые займы, поручительства, МСФО 2026, риск на группе, светофор риска, ИИ-аналитик">
+<link rel="canonical" href="https://investtools.pro/novosti/razbor-uralkuz-1p2026.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/razbor-uralkuz-1p2026.html">
+<meta property="og:title" content="Разбор отчётности Уральская кузница 🟡🔴 — ИИ-аналитик">
+<meta property="og:description" content="Красивый баланс — это витрина: 86% активов это займы группе «Мечел», поручительства за неё больше капитала. Реальный риск равен риску Мечела. МСФО 6м2026 простым языком.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#b9b8b1;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;--tileaccent:#d03b3b;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}
+  *{box-sizing:border-box} body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 18px 56px}
+  .top{color:var(--ink2);font-size:13.5px;margin:0 0 22px} .top b{color:var(--ink)}
+  h1{font-size:27px;line-height:1.15;margin:0 0 16px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .badge{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:16px;border:1px solid var(--border);border-radius:999px;padding:.3em .85em;margin:0 0 12px}
+  .lead b{color:var(--ink)} .owner{color:var(--ink2);font-size:13px;margin:12px 0 0}
+  .voice{color:var(--muted);font-style:italic;font-size:12.5px;margin:16px 0 2px}
+  h2{font-size:15px;margin:26px 0 8px} p{margin:.55em 0}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:12px system-ui;fill:var(--muted)} .vlbl{font:600 12px system-ui;fill:var(--ink)}
+  .legend{display:flex;gap:20px;justify-content:center;font-size:13px;color:var(--ink2);margin-top:6px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .tile .l{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .tile .v{font-size:26px;font-weight:700;color:var(--tileaccent);margin-top:6px;letter-spacing:-.5px}
+  .tile .n{font-size:12px;color:var(--ink2);margin-top:3px}
+  .note{color:var(--ink2);font-size:12.5px;margin-top:14px}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hair)}
+  .row:first-child{border-top:0} .row .k{font-size:14px} .row .k .s{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+  .row .val{font:600 15px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  ul{margin:.4em 0;padding-left:1.2em} li{margin:.28em 0;color:var(--ink2);font-size:14px}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .gh{color:var(--good)} .wh{color:var(--warn)} .ch{color:var(--crit)}
+  .callout{background:var(--card);border:1px solid var(--border);border-left:4px solid #d03b3b;border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink2);margin:0 0 6px}
+
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:16px}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}
+  .sitenav a{color:var(--ink2);text-decoration:none}
+  .sitenav a:hover{color:var(--c26)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../razbory-ii-analitika.html" class="back-link">← Разборы ИИ-аналитика</a>
+  <p class="top"><b>ИИ-аналитик отчётности.</b> Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает
+    его за вас, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком:
+    насколько бизнес устойчив и где риск. Методология Екатерины Кутняк.</p>
+  <h1>ПАО «Уральская кузница»</h1>
+  <div class="card lead">
+    <div class="badge">🟡🔴 своих денег не хватает · риск на группе</div>
+    <p>Сам по себе баланс выглядит на «зелёный»: капитал 61 млрд ₽ (87% активов), стабильная прибыль, крошечный долг. <b>Но это витрина.</b> 86% активов — это <b>займы, выданные группе «Мечел»</b> (41 млрд напрямую материнской компании), а поручительства Уралкуза за долги группы (72 млрд) <b>больше всего его капитала</b> (61 млрд). Мечел — в зоне неопределённости непрерывности (отрицательный капитал, нарушенные ковенанты). Поэтому реальный риск Уралкуза равен риску Мечела, а не его собственным красивым цифрам. Оценивать Уралкуз в отрыве от группы нельзя — светофор привязан к Мечелу.</p>
+    <p class="owner"><b>О компании:</b> ПАО «Уральская кузница» — производитель стальных штамповок, дочерняя компания группы «Мечел». Публичная (URKZ). По сути — внутригрупповой финансовый центр: кредитует материнскую группу.</p>
+    <p class="voice">РАЗБОР ИИ · голос Екатерины</p>
+  </div>
+  <h2>1. Что показывает баланс</h2><p>Формально — крепость: активы 70 млрд ₽, капитал 61 млрд, собственный долг крошечный (4,3 млрд), деньги 0,15 млрд. Если смотреть только на эти цифры — почти безупречно.</p><h2>2. Из чего состоят активы</h2><p>75% активов (52,5 млрд ₽) — «внеоборотные финансовые активы», и это прямо займы, выданные группе. С учётом дебиторки и авансов связанным сторонам требования к группе Мечел — <b>60,6 млрд ₽, или 86% всех активов</b>. Из них 41,3 млрд — напрямую материнской компании. Собственно производственные активы (штамповки) — небольшая часть.</p><h2>3. Откуда прибыль</h2><p>Основной доход — не металлургия, а проценты по займам группе: финансовые доходы 1,48 млрд ₽ за полугодие (из них 1,25 млрд — от материнской компании). Операционная прибыль от штамповок — всего 0,19 млрд. То есть Уралкуз зарабатывает, кредитуя Мечел, а не на производстве.</p><h2>4. Главный риск — возвратность</h2><p>Аудитор Мечела пишет о риске непрерывности. Если группа реструктурирует долг, займы Уралкуза группе, скорее всего, тоже продлят или спишут — а это 86% его активов. Тогда «капитал 61 млрд» окажется во многом бумажным.</p><h2>5. Поручительства за группу</h2><p>Уралкуз выдал поручительства за обязательства группы на 72 млрд ₽ — <b>больше собственного капитала</b> (61 млрд). Если их предъявят, капитал обнуляется. Это забалансовый риск сверх займов.</p><h2>6. Своя отчётность молчит</h2><p>Аудитор Уралкуза дал заключение без оговорок и без упоминания рисков группы. Но это не значит, что риска нет: он просто вынесен в материнскую компанию, а Уралкуз — канал.</p><h2>7. Общая устойчивость</h2><p>Как самостоятельный бизнес — прибыльный и почти без долга. Как кредит — его нельзя оценивать в отрыве: деньги инвестора через Уралкуз фактически идут в Мечел.</p>
+  <div class="card" style="margin-top:24px"><p><span class="gh">✅ Формально сильное:</span> почти нет собственного долга; стабильная прибыль; большой номинальный капитал; аудит без оговорок.</p><p><span class="ch">🔴 По существу:</span> 86% активов — займы группе Мечел, которая в зоне неопределённости непрерывности; поручительства за группу (72 млрд) больше капитала (61 млрд); прибыль — это в основном проценты от Мечела, а не металлургия; возвратность зависит от реструктуризации группы.</p><p>🧭 <b>Общий вывод.</b> Своих денег формально в избытке, но все они отданы в долг проблемной материнской группе и заложены в поручительства за неё. Самостоятельная устойчивость — витрина; реальный риск равен риску Мечела (🔴). Поэтому светофор — 🟡🔴, вплотную к дефолтной зоне группы. Оценивать Уралкуз в отрыве от Мечела нельзя.</p></div>
+  <div class="card">
+    <p class="sect">Активы Уралкуза — это требования к группе Мечел</p>
+    <svg viewBox="0 0 900 370" role="img" aria-label="Ключевые показатели">
+<line x1="70" y1="300.0" x2="884" y2="300.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="304.0" text-anchor="end" class="axlbl">0</text>
+<line x1="70" y1="230.0" x2="884" y2="230.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="234.0" text-anchor="end" class="axlbl">20</text>
+<line x1="70" y1="160.0" x2="884" y2="160.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="164.0" text-anchor="end" class="axlbl">40</text>
+<line x1="70" y1="90.0" x2="884" y2="90.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="94.0" text-anchor="end" class="axlbl">60</text>
+<line x1="70" y1="20.0" x2="884" y2="20.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="24.0" text-anchor="end" class="axlbl">80</text>
+<rect x="134.8" y="60.2" width="34" height="239.8" rx="3" fill="var(--c25)"/>
+<text x="151.8" y="55.2" text-anchor="middle" class="vlbl">68,5</text>
+<rect x="174.8" y="54.3" width="34" height="245.7" rx="3" fill="var(--c26)"/>
+<text x="191.8" y="49.3" text-anchor="middle" class="vlbl">70,2</text>
+<text x="171.8" y="318" text-anchor="middle" class="axlbl">Активы</text>
+<text x="171.8" y="332" text-anchor="middle" class="axlbl">всего</text>
+<rect x="338.2" y="97.7" width="34" height="202.3" rx="3" fill="var(--c25)"/>
+<text x="355.2" y="92.7" text-anchor="middle" class="vlbl">57,8</text>
+<rect x="378.2" y="87.9" width="34" height="212.1" rx="3" fill="var(--c26)"/>
+<text x="395.2" y="82.9" text-anchor="middle" class="vlbl">60,6</text>
+<text x="375.2" y="318" text-anchor="middle" class="axlbl">Требования к</text>
+<text x="375.2" y="332" text-anchor="middle" class="axlbl">группе</text>
+<rect x="541.8" y="89.0" width="34" height="211.1" rx="3" fill="var(--c25)"/>
+<text x="558.8" y="84.0" text-anchor="middle" class="vlbl">60,3</text>
+<rect x="581.8" y="86.1" width="34" height="213.9" rx="3" fill="var(--c26)"/>
+<text x="598.8" y="81.1" text-anchor="middle" class="vlbl">61,1</text>
+<text x="578.8" y="320" text-anchor="middle" class="axlbl">Капитал</text>
+<rect x="745.2" y="47.0" width="34" height="253.0" rx="3" fill="var(--c25)"/>
+<text x="762.2" y="42.0" text-anchor="middle" class="vlbl">72,3</text>
+<rect x="785.2" y="47.0" width="34" height="253.0" rx="3" fill="var(--c26)"/>
+<text x="802.2" y="42.0" text-anchor="middle" class="vlbl">72,3</text>
+<text x="782.2" y="318" text-anchor="middle" class="axlbl">Поручительства за</text>
+<text x="782.2" y="332" text-anchor="middle" class="axlbl">группу</text>
+</svg>
+    <div class="legend"><span><span class="dot" style="background:var(--c25)"></span>31.12.2025</span>
+      <span><span class="dot" style="background:var(--c26)"></span>30.06.2026</span></div>
+    <p class="note" style="text-align:center">млрд ₽. Требования к группе ≈ весь капитал; поручительства за долги группы больше капитала. Уралкуз — по сути кредитор Мечела.</p>
+  </div>
+  
+  <div class="card">
+    <p class="sect">Коэффициенты из отчёта (по последним 12 мес.)</p>
+    <div class="tiles"><div class="tile"><div class="l">Требования к группе / активы</div><div class="v">86 %</div><div class="n">почти весь баланс</div></div><div class="tile"><div class="l">Поручительства / капитал</div><div class="v">1,18×</div><div class="n">больше капитала</div></div><div class="tile"><div class="l">Собственный чистый долг</div><div class="v">≈0,4× EBITDA</div><div class="n">формально низкий</div></div></div>
+  </div>
+  <div class="card">
+    <p class="sect">Скоринговые модели риска банкротства</p>
+    <p class="note" style="margin:0">Скоринговые модели по отчётности Уралкуза дадут ложно-зелёный сигнал: они видят низкий долг и большой капитал, но не видят, что активы — это займы проблемной группе, а капитал заложен в поручительства. Классический случай, когда модели обманывают. Ориентир — риск группы Мечел (🔴).</p>
+  </div>
+  <div class="card">
+    <p class="sect">Что ИИ взял из отчёта — сверьте с первоисточником</p>
+    <div><div class="row"><div class="k">Выручка (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">6 457 535 тыс ₽</div></div><div class="row"><div class="k">Операционная прибыль (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">192 417 тыс ₽</div></div><div class="row"><div class="k">Финансовые доходы = проценты по займам<span class="s">ОПУ / прим. 4</span></div><div class="val">1 476 409 тыс ₽</div></div><div class="row"><div class="k">— в т.ч. от материнской компании<span class="s">прим. 4</span></div><div class="val">1 245 488 тыс ₽</div></div><div class="row"><div class="k">Чистая прибыль (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">867 377 тыс ₽</div></div><div class="row"><div class="k">Займы, выданные группе (внеоб. фин. активы)<span class="s">баланс / прим. 10</span></div><div class="val">52 515 953 тыс ₽</div></div><div class="row"><div class="k">— займы материнской компании<span class="s">прим. 4</span></div><div class="val">41 319 852 тыс ₽</div></div><div class="row"><div class="k">Итого требования к связанным сторонам<span class="s">прим. 4</span></div><div class="val">60 610 686 тыс ₽</div></div><div class="row"><div class="k">Поручительства за долги группы<span class="s">прим. 4 (31.12.2025)</span></div><div class="val">72 309 962 тыс ₽</div></div><div class="row"><div class="k">Итого капитал<span class="s">баланс</span></div><div class="val">61 127 855 тыс ₽</div></div><div class="row"><div class="k">Собственные кредиты и займы<span class="s">баланс</span></div><div class="val">4 266 558 тыс ₽</div></div><div class="row"><div class="k">Денежные средства<span class="s">баланс</span></div><div class="val">152 523 тыс ₽</div></div><div class="row"><div class="k">Итого активы<span class="s">баланс</span></div><div class="val">70 187 044 тыс ₽</div></div></div>
+  </div>
+  <h2 style="margin-top:26px">Ключевые коэффициенты</h2>
+  <div class="card" style="margin-top:6px"><div class="row"><div class="k">Требования к группе Мечел / активы</div><div class="val">86 %</div></div><div class="row"><div class="k">Займы материнской компании</div><div class="val">41,3 млрд ₽</div></div><div class="row"><div class="k">Поручительства за группу / капитал</div><div class="val">1,18×</div></div><div class="row"><div class="k">Собственный чистый долг</div><div class="val">≈4,1 млрд ₽ (крошечный)</div></div><div class="row"><div class="k">Капитал / активы (формально)</div><div class="val">87 %</div></div><div class="row"><div class="k">Источник прибыли</div><div class="val">проценты от группы, не металл</div></div></div>
+  <h2 style="margin-top:26px">Чего не хватило / на что смотреть</h2>
+  <ul><li>Раскрытие ставки и графика по займам группе — в обобщённой отчётности их нет.</li><li>Ход реструктуризации Мечела — от него зависит возвратность 86% активов.</li><li>Не предъявят ли поручительства за группу (72 млрд ₽).</li><li>Обесценение внутригрупповых займов в будущих отчётах.</li></ul>
+  <p class="foot">Данные: обобщённая консолидированная отчётность ПАО «Уральская кузница» по МСФО за 2025 год и 6 мес. 2026, отчёт эмитента. Имя материнской компании в раскрытиях скрыто (Постановления Правительства РФ), принадлежность к группе Мечел подтверждается. Часть баланса снята OCR. Коэффициенты считает детерминированный движок; ИИ извлекает строки. Это разбор отчётности, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+
+  <p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a> · <a href="../razbory-ii-analitika.html">Разборы ИИ</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>

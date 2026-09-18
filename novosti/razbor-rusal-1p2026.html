@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РУСАЛ · разбор 1П2026</title>
+<meta name="description" content="Финансовый разбор отчётности МКПАО «ОК РУСАЛ» (RUAL) по МСФО 6м2026 простым языком: восстановление (выручка +11%, EBITDA +64%, прибыль в плюсе), но чистый долг 5,8× EBITDA и тонкое покрытие процентов. Подушка — доля в Норникеле (26,4%, рыночно ~7,7 млрд $ ≈ весь чистый долг). Санкционная оговорка о непрерывности, но капитал положительный — это не Мечел. Светофор 🟡🔴. Проверено автором. Не рекомендация.">
+<meta name="keywords" content="разбор отчётности РУСАЛ, ОК РУСАЛ, RUAL, алюминий, Норникель, МСФО 2026, долговая нагрузка, покрытие процентов, санкционная оговорка, светофор риска, ИИ-аналитик">
+<link rel="canonical" href="https://investtools.pro/novosti/razbor-rusal-1p2026.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/razbor-rusal-1p2026.html">
+<meta property="og:title" content="Разбор отчётности РУСАЛ 🟡🔴 — ИИ-аналитик">
+<meta property="og:description" content="Восстановление бизнеса, но высокая нагрузка (5,8× EBITDA) и тонкое покрытие. Доля в Норникеле почти покрывает весь чистый долг. Это не Мечел: капитал положительный. МСФО 6м2026 простым языком.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#b9b8b1;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;--tileaccent:#e0a01a;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}
+  *{box-sizing:border-box} body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 18px 56px}
+  .top{color:var(--ink2);font-size:13.5px;margin:0 0 22px} .top b{color:var(--ink)}
+  h1{font-size:27px;line-height:1.15;margin:0 0 16px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .badge{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:16px;border:1px solid var(--border);border-radius:999px;padding:.3em .85em;margin:0 0 12px}
+  .lead b{color:var(--ink)} .owner{color:var(--ink2);font-size:13px;margin:12px 0 0}
+  .voice{color:var(--muted);font-style:italic;font-size:12.5px;margin:16px 0 2px}
+  h2{font-size:15px;margin:26px 0 8px} p{margin:.55em 0}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:12px system-ui;fill:var(--muted)} .vlbl{font:600 12px system-ui;fill:var(--ink)}
+  .legend{display:flex;gap:20px;justify-content:center;font-size:13px;color:var(--ink2);margin-top:6px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .tile .l{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .tile .v{font-size:26px;font-weight:700;color:var(--tileaccent);margin-top:6px;letter-spacing:-.5px}
+  .tile .n{font-size:12px;color:var(--ink2);margin-top:3px}
+  .note{color:var(--ink2);font-size:12.5px;margin-top:14px}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hair)}
+  .row:first-child{border-top:0} .row .k{font-size:14px} .row .k .s{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+  .row .val{font:600 15px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  ul{margin:.4em 0;padding-left:1.2em} li{margin:.28em 0;color:var(--ink2);font-size:14px}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .gh{color:var(--good)} .wh{color:var(--warn)} .ch{color:var(--crit)}
+  .callout{background:var(--card);border:1px solid var(--border);border-left:4px solid #e0a01a;border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink2);margin:0 0 6px}
+
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:16px}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}
+  .sitenav a{color:var(--ink2);text-decoration:none}
+  .sitenav a:hover{color:var(--c26)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../razbory-ii-analitika.html" class="back-link">← Разборы ИИ-аналитика</a>
+  <p class="top"><b>ИИ-аналитик отчётности.</b> Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает
+    его за вас, посчитает коэффициенты по методологиям АКРА и Эксперт РА и объяснит человеческим языком:
+    насколько бизнес устойчив и где риск. Методология Екатерины Кутняк.</p>
+  <h1>МКПАО «ОК РУСАЛ»</h1>
+  <div class="card lead">
+    <div class="badge">🟡🔴 своих денег не хватает</div>
+    <p>Один из крупнейших производителей алюминия. Бизнес восстанавливается — выручка +11%, скорр. EBITDA +64% за полугодие, прибыль вернулась в плюс. Но нагрузка высокая: чистый долг ~<b>5,8× EBITDA</b> (был 7,6×), а покрытие процентов тонкое (~1,9× по кассовым, ~1,1× по начисленным). Аудитор отмечает неопределённость непрерывности — но это <b>санкционная оговорка</b>, а не кризис как у Мечела: капитал положительный, компания прибыльна. Ключевая подушка — доля в «Норникеле» (26,4%, рыночная ~7,7 млрд $), которая почти покрывает весь чистый долг.</p>
+    <p class="owner"><b>О компании:</b> МКПАО «ОК РУСАЛ» — один из крупнейших производителей алюминия в мире; отчётность в долларах США. Публичная (Мосбиржа, RUAL). Владеет 26,4% «Норникеля» (учёт по долевому методу). Аудитор — Б1-Аудит; заключение с разделом о непрерывности (санкционная оговорка).</p>
+    <p class="voice">РАЗБОР ИИ · голос Екатерины</p>
+  </div>
+  <h2>1. Масштаб</h2><p>Выручка за полугодие — 8,34 млрд $, на 11% больше прошлогодней (цены на алюминий выше). За 2025 год — 14,8 млрд $.</p><h2>2. Прибыль и EBITDA</h2><p>Скорректированная EBITDA за полугодие 1,23 млрд $, на 64% больше (было 0,75). За 2025 — 1,05 млрд (упала с 1,49 в 2024). Чистая прибыль полугодия +0,42 млрд $ против −0,09 годом ранее. Восстановление налицо; помогает и доля в прибыли ассоциированных компаний (Норникель и др.) — 0,50 млрд за полугодие.</p><h2>3. Долговая нагрузка</h2><p>Общий долг 9,9 млрд $, чистый ~8,9 млрд. К годовой EBITDA — 5,8×, снизилось с 7,6× на конец 2025 (за счёт роста EBITDA). Нагрузка высокая, но траектория вниз.</p><h2>4. Покрытие процентов</h2><p>По кассовым процентам EBITDA покрывает их ~1,9 раза; по начисленным финрасходам (там сидят курсовые и прочее) — около 1,1×. Тонко: заработок почти весь уходит на обслуживание долга.</p><h2>5. Норникель — подушка</h2><p>Доля 26,4%: балансовая стоимость 5,1 млрд $, рыночная — 7,7 млрд. Рыночная стоимость доли почти равна всему чистому долгу (8,9 млрд). Дивиденды Норникеля — источник денег (в 2025 всего 0,12 млрд, в 2024 — 0,42). Это ликвидный стратегический актив-подстраховка.</p><h2>6. Непрерывность деятельности</h2><p>Оговорка аудитора — про санкции и геополитику, стандартная для российских экспортёров. В отличие от Мечела: капитал положительный (12,2 млрд $), прибыль есть, ковенанты не нарушены. Не путать с кризисом Мечела.</p><h2>7. Общая устойчивость</h2><p>Высоко закредитована, но восстанавливается, с ценным подстраховочным активом (Норникель). Своих денег на проценты хватает впритык — отсюда 🟡🔴, но с сильными смягчающими факторами.</p>
+  <div class="card" style="margin-top:24px"><p><span class="gh">✅ Сильное:</span> восстановление (выручка +11%, EBITDA +64%, прибыль в плюсе); доля в Норникеле (рыночная ~7,7 млрд $ ≈ чистому долгу) — ликвидная подушка; положительный капитал (47% активов); нагрузка снижается (7,6× → 5,8×).</p><p><span class="wh">⚠️ Слабое:</span> нагрузка высокая (5,8× EBITDA); покрытие процентов тонкое; за 2025 год — чистый убыток; оговорка о непрерывности (санкции); дивиденды Норникеля в 2025 упали.</p><p>🧭 <b>Общий вывод.</b> Своих денег хватает впритык: заработок почти весь уходит на проценты по большому долгу, за 2025 был убыток — отсюда 🟡🔴. Но это не Мечел: капитал положительный, бизнес восстанавливается, а доля в Норникеле (рыночно ≈ весь чистый долг) — серьёзная подстраховка. Риск управляемый при растущих ценах на алюминий и поступлениях от Норникеля.</p></div>
+  <div class="card">
+    <p class="sect">Ключевые показатели</p>
+    <svg viewBox="0 0 900 370" role="img" aria-label="Ключевые показатели">
+<line x1="70" y1="300.0" x2="884" y2="300.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="304.0" text-anchor="end" class="axlbl">-1</text>
+<line x1="70" y1="272.0" x2="884" y2="272.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="276.0" text-anchor="end" class="axlbl">0</text>
+<line x1="70" y1="244.0" x2="884" y2="244.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="248.0" text-anchor="end" class="axlbl">1</text>
+<line x1="70" y1="216.0" x2="884" y2="216.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="220.0" text-anchor="end" class="axlbl">2</text>
+<line x1="70" y1="188.0" x2="884" y2="188.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="192.0" text-anchor="end" class="axlbl">3</text>
+<line x1="70" y1="160.0" x2="884" y2="160.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="164.0" text-anchor="end" class="axlbl">4</text>
+<line x1="70" y1="132.0" x2="884" y2="132.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="136.0" text-anchor="end" class="axlbl">5</text>
+<line x1="70" y1="104.0" x2="884" y2="104.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="108.0" text-anchor="end" class="axlbl">6</text>
+<line x1="70" y1="76.0" x2="884" y2="76.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="80.0" text-anchor="end" class="axlbl">7</text>
+<line x1="70" y1="48.0" x2="884" y2="48.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="52.0" text-anchor="end" class="axlbl">8</text>
+<line x1="70" y1="20.0" x2="884" y2="20.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="24.0" text-anchor="end" class="axlbl">9</text>
+<line x1="70" y1="272.0" x2="884" y2="272.0" stroke="var(--axis)" stroke-width="1.5"/>
+<rect x="134.8" y="61.4" width="34" height="210.6" rx="3" fill="var(--c25)"/>
+<text x="151.8" y="56.4" text-anchor="middle" class="vlbl">7,52</text>
+<rect x="174.8" y="38.5" width="34" height="233.5" rx="3" fill="var(--c26)"/>
+<text x="191.8" y="33.5" text-anchor="middle" class="vlbl">8,34</text>
+<text x="171.8" y="320" text-anchor="middle" class="axlbl">Выручка</text>
+<rect x="338.2" y="251.0" width="34" height="21.0" rx="3" fill="var(--c25)"/>
+<text x="355.2" y="246.0" text-anchor="middle" class="vlbl">0,75</text>
+<rect x="378.2" y="237.6" width="34" height="34.4" rx="3" fill="var(--c26)"/>
+<text x="395.2" y="232.6" text-anchor="middle" class="vlbl">1,23</text>
+<text x="375.2" y="318" text-anchor="middle" class="axlbl">Скорр.</text>
+<text x="375.2" y="332" text-anchor="middle" class="axlbl">EBITDA</text>
+<rect x="541.8" y="272.0" width="34" height="2.5" rx="3" fill="var(--c25)"/>
+<text x="558.8" y="288.5" text-anchor="middle" class="vlbl">-0,09</text>
+<rect x="581.8" y="260.2" width="34" height="11.8" rx="3" fill="var(--c26)"/>
+<text x="598.8" y="255.2" text-anchor="middle" class="vlbl">0,42</text>
+<text x="578.8" y="318" text-anchor="middle" class="axlbl">Чистая</text>
+<text x="578.8" y="332" text-anchor="middle" class="axlbl">прибыль</text>
+<rect x="745.2" y="263.9" width="34" height="8.1" rx="3" fill="var(--c25)"/>
+<text x="762.2" y="258.9" text-anchor="middle" class="vlbl">0,29</text>
+<rect x="785.2" y="258.0" width="34" height="14.0" rx="3" fill="var(--c26)"/>
+<text x="802.2" y="253.0" text-anchor="middle" class="vlbl">0,5</text>
+<text x="782.2" y="318" text-anchor="middle" class="axlbl">Доля</text>
+<text x="782.2" y="332" text-anchor="middle" class="axlbl">Норникеля</text>
+</svg>
+    <div class="legend"><span><span class="dot" style="background:var(--c25)"></span>1П2025</span>
+      <span><span class="dot" style="background:var(--c26)"></span>1П2026</span></div>
+    <p class="note" style="text-align:center">За 6 месяцев, млрд $. Бизнес восстанавливается: выручка, EBITDA и прибыль — вверх.</p>
+  </div>
+  <div class="card"><p class="sect">Подушка: доля в Норникеле почти покрывает чистый долг</p><svg viewBox="0 0 620 150" role="img" aria-label="Чистый долг 8,9 против рыночной стоимости доли в Норникеле 7,7 млрд долларов"><line x1="240" y1="16" x2="240" y2="120" stroke="var(--grid)" stroke-width="1"/><text x="236" y="45" text-anchor="end" class="axlbl">Чистый долг</text><rect x="240" y="30" width="330" height="28" rx="3" fill="var(--crit)"/><text x="578" y="49" class="vlbl">8,9</text><text x="236" y="92" text-anchor="end" class="axlbl">Норникель (рынок)</text><rect x="240" y="78" width="285" height="28" rx="3" fill="var(--c26)"/><text x="533" y="97" class="vlbl">7,7</text></svg><p class="note">Рыночная стоимость доли в «Норникеле» (26,4%, ~7,7 млрд $) почти равна всему чистому долгу (~8,9 млрд $). Это ликвидный стратегический актив-подстраховка — то, чего нет у Мечела.</p></div>
+  <div class="card">
+    <p class="sect">Коэффициенты из отчёта (по последним 12 мес.)</p>
+    <div class="tiles"><div class="tile"><div class="l">Чистый долг / EBITDA</div><div class="v">5,8×</div><div class="n">было 7,6× — снижается</div></div><div class="tile"><div class="l">Покрытие процентов</div><div class="v">~1,9×</div><div class="n">тонко, по кассовым</div></div><div class="tile"><div class="l">Капитал / активы</div><div class="v">47,6 %</div><div class="n">положительный</div></div></div>
+  </div>
+  <div class="card">
+    <p class="sect">Скоринговые модели риска банкротства</p>
+    <p class="note" style="margin:0">На данных убыточного 2025 года модели показали бы повышенный риск; на восстановлении 2026 — умереннее. Для закредитованного экспортёра с крупным ассоциированным активом (Норникель) генеричные модели грубоваты — не учитывают рыночную стоимость доли. Ориентир — светофор и снижение нагрузки.</p>
+  </div>
+  <div class="card">
+    <p class="sect">Что ИИ взял из отчёта — сверьте с первоисточником</p>
+    <div><div class="row"><div class="k">Выручка (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">8 338 млн $</div></div><div class="row"><div class="k">Скорр. EBITDA (6 мес 2026)<span class="s">ОПУ / прим.</span></div><div class="val">1 230 млн $</div></div><div class="row"><div class="k">Скорр. EBITDA за 12 мес (LTM)<span class="s">1 053 − 748 + 1 230</span></div><div class="val">1 535 млн $</div></div><div class="row"><div class="k">Чистая прибыль (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">419 млн $</div></div><div class="row"><div class="k">Доля в прибыли ассоц. (Норникель и др.)<span class="s">ОПУ, прим. 15</span></div><div class="val">503 млн $</div></div><div class="row"><div class="k">Финансовые расходы (6 мес 2026)<span class="s">ОПУ</span></div><div class="val">832 млн $</div></div><div class="row"><div class="k">Проценты уплаченные (6 мес 2026)<span class="s">ОДДС</span></div><div class="val">407 млн $</div></div><div class="row"><div class="k">Кредиты и займы (30.06.2026)<span class="s">баланс</span></div><div class="val">9 939 млн $</div></div><div class="row"><div class="k">Чистый долг (расчётно)<span class="s">долг − деньги</span></div><div class="val">≈8 901 млн $</div></div><div class="row"><div class="k">Денежные средства<span class="s">баланс</span></div><div class="val">1 038 млн $</div></div><div class="row"><div class="k">Инвестиция в Норникель (баланс, 31.12.2025)<span class="s">прим. 15</span></div><div class="val">5 090 млн $</div></div><div class="row"><div class="k">Норникель — рыночная стоимость (31.12.2025)<span class="s">прим. 15</span></div><div class="val">7 685 млн $</div></div><div class="row"><div class="k">Итого капитал<span class="s">баланс</span></div><div class="val">12 154 млн $</div></div><div class="row"><div class="k">Итого активы<span class="s">баланс</span></div><div class="val">25 531 млн $</div></div></div>
+  </div>
+  <h2 style="margin-top:26px">Ключевые коэффициенты</h2>
+  <div class="card" style="margin-top:6px"><div class="row"><div class="k">Чистый долг / EBITDA (LTM)</div><div class="val">5,8×</div></div><div class="row"><div class="k">Покрытие процентов (по кассовым)</div><div class="val">~1,9×</div></div><div class="row"><div class="k">EBITDA-маржа (LTM)</div><div class="val">9,8 %</div></div><div class="row"><div class="k">Капитал / активы</div><div class="val">47,6 %</div></div><div class="row"><div class="k">Доля в Норникеле (рыночная)</div><div class="val">~7,7 млрд $</div></div><div class="row"><div class="k">Чистый долг (расчётно)</div><div class="val">~8,9 млрд $</div></div></div>
+  <h2 style="margin-top:26px">Чего не хватило / на что смотреть</h2>
+  <ul><li>Цены на алюминий — главный драйвер EBITDA.</li><li>Дивиденды Норникеля (в 2025 упали до 0,12 млрд $).</li><li>Рефинансирование краткосрочного долга (8,6 млрд $).</li><li>Продолжит ли снижаться ND/EBITDA (7,6× → 5,8×).</li></ul>
+  <p class="foot">Данные: консолидированная отчётность МКПАО «ОК РУСАЛ» по МСФО за 2025 год и 6 мес. 2026 (в долларах США; аудитор Б1-Аудит; заключение с санкционной оговоркой о непрерывности) и отчёт эмитента. Доля в Норникеле — по долевому методу. Чистый долг на 30.06.2026 — расчётная оценка. Коэффициенты считает детерминированный движок; ИИ извлекает строки. Это разбор отчётности, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+
+  <p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a> · <a href="../razbory-ii-analitika.html">Разборы ИИ</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>
