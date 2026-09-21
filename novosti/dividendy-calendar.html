@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дивидендный календарь · investtools.pro</title>
+<meta name="description" content="Интерактивный дивидендный календарь по 10 российским эмитентам: ближайшие события, план поступлений по месяцам, доход модели и режим «мои акции». Прогнозы ДОХОДЪ, статусы сверены с раскрытием. Не индивидуальная рекомендация.">
+<link rel="canonical" href="https://investtools.pro/novosti/dividendy-calendar.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://investtools.pro/novosti/dividendy-calendar.html">
+<meta property="og:title" content="Дивидендный календарь — 10 эмитентов">
+<meta property="og:description" content="Ближайшие отсечки, план поступлений по месяцам и доход по вашему капиталу или вашим акциям.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#b9b8b1;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;--field:#fff}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;--field:#111}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;--field:#111}
+  *{box-sizing:border-box}
+  body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:26px 18px 60px}
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:14px}
+  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
+  h1{font-size:28px;line-height:1.12;margin:0 0 8px;letter-spacing:-.5px}
+  .sub{color:var(--ink2);font-size:14px;margin:0 0 6px}
+  .disc{font-size:12.5px;color:var(--ink2);background:var(--card);border:1px solid var(--border);border-left:4px solid var(--warn);border-radius:10px;padding:11px 14px;margin:12px 0 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:14px 0}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 12px}
+  .near{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:640px){.near{grid-template-columns:1fr}}
+  .nev{border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+  .nev .dt{font-weight:700;font-size:14px}
+  .nev .tt{font-size:13px;color:var(--ink);margin:3px 0 2px}
+  .nev .st{font-size:11.5px;color:var(--muted)}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:6px 0 4px}
+  .toggle{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .toggle button{border:0;background:transparent;color:var(--ink2);font:inherit;font-size:13px;padding:8px 14px;cursor:pointer}
+  .toggle button.on{background:var(--ink);color:var(--plane);font-weight:600}
+  label.fld{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  input,select{font:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--border);border-radius:9px;padding:8px 10px}
+  input[type=number]{width:150px}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:12px 0 4px}
+  .btn{font:inherit;font-size:13px;color:var(--c25);background:transparent;border:1px solid var(--border);border-radius:9px;padding:8px 12px;cursor:pointer}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:640px){.kpis{grid-template-columns:1fr}}
+  .kpi{border:1px solid var(--border);border-radius:12px;padding:13px 15px}
+  .kpi .lbl{font-size:12px;font-weight:600;display:flex;align-items:center;gap:.45em;color:var(--ink2)}
+  .kpi .val{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:3px}
+  .kpi .cnt{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+  .d-appr{background:var(--c26)} .d-reco{background:var(--warn)} .d-fore{background:var(--c25)}
+  .chartwrap{overflow-x:auto}
+  svg{display:block;overflow:visible}
+  .axlbl{font:11px system-ui;fill:var(--muted)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:.4em}
+  .tblwrap{overflow-x:auto;margin:2px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:7px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
+  td{padding:8px;border-bottom:1px solid var(--hair);vertical-align:top}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .b-appr{color:#fff;background:var(--c26)} .b-reco{color:var(--ink);background:#f6e4bd;border:1px solid var(--warn)} .b-fore{color:var(--ink2);background:var(--hair)}
+  :root[data-theme="dark"] .b-reco{color:var(--ink);background:#4a3c1c}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .b-reco{color:var(--ink);background:#4a3c1c}}
+  .tk{font-weight:700}
+  .cap{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .mine{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media(max-width:640px){.mine{grid-template-columns:1fr}}
+  .mine .mrow{display:flex;align-items:center;gap:8px;font-size:13px}
+  .mine .mrow b{width:64px} .mine input{width:100%}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}.sitenav a{color:var(--ink2);text-decoration:none}.sitenav a:hover{color:var(--c26)}
+  ul.cav{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink2)} ul.cav li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="portfeli-dividendy-rf.html" class="back-link">&larr; Российский дивидендный портфель</a>
+  <p class="kicker">Инструмент &middot; дивидендный портфель</p>
+  <h1>Дивидендный календарь</h1>
+  <p class="sub">Ближайшие отсечки, план поступлений по месяцам и доход по десяти эмитентам &mdash; по капиталу модели или по вашим акциям.</p>
+  <div class="disc">Данные проверены 21.09.2026, автообновление источников не подключено. Прогнозы ДОХОДЪ не равны утверждённым выплатам; статусы HEAD и TATNP сверены с публикациями о раскрытии. Месяц поступления &mdash; сценарное допущение (дата реестра плюс сдвиг), а не срок зачисления брокером. Не индивидуальная инвестиционная рекомендация.</div>
+
+  <div class="card">
+    <p class="sect">Ближайшие события</p>
+    <div class="near" id="near"></div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <div class="toggle" id="mode">
+        <button data-mode="model" class="on">Модель портфеля</button>
+        <button data-mode="mine">Мои акции</button>
+      </div>
+      <label class="fld" id="capwrap">Капитал модели, ₽
+        <input type="number" id="capital" value="1000000" min="0" step="10000">
+      </label>
+      <label class="fld">Сдвиг поступления
+        <select id="shift">
+          <option value="0">В месяц реестра</option>
+          <option value="1" selected>На следующий месяц</option>
+          <option value="2">Через месяц</option>
+        </select>
+      </label>
+    </div>
+    <div id="minewrap" style="display:none;margin-top:6px">
+      <p class="cap" style="margin:0 0 8px">Впишите число акций по каждой бумаге &mdash; доход считается по вашим позициям и дивиденду на акцию.</p>
+      <div class="mine" id="mine"></div>
+    </div>
+    <p class="cap">Расчёт модели: капитал &times; вес / цена обзора на 18.09.2026, с условными дробными акциями. Это не фактические покупки; все суммы &mdash; до налогов.</p>
+
+    <div class="filters">
+      <label class="fld">Бумага<select id="fTicker"><option value="">Все</option></select></label>
+      <label class="fld">Статус<select id="fStatus"><option value="">Все</option><option value="approved">Утверждено</option><option value="recommended">Рекомендовано</option><option value="forecast">Прогноз</option></select></label>
+      <label class="fld">Месяц реестра<select id="fMonth"><option value="">Все</option></select></label>
+      <button class="btn" id="reset">Сбросить фильтры</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="sect">Доход по выбранным выплатам</p>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="card">
+    <p class="sect">План поступлений по месяцам</p>
+    <div class="chartwrap"><svg id="chart" width="920" height="300" role="img" aria-label="План поступлений по месяцам"></svg></div>
+    <div class="legend">
+      <span><span class="dot d-appr"></span>Утверждено</span>
+      <span><span class="dot d-reco"></span>Рекомендовано</span>
+      <span><span class="dot d-fore"></span>Прогноз</span>
+    </div>
+    <p class="cap">Пустые месяцы означают отсутствие учтённых выплат, а не подтверждённый нулевой доход. Месяц поступления &mdash; сценарий (реестр + сдвиг), не срок выплаты эмитентом.</p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Календарь выплат и отсечек</p>
+    <div class="tblwrap"><table id="tbl"><thead><tr>
+      <th>Бумага</th><th>Статус</th><th class="r">На акцию</th><th>Реестр</th><th>Купить до</th><th class="r">Сумма</th><th>Поступление</th>
+    </tr></thead><tbody id="rows"></tbody></table></div>
+    <p class="cap" id="tblcap"></p>
+  </div>
+
+  <div class="card">
+    <p class="sect">Как читать</p>
+    <ul class="cav">
+      <li><b>Статусы.</b> «Прогноз» &rarr; «Рекомендовано» &rarr; «Утверждено». Смена статуса заменяет событие, а не создаёт вторую выплату. NTM-итог не добавляется отдельной строкой.</li>
+      <li><b>Даты.</b> Точный день отсечки у прогнозов не подтверждён &mdash; показан месяц. Дата реестра определяет право на дивиденд, а не день зачисления.</li>
+      <li><b>Оговорки.</b> У MDMG нулевая прогнозная строка 27.11.2026 не трактуется как отмена: исключена как не создающая потока (прогноз 39,21 + 47,05 = 86,26 сохранён). TATNP: при отсутствии кворума повторное собрание 30.09.2026.</li>
+    </ul>
+  </div>
+
+  <p class="foot">Прогнозы дивидендов &mdash; ДОХОДЪ (проверено 21.09.2026); статусы HEAD и TATNP &mdash; сообщения Финам о раскрытии эмитентов; цены и веса &mdash; обзор портфеля на 18.09.2026. Это исследовательский публичный инструмент, не автоматический поток данных и не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+  <p class="sitenav">Автор: Екатерина Кутняк &middot; <a href="portfeli-dividendy-rf.html">Дивидендный портфель</a> &middot; <a href="../portfeli-idei.html">Портфели-идеи</a> &middot; <a href="../index.html">Все калькуляторы</a> &middot; <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+<script>
+const PORTFOLIO=[
+ {t:'SBER',c:'Сбербанк',w:18,price:276.82},
+ {t:'MOEX',c:'Московская биржа',w:14,price:147.97},
+ {t:'LKOH',c:'ЛУКОЙЛ',w:12,price:5216},
+ {t:'TATNP',c:'Татнефть-п',w:10,price:590.9},
+ {t:'TRNFP',c:'Транснефть-п',w:8,price:1015},
+ {t:'LSNGP',c:'Ленэнерго-п',w:10,price:334.5},
+ {t:'X5',c:'ИКС 5',w:8,price:1790.5},
+ {t:'HEAD',c:'Хэдхантер',w:8,price:2807},
+ {t:'MDMG',c:'Мать и дитя',w:8,price:1304.3},
+ {t:'IRAO',c:'Интер РАО',w:4,price:2.33},
+];
+const PX=Object.fromEntries(PORTFOLIO.map(p=>[p.t,p]));
+// events: status approved|recommended|forecast
+const EVENTS=[
+ {t:'HEAD',dps:200,status:'approved',period:'I полугодие 2026',recordDate:'2026-09-28',recordMonth:'2026-09',lastBuy:'2026-09-25',meeting:null,note:'Утверждение и отсечка подтверждены публикацией Финам от 21.09.2026.'},
+ {t:'TATNP',dps:32.88,status:'recommended',period:'I полугодие 2026',recordDate:'2026-10-13',recordMonth:'2026-10',lastBuy:'2026-10-12',meeting:'2026-09-23',note:'Отсечка 13.10.2026 предложена, не утверждена. При отсутствии кворума повторное собрание 30.09.2026.'},
+ {t:'LKOH',dps:557,status:'forecast',period:'Промежуточный 2026',recordDate:null,recordMonth:'2026-12',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ, не решение эмитента.'},
+ {t:'MDMG',dps:39.21,status:'forecast',period:'Промежуточный 2026',recordDate:null,recordMonth:'2026-11',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'SBER',dps:44.53,status:'forecast',period:'Годовая 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'MOEX',dps:20.44,status:'forecast',period:'Годовая 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'LKOH',dps:371,status:'forecast',period:'Финальный 2026',recordDate:null,recordMonth:'2027-05',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'TATNP',dps:19.99,status:'forecast',period:'III квартал 2026',recordDate:null,recordMonth:'2027-01',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'TATNP',dps:29.23,status:'forecast',period:'Финальный 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'TRNFP',dps:175.28,status:'forecast',period:'Годовая 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'LSNGP',dps:42.09,status:'forecast',period:'Годовая 2026',recordDate:null,recordMonth:'2027-06',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'X5',dps:61.86,status:'forecast',period:'Промежуточный 2026',recordDate:null,recordMonth:'2027-01',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'X5',dps:84.28,status:'forecast',period:'Финальный 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'HEAD',dps:150.91,status:'forecast',period:'Финальный 2026',recordDate:null,recordMonth:'2027-05',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ (остаток NTM сверх утверждённых 200 ₽).'},
+ {t:'MDMG',dps:47.05,status:'forecast',period:'Финальный 2026',recordDate:null,recordMonth:'2027-07',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+ {t:'IRAO',dps:0.2913,status:'forecast',period:'Годовая 2026',recordDate:null,recordMonth:'2027-06',lastBuy:null,meeting:null,note:'Прогноз ДОХОДЪ.'},
+];
+const SL={approved:'Утверждено',recommended:'Рекомендовано',forecast:'Прогноз'};
+const SB={approved:'b-appr',recommended:'b-reco',forecast:'b-fore'};
+const SCOL={approved:'var(--c26)',recommended:'var(--warn)',forecast:'var(--c25)'};
+const MON=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const MONS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const TODAY='2026-09-21';
+
+let mode='model', myShares=Object.fromEntries(PORTFOLIO.map(p=>[p.t,0]));
+
+const rub=(n,d=2)=>n.toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d})+' ₽';
+const monthName=(ym)=>{const[y,m]=ym.split('-').map(Number);return MON[m-1]+' '+y;};
+const monthShort=(ym)=>{const[y,m]=ym.split('-').map(Number);return MONS[m-1]+' '+String(y).slice(2);};
+const addMonths=(ym,k)=>{let[y,m]=ym.split('-').map(Number);m-=1;m+=k;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+String(m+1).padStart(2,'0');};
+const fmtDate=(iso)=>{const[y,m,d]=iso.split('-');return d+'.'+m+'.'+y;};
+function sharesFor(t){if(mode==='mine')return myShares[t]||0;const cap=+document.getElementById('capital').value||0;const p=PX[t];return cap*p.w/100/p.price;}
+function amountFor(ev){return sharesFor(ev.t)*ev.dps;}
+function shift(){return +document.getElementById('shift').value;}
+function receiptMonth(ev){return addMonths(ev.recordMonth,shift());}
+
+function nearest(){
+ const items=[];
+ EVENTS.forEach(ev=>{
+  if(ev.meeting)items.push({date:ev.meeting,t:ev.t,title:'Собрание акционеров',sub:SL[ev.status]});
+  if(ev.lastBuy)items.push({date:ev.lastBuy,t:ev.t,title:'Последний день покупки',sub:'С правом на дивиденд'});
+  if(ev.recordDate)items.push({date:ev.recordDate,t:ev.t,title:'Дата реестра',sub:ev.status==='recommended'?'Предложена, до утверждения':'Отсечка'});
+ });
+ return items.filter(i=>i.date>=TODAY).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+}
+function filtered(){
+ const ft=document.getElementById('fTicker').value,fs=document.getElementById('fStatus').value,fm=document.getElementById('fMonth').value;
+ return EVENTS.filter(e=>(!ft||e.t===ft)&&(!fs||e.status===fs)&&(!fm||e.recordMonth===fm));
+}
+function render(){
+ // nearest
+ document.getElementById('near').innerHTML=nearest().map(i=>
+  `<div class="nev"><div class="dt">${fmtDate(i.date)}</div><div class="tt"><b>${i.t}</b> · ${i.title}</div><div class="st">${i.sub}</div></div>`).join('');
+ const rows=filtered();
+ // kpi
+ const agg={approved:[0,0],recommended:[0,0],forecast:[0,0]};
+ rows.forEach(e=>{agg[e.status][0]+=amountFor(e);agg[e.status][1]++;});
+ const kd=[['approved','d-appr','Утверждено'],['recommended','d-reco','Рекомендовано'],['forecast','d-fore','Прогноз']];
+ document.getElementById('kpis').innerHTML=kd.map(([k,dc,lbl])=>
+  `<div class="kpi"><div class="lbl"><span class="dot ${dc}"></span>${lbl}</div><div class="val">${rub(agg[k][0])}</div><div class="cnt">${agg[k][1]} ${agg[k][1]===1?'выплата':(agg[k][1]>=2&&agg[k][1]<=4?'выплаты':'выплат')}</div></div>`).join('');
+ // monthly stacks
+ const months={};
+ rows.forEach(e=>{const m=receiptMonth(e);(months[m]=months[m]||{approved:0,recommended:0,forecast:0})[e.status]+=amountFor(e);});
+ drawChart(months);
+ // table
+ const sorted=rows.slice().sort((a,b)=>{const ka=a.recordDate||a.recordMonth+'-15',kb=b.recordDate||b.recordMonth+'-15';return ka.localeCompare(kb)||a.t.localeCompare(b.t);});
+ document.getElementById('rows').innerHTML=sorted.map(e=>{
+  const reg=e.recordDate?fmtDate(e.recordDate)+(e.status==='recommended'?' · предложен':''):'≈ '+monthName(e.recordMonth);
+  const lb=e.lastBuy?fmtDate(e.lastBuy):'—';
+  return `<tr><td><span class="tk">${e.t}</span> <span style="color:var(--muted);font-size:12px">${PX[e.t].c}</span><div style="color:var(--muted);font-size:11.5px">${e.period}</div></td>`+
+   `<td><span class="badge ${SB[e.status]}">${SL[e.status]}</span></td>`+
+   `<td class="r">${e.dps.toLocaleString('ru-RU',{maximumFractionDigits:4})} ₽</td>`+
+   `<td>${reg}</td><td>${lb}</td><td class="r">${rub(amountFor(e))}</td><td>≈ ${monthName(receiptMonth(e))}</td></tr>`;
+ }).join('');
+ const nn=rows.length,n10=nn%10,n100=nn%100;const evw=(n10===1&&n100!==11)?'событие':((n10>=2&&n10<=4)&&!(n100>=12&&n100<=14)?'события':'событий');
+ document.getElementById('tblcap').textContent=`${nn} ${evw} из ${EVENTS.length}. Фильтры действуют на доход, график и таблицу; блок ближайших событий показывает всю десятку.`;
+}
+function drawChart(months){
+ const svg=document.getElementById('chart');const W=920,H=300,padL=52,padB=40,padT=14,padR=10;
+ const keys=Object.keys(months).sort();
+ const tot=keys.map(m=>months[m].approved+months[m].recommended+months[m].forecast);
+ const max=Math.max(1,...tot);
+ const niceMax=(()=>{const p=Math.pow(10,Math.floor(Math.log10(max)));const n=Math.ceil(max/p)*p;return n<max*1.05?n+p:n;})();
+ const plotH=H-padB-padT,plotW=W-padL-padR;
+ let s=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--axis)"/>`;
+ for(let g=0;g<=4;g++){const v=niceMax*g/4;const y=padT+plotH-plotH*g/4;s+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--grid)"/><text x="${padL-6}" y="${y+4}" text-anchor="end" class="axlbl">${v>=1000?(v/1000).toLocaleString('ru-RU',{maximumFractionDigits:0})+' тыс.':Math.round(v)}</text>`;}
+ const n=keys.length;const bw=Math.min(46,plotW/Math.max(n,1)*0.6);
+ keys.forEach((m,i)=>{
+  const cx=padL+plotW*(i+0.5)/Math.max(n,1);let yb=padT+plotH;
+  [['forecast'],['recommended'],['approved']].forEach(([k])=>{const val=months[m][k];if(val<=0)return;const h=plotH*val/niceMax;yb-=h;s+=`<rect x="${cx-bw/2}" y="${yb}" width="${bw}" height="${h}" fill="${SCOL[k]}" rx="2"/>`;});
+  s+=`<text x="${cx}" y="${padT+plotH+16}" text-anchor="middle" class="axlbl">${monthShort(m)}</text>`;
+  if(tot[i]>0)s+=`<text x="${cx}" y="${yb-4}" text-anchor="middle" class="axlbl" style="fill:var(--ink2)">${tot[i]>=1000?(tot[i]/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})+'т':Math.round(tot[i])}</text>`;
+ });
+ svg.innerHTML=s;
+}
+// build filters, my-shares, listeners
+(function init(){
+ const ft=document.getElementById('fTicker');PORTFOLIO.forEach(p=>ft.insertAdjacentHTML('beforeend',`<option value="${p.t}">${p.t} · ${p.c}</option>`));
+ const fm=document.getElementById('fMonth');[...new Set(EVENTS.map(e=>e.recordMonth))].sort().forEach(m=>fm.insertAdjacentHTML('beforeend',`<option value="${m}">${monthName(m)}</option>`));
+ document.getElementById('mine').innerHTML=PORTFOLIO.map(p=>`<label class="mrow"><b>${p.t}</b><input type="number" min="0" step="1" value="0" data-t="${p.t}"></label>`).join('');
+ document.querySelectorAll('#mine input').forEach(inp=>inp.addEventListener('input',e=>{myShares[e.target.dataset.t]=+e.target.value||0;render();}));
+ document.querySelectorAll('#mode button').forEach(b=>b.addEventListener('click',()=>{
+  mode=b.dataset.mode;document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('capwrap').style.display=mode==='model'?'':'none';
+  document.getElementById('minewrap').style.display=mode==='mine'?'':'none';render();
+ }));
+ ['capital','shift','fTicker','fStatus','fMonth'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+ document.getElementById('reset').addEventListener('click',()=>{['fTicker','fStatus','fMonth'].forEach(id=>document.getElementById(id).value='');render();});
+ render();
+})();
+</script>
+</body>
+</html>
