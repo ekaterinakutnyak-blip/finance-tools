@@ -115,10 +115,39 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
   .cc .rr{text-align:right;white-space:nowrap;font-size:12.5px;color:var(--ink2);align-self:center}
   .cc .tag{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:11.5px;color:var(--ink2)}
   .cc .note{color:var(--muted);font-size:12.5px;margin-top:16px}
+  .cc .cc-link{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--c25);transition:color .12s}
+  .cc .cc-link:hover{color:var(--c25)}
+  .cc .cc-link::after{content:" ›";color:var(--c25);font-weight:700}
   .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--plane);font-size:12px;line-height:1.45;padding:8px 10px;border-radius:8px;opacity:0;transition:opacity .1s;z-index:20;max-width:240px;box-shadow:0 6px 22px rgba(0,0,0,.22)}
   .tip b{color:#fff}
   .method{font-size:13px;color:var(--ink2)}
   .method summary{cursor:pointer;font-weight:600;color:var(--ink);padding:6px 0}
+  .taxnote{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--c26);border-radius:12px;padding:16px 18px;margin:22px 0}
+  .taxnote h3{margin:0 0 8px;font-size:16px}
+  .taxnote p{margin:0 0 9px;font-size:14px;color:var(--ink)}
+  .taxnote p:last-child{margin-bottom:0}
+  .taxnote .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .taxnote .tx{border:1px solid var(--border);border-radius:11px;padding:12px 14px}
+  .taxnote .tx .t{font-weight:700;font-size:13.5px;margin-bottom:4px}
+  .taxnote .tx.b .t{color:var(--c26)}.taxnote .tx.d .t{color:var(--c25)}
+  .taxnote .tx p{font-size:13px;color:var(--ink2);margin:0}
+  @media(max-width:680px){.taxnote .two{grid-template-columns:1fr}}
+  /* calculator section */
+  .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px}
+  .stress{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+  .scell{border-radius:11px;padding:11px 10px;text-align:center;border:1px solid var(--border)}
+  .scell .b{font-size:11px;color:var(--muted);font-weight:700}
+  .scell .p{font-size:17px;font-weight:700;margin-top:3px}
+  .scell .r{font-size:11px;margin-top:1px;color:var(--ink2)}
+  .scell.up{background:rgba(12,163,12,.09);border-color:rgba(12,163,12,.28)}.scell.up .p{color:var(--good)}
+  .scell.dn{background:rgba(208,59,59,.08);border-color:rgba(208,59,59,.26)}.scell.dn .p{color:var(--crit)}
+  .zonebar{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:12px 0 8px}
+  .zonebar span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+  .zlegend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--ink2)}
+  .zlegend b{color:var(--ink)} .zlegend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+  .calcbtn{display:inline-flex;align-items:center;gap:8px;background:var(--c25);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:11px;margin-top:16px}
+  .calcbtn:hover{filter:brightness(1.06)}
+  @media(max-width:680px){.cgrid{grid-template-columns:1fr 1fr}.stress{grid-template-columns:repeat(3,1fr)}}
   .foot{color:var(--muted);font-size:12px;margin-top:30px;border-top:1px solid var(--grid);padding-top:12px}
   .sitenav{color:var(--muted);font-size:12px;margin-top:10px}.sitenav a{color:var(--ink2);text-decoration:none}.sitenav a:hover{color:var(--c26)}
   @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:1fr 1fr}.nearest{grid-template-columns:1fr}.endvals{grid-template-columns:1fr}h1{font-size:24px}}
@@ -126,7 +155,7 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
 </head>
 <body>
 <div class="wrap">
-  <a href="../razbory-ii-analitika.html" class="back-link">← Разборы ИИ-аналитика</a>
+  <a href="../portfeli-idei.html" class="back-link">← Портфели и идеи</a>
   <h1>Портфель облигаций AA–AAA · 3 года</h1>
   <p class="lede">Реальный портфель из 15 облигаций высокого кредитного качества на 1 млн ₽. Я веду его <b>вживую</b>: каждую неделю переоцениваю по рыночным ценам и ставлю точку на графике — <b>против двух настоящих банковских вкладов</b>. Купоны реинвестирую: пришедшие деньги покупают новые бумаги. Ниже — сам портфель, график сравнения, календарь купонов и кредитная карта каждого эмитента.</p>
   <div class="stats" id="stats"></div>
@@ -168,6 +197,16 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
     <p>Поэтому на графике вклад Альфы посчитан по-честному: 11,39% с капитализацией → <b>1 404 636 ₽</b>. И тогда видно главное: разрыв между «простым в конце» (ГПБ, +360 000) и «капитализацией» (Альфа, +405 000) — не пропасть, а 45 000 ₽ за три года. А настоящий вопрос не «12 или 13,5», а готовы ли вы взять кредитный риск ради того, что портфель <i>рассчитывает</i> обогнать оба вклада.</p>
   </div>
 
+  <div class="taxnote">
+    <h3>💸 Про налоги — честно</h3>
+    <p>Все три линии на графике нарисованы <b>до налогов</b>: так они сравнимы по-честному. Но налог у облигаций и у вклада — разный, и это меняет итог в пользу облигаций.</p>
+    <div class="two">
+      <div class="tx b"><div class="t">Облигации — налог можно обойти</div><p>Купоны облагаются НДФЛ 13%. Но если держать бумаги на <b>ИИС</b> (с освобождением дохода) — этого налога можно не платить вовсе. Плюс при владении от 3 лет работает льгота на доход от роста цены. То есть «ожидаемую» доходность реально оставить себе почти целиком.</p></div>
+      <div class="tx d"><div class="t">Вклад — налог не обойти</div><p>С процентов сверх необлагаемого минимума (1 млн ₽ × максимальная ключевая ставка за год) удерживают НДФЛ 13%. И никакого ИИС для вклада не существует — укрыться от этого налога нельзя.</p></div>
+    </div>
+    <p>Вывод простой: <b>после налогов разрыв между облигациями и вкладом обычно шире, чем на графике</b> — если облигации держать на ИИС. Это не налоговая консультация: ставки и льготы уточняйте под свою ситуацию.</p>
+  </div>
+
   <h2>Календарь купонов</h2>
   <p class="h2sub">Когда и сколько приходит — по реальному количеству бумаг в портфеле. Это вспомогательный экран: каждую субботу смотрю, какие купоны пришли за неделю, и реинвестирую их в новые бумаги.</p>
   <div class="kpis" id="kpis"></div>
@@ -196,24 +235,24 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
   </details>
 
   <h2>Кредитная карта портфеля</h2>
-  <p class="h2sub">За чей счёт эти купоны. Светофор по кредитному качеству каждого из 15 эмитентов — сильные сверху, с нюансами ниже.</p>
+  <p class="h2sub">За чей счёт эти купоны. Светофор по кредитному качеству каждого из 15 эмитентов — сильные сверху, с нюансами ниже. Названия с подчёркиванием ведут в полный разбор отчётности эмитента.</p>
   <div class="cc">
 <p class="sub">15 эмитентов, фокус — кредитное качество. Светофор по методологии Екатерины Кутняк: корпораты — по ND/EBITDA и покрытию, банки — по АКРА (капитал, качество портфеля, поддержка).</p>
 <div class="legend2"><span>🚦 Шкала:</span><span>🟢 надёжно</span><span>🟢🟡 крепко</span><span>🟡🟢 крепко с нюансом</span><span>🟡 со слабостями</span><span>🟡🔴 своих денег не хватает</span><span>🔴 дефолтная зона</span></div>
 <p class="csect">Разобраны в этой сессии и ранее (по кредитному качеству, сильные → с нюансами)</p>
-<div class="card"><div class="r"><div class="sig">🟢</div><div><div class="nm2">Сбербанк<span class="rt2">AAA</span></div><div class="ds">Крепость по всем измерениям: рекордная прибыль, ROE 24%, эффективность эталонная (CIR 28%), капитал достаточный. Зона внимания одна — рост NPL (4,9→5,5%), но прибыль перекрывает риск с запасом.</div><div style="margin-top:6px"><span class="tag">банк · СЗКО</span></div></div><div class="rr">2025+1П2026</div></div>
-<div class="r"><div class="sig">🟢</div><div><div class="nm2">Газпром нефть<span class="rt2">AAA</span></div><div class="ds">Крепостной баланс: чистый долг всего 1,15× EBITDA, покрытие ~15×. 2025 слабый (EBITDA −21%), но 1П2026 — сильное восстановление (операционная прибыль почти удвоилась).</div><div style="margin-top:6px"><span class="tag">нефть</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="card"><div class="r"><div class="sig">🟢</div><div><div class="nm2"><a class="cc-link" href="razbor-sberbank-1p2026.html">Сбербанк</a><span class="rt2">AAA</span></div><div class="ds">Крепость по всем измерениям: рекордная прибыль, ROE 24%, эффективность эталонная (CIR 28%), капитал достаточный. Зона внимания одна — рост NPL (4,9→5,5%), но прибыль перекрывает риск с запасом.</div><div style="margin-top:6px"><span class="tag">банк · СЗКО</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟢</div><div><div class="nm2"><a class="cc-link" href="razbor-gazpromneft-1p2026.html">Газпром нефть</a><span class="rt2">AAA</span></div><div class="ds">Крепостной баланс: чистый долг всего 1,15× EBITDA, покрытие ~15×. 2025 слабый (EBITDA −21%), но 1П2026 — сильное восстановление (операционная прибыль почти удвоилась).</div><div style="margin-top:6px"><span class="tag">нефть</span></div></div><div class="rr">2025+1П2026</div></div>
 <div class="r"><div class="sig">🟢</div><div><div class="nm2">Атомэнергопром<span class="rt2">AAA</span></div><div class="ds">Квазисуверен Росатома, низкая долговая нагрузка. Разобран ранее (закрыт по 1кв2026) — надёжный инвестгрейд.</div><div style="margin-top:6px"><span class="tag">энергетика</span></div></div><div class="rr">1кв2026</div></div>
-<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">СИБУР Холдинг<span class="rt2">AAA</span></div><div class="ds">Сильный баланс (ND/EBITDA 2,7×, покрытие 3,5×, маржа 36%). Нюанс циклический: 2025 слабый (EBITDA −22% на ценах и рубле), падение прибыли в 1П2026 — нормализация разовых курсовых.</div><div style="margin-top:6px"><span class="tag">нефтехимия</span></div></div><div class="rr">2025+1П2026</div></div>
-<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">РЖД<span class="rt2">AAA</span></div><div class="ds">Держится на государстве и тарифах: покрытие тонкое (EBIT/проценты 1,1×), чистая прибыль почти ноль, FCF отрицательный. Нагрузка умеренная (3,4×), но профиль опирается на суверена, а не на генерацию.</div><div style="margin-top:6px"><span class="tag">инфраструктура · квазисуверен</span></div></div><div class="rr">2025+1П2026</div></div>
-<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">Газпромбанк<span class="rt2">AA+</span></div><div class="ds">Лучшее в группе качество портфеля (NPL 1,7%, COR 0,6%), капитал вырос (Н20.0 12,1%). Нюанс — прибыльность просела в 2025 (ROE 16,5→10,1%), но 1П2026 +34%.</div><div style="margin-top:6px"><span class="tag">банк · СЗКО</span></div></div><div class="rr">2025+1П2026</div></div>
-<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">Авто Финанс Банк<span class="rt2">AA*</span></div><div class="ds">Капитал-крепость (Н1.0 16,5%), прибыльный и растущий (ROE ~12%, в 1П2026 ~18%), COR низкий. Нюанс — монолайн: весь бизнес завязан на авторынок и акционера (АвтоВАЗ), небольшой масштаб.</div><div style="margin-top:6px"><span class="tag">банк · автокэптив</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2"><a class="cc-link" href="razbor-sibur-1p2026.html">СИБУР Холдинг</a><span class="rt2">AAA</span></div><div class="ds">Сильный баланс (ND/EBITDA 2,7×, покрытие 3,5×, маржа 36%). Нюанс циклический: 2025 слабый (EBITDA −22% на ценах и рубле), падение прибыли в 1П2026 — нормализация разовых курсовых.</div><div style="margin-top:6px"><span class="tag">нефтехимия</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2"><a class="cc-link" href="razbor-rzd-1p2026.html">РЖД</a><span class="rt2">AAA</span></div><div class="ds">Держится на государстве и тарифах: покрытие тонкое (EBIT/проценты 1,1×), чистая прибыль почти ноль, FCF отрицательный. Нагрузка умеренная (3,4×), но профиль опирается на суверена, а не на генерацию.</div><div style="margin-top:6px"><span class="tag">инфраструктура · квазисуверен</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2"><a class="cc-link" href="razbor-gazprombank-1p2026.html">Газпромбанк</a><span class="rt2">AA+</span></div><div class="ds">Лучшее в группе качество портфеля (NPL 1,7%, COR 0,6%), капитал вырос (Н20.0 12,1%). Нюанс — прибыльность просела в 2025 (ROE 16,5→10,1%), но 1П2026 +34%.</div><div style="margin-top:6px"><span class="tag">банк · СЗКО</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟢🟡</div><div><div class="nm2"><a class="cc-link" href="razbor-avtofinansbank-1p2026.html">Авто Финанс Банк</a><span class="rt2">AA*</span></div><div class="ds">Капитал-крепость (Н1.0 16,5%), прибыльный и растущий (ROE ~12%, в 1П2026 ~18%), COR низкий. Нюанс — монолайн: весь бизнес завязан на авторынок и акционера (АвтоВАЗ), небольшой масштаб.</div><div style="margin-top:6px"><span class="tag">банк · автокэптив</span></div></div><div class="rr">2025+1П2026</div></div>
 <div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">ФосАгро<span class="rt2">AAA</span></div><div class="ds">Низкая нагрузка, сильный экспортёр. Разобран ранее (2025, свежая 1П2026 в базе) — нюанс цикличности цен на удобрения.</div><div style="margin-top:6px"><span class="tag">удобрения</span></div></div><div class="rr">2025 (1П2026 в базе)</div></div>
 <div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">Первый контейнерный терминал<span class="rt2">ruAA</span></div><div class="ds">Высокомаржинальный терминальный бизнес, сильный денежный поток. Разобран ранее (есть 1П2026).</div><div style="margin-top:6px"><span class="tag">порты · стивидор</span></div></div><div class="rr">2025+1П2026</div></div>
 <div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">ДелоПортс<span class="rt2">ruAA</span></div><div class="ds">Портовый холдинг Группы «Дело», крепкий кэшфлоу. Разобран в паре с ТрансКонтейнером (2025+1П2026).</div><div style="margin-top:6px"><span class="tag">порты</span></div></div><div class="rr">2025+1П2026</div></div>
 <div class="r"><div class="sig">🟢🟡</div><div><div class="nm2">ВымпелКом<span class="rt2">ruAA</span></div><div class="ds">Стабильный денежный поток, умеренная нагрузка. Разобран ранее (есть 1П2026).</div><div style="margin-top:6px"><span class="tag">телеком</span></div></div><div class="rr">1П2026</div></div>
-<div class="r"><div class="sig">🟡🟢</div><div><div class="nm2">НоваБев Групп<span class="rt2">ruAA-</span></div><div class="ds">Низкая реальная нагрузка (1,0× без аренды), но прибыль −38% под ставкой, а выплаты акционерам сверх заработанного финансируются долгом.</div><div style="margin-top:6px"><span class="tag">алкоголь+ритейл</span></div></div><div class="rr">2025+1П2026</div></div>
-<div class="r"><div class="sig">🟡🟢</div><div><div class="nm2">Промсвязьбанк<span class="rt2">AAA</span></div><div class="ds">Держит господдержка (100% государство, докапитализация): 2025 — убыток на утроении резервов, капитал тонкий (Н1.0 под стрессом), раскрытие ограничено. 1П2026 — сильный возврат к прибыли.</div><div style="margin-top:6px"><span class="tag">банк · опорный ОПК</span></div></div><div class="rr">2025+1П2026</div></div></div>
+<div class="r"><div class="sig">🟡🟢</div><div><div class="nm2"><a class="cc-link" href="razbor-novabev-1p2026.html">НоваБев Групп</a><span class="rt2">ruAA-</span></div><div class="ds">Низкая реальная нагрузка (1,0× без аренды), но прибыль −38% под ставкой, а выплаты акционерам сверх заработанного финансируются долгом.</div><div style="margin-top:6px"><span class="tag">алкоголь+ритейл</span></div></div><div class="rr">2025+1П2026</div></div>
+<div class="r"><div class="sig">🟡🟢</div><div><div class="nm2"><a class="cc-link" href="razbor-psb-1p2026.html">Промсвязьбанк</a><span class="rt2">AAA</span></div><div class="ds">Держит господдержка (100% государство, докапитализация): 2025 — убыток на утроении резервов, капитал тонкий (Н1.0 под стрессом), раскрытие ограничено. 1П2026 — сильный возврат к прибыли.</div><div style="margin-top:6px"><span class="tag">банк · опорный ОПК</span></div></div><div class="rr">2025+1П2026</div></div></div>
 <p class="csect">Требует внимания</p>
 <div class="card"><div class="r"><div class="sig">🟡</div><div><div class="nm2">VK (Мэйл.Ру Финанс)</div><div class="ds">Эмитент-SPV группы VK. Сама VK убыточна и с повышенной нагрузкой — самый слабый кредит в наборе. Свежая 1П2026 в базе; смотреть на снижение долга и выход к прибыли.</div><div style="margin-top:6px"><span class="tag">IT · SPV</span></div></div><div class="rr">1П2026</div></div></div>
 <p class="csect">Отдельный контур</p>
@@ -221,6 +260,59 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
 <p class="note">В сессии разобраны по свежей отчётности (2025 + 1П2026): РЖД, СИБУР, Газпром нефть, Сбербанк, Газпромбанк, Промсвязьбанк, Авто Финанс Банк. Остальные — по разборам в базе (у части свежесть 1П2026 уже есть, светофор ориентировочный из прежнего разбора — точный в файле эмитента).</p>
 <p class="note"><b>Общая картина.</b> Портфель плотный по качеству: почти всё — AAA/AA+, нижняя точка среди корпоратов — НоваБев (AA-). 2025 год был спадным для сырьевиков (нефть, нефтехимия) и убыточным/слабым для части банков (ПСБ, ГПБ) под ставкой и резервами — но свежий срез 1П2026 почти везде показывает разворот вверх. Единственный реальный слабый кредит — VK; банки-госструктуры (ПСБ, Сбер) держатся на поддержке и восстановлении. *Рейтинг Авто Финанс Банка (AA-уровень) — сверить актуальную ступень.</p>
   </div>
+
+  <h2>Портфель глазами калькулятора</h2>
+  <p class="h2sub">Я прогнала портфель через свой калькулятор облигаций. Он видит то, чего не покажет обычная таблица: насколько портфель качнётся при движении ставки, какие у бумаг кредитные спреды и какова расчётная вероятность дефолта.</p>
+
+  <div class="cgrid">
+    <div class="kpi"><div class="lab">YTM</div><div class="val">16,08%</div><div class="note">доходность к погашению, средневзвеш.</div></div>
+    <div class="kpi"><div class="lab">Мод. дюрация</div><div class="val">2,04</div><div class="note">при +1% ставки цена ≈ −2%</div></div>
+    <div class="kpi"><div class="lab">Выпуклость</div><div class="val">7,1</div><div class="note">на снижении ставки растём чуть больше, чем падаем на росте</div></div>
+    <div class="kpi"><div class="lab">Текущая доходность</div><div class="val">13,35%</div><div class="note">купон / цена</div></div>
+    <div class="kpi"><div class="lab">Купонный доход/год</div><div class="val">131 659 ₽</div><div class="note">до вычета налогов</div></div>
+    <div class="kpi"><div class="lab">Стоимость</div><div class="val">986 173 ₽</div><div class="note">по чистым рыночным ценам</div></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px">
+    <p class="sect">Стресс-тест: что будет при сдвиге ключевой ставки</p>
+    <p style="font-size:13.5px;color:var(--ink2);margin:0 0 4px">Портфель короткий (дюрация 2,4 года), поэтому к ставке чувствителен умеренно. Если ЦБ поднимет ставку на 1% — портфель просядет примерно на 2% (−19,8 тыс ₽), но купон 13% в год это перекрывает. Если ставку снизят — портфель прибавит, и чуть больше, чем потерял бы на таком же росте (это и есть выпуклость).</p>
+    <div class="stress">
+      <div class="scell up"><div class="b">−200 бп</div><div class="p">+4,22%</div><div class="r">+41 642 ₽</div></div>
+      <div class="scell up"><div class="b">−100 бп</div><div class="p">+2,08%</div><div class="r">+20 470 ₽</div></div>
+      <div class="scell up"><div class="b">−50 бп</div><div class="p">+1,03%</div><div class="r">+10 147 ₽</div></div>
+      <div class="scell dn"><div class="b">+50 бп</div><div class="p">−1,01%</div><div class="r">−9 972 ₽</div></div>
+      <div class="scell dn"><div class="b">+100 бп</div><div class="p">−2,00%</div><div class="r">−19 768 ₽</div></div>
+      <div class="scell dn"><div class="b">+200 бп</div><div class="p">−3,94%</div><div class="r">−38 834 ₽</div></div>
+      <div class="scell dn"><div class="b">+300 бп</div><div class="p">−5,80%</div><div class="r">−57 198 ₽</div></div>
+      <div class="scell dn"><div class="b">+400 бп</div><div class="p">−7,59%</div><div class="r">−74 860 ₽</div></div>
+      <div class="scell dn"><div class="b">+500 бп</div><div class="p">−9,31%</div><div class="r">−91 820 ₽</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="sect">Кредитный риск: спреды и вероятность дефолта</p>
+    <div class="cgrid" style="margin-bottom:6px">
+      <div class="kpi"><div class="lab">G-spread</div><div class="val">115 бп</div><div class="note">премия к КБД ОФЗ</div></div>
+      <div class="kpi"><div class="lab">Z-spread</div><div class="val">131 бп</div><div class="note">по параллельному сдвигу КБД</div></div>
+      <div class="kpi"><div class="lab">Вероятность дефолта/год</div><div class="val">1,62%</div><div class="note">risk-neutral, RR 20%, средневзвеш.</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--ink2);margin:14px 0 4px">Портфель за свою доходность берёт около 115–130 базисных пунктов сверх безрисковой кривой ОФЗ — это и есть плата за кредитный риск. По зонам качества почти всё делится поровну между «премиум» и «качественными», и лишь одна бумага уходит в «средний риск»:</p>
+    <div class="zonebar">
+      <span style="width:46.6%;background:var(--c26)">Премиум 46,6%</span>
+      <span style="width:46.7%;background:var(--c25)">Качественные 46,7%</span>
+      <span style="width:6.7%;background:var(--warn)">6,7%</span>
+    </div>
+    <div class="zlegend">
+      <span><i style="background:var(--c26)"></i><b>Премиум</b> (&lt;100 бп) — 459 509 ₽</span>
+      <span><i style="background:var(--c25)"></i><b>Качественные</b> (100–300 бп) — 460 723 ₽</span>
+      <span><i style="background:var(--warn)"></i><b>Средний риск</b> (300–700 бп) — 65 941 ₽</span>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:12px 0 0">Единственная бумага в зоне «средний риск» — <b>ДелоПортс</b> с Z-спредом 378 бп и YTM 18,5%: самая доходная в портфеле и самая рисковая по спреду. Ровно тот случай, когда доходность честно оплачена риском.</p>
+  </div>
+
+  <a class="calcbtn" href="../pro/bond-portfolio.html">Открыть портфель в калькуляторе облигаций →</a>
+
+  <p class="disc" style="margin-top:12px">Калькулятор считает по чистым рыночным ценам — отсюда 986 173 ₽ против 999 183 ₽ в трекере выше (разница — накопленный купон, НКД, который вернётся с первой выплатой). YTM, дюрация и купонный доход совпадают с трекером.</p>
 
   <details class="method" style="margin-top:26px">
     <summary>Как это считается</summary>
