@@ -249,7 +249,7 @@ const fmt=n=>Math.round(n).toLocaleString('ru-RU').replace(/,/g,'\u2009');
 const fmt2=n=>n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
 // tracker
 (function(){
- const RZ=[[/Нор\.никель|Норникель/,'razbor-nornikel-2025.html'],[/Атомэнергопром/,'razbor-atomenergoprom-1p2026.html'],[/ФосАгро/,'razbor-fosagro-1p2026.html'],[/СИБУР/,'razbor-sibur-1p2026.html']];
+ const RZ=[[/Нор\.никель|Норникель/,'razbor-nornikel-2025.html'],[/Атомэнергопром/,'razbor-atomenergoprom-1p2026.html'],[/ФосАгро/,'razbor-fosagro-1p2026.html'],[/СИБУР/,'razbor-sibur-1p2026.html'],[/Полюс/,'razbor-polyus-1p2026.html'],[/Акрон/,'razbor-akron-1p2026.html']];
  const rows=M.holds.map(h=>{
    const nm=h.name.replace(/\s+00[0-9].*/,'').slice(0,26);
    const hit=RZ.find(r=>r[0].test(h.name));
