@@ -42,6 +42,17 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 .new-badge{display:inline-block;font-family:var(--mono);font-size:0.6rem;font-weight:600;letter-spacing:0.06em;background:#FFE9D6;color:#C25A1E;padding:2px 6px;border-radius:4px;vertical-align:middle;margin-left:0.4rem}
 .footer{margin-top:2rem;font-size:0.78rem;color:var(--text3);line-height:1.7;text-align:center}
 .footer a{color:var(--text2)}
+
+.filterbar{margin-bottom:1.6rem}
+.search{width:100%;font-family:var(--sans);font-size:0.95rem;padding:0.7rem 1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none}
+.search:focus{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.7rem}
+.chip{font-family:var(--sans);font-size:0.8rem;font-weight:500;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:0.35rem 0.8rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chip .c{opacity:0.55;margin-left:0.3rem;font-variant-numeric:tabular-nums}
+.chip.active .c{opacity:0.85}
+.noRes{color:var(--text2);font-size:0.9rem;padding:0.5rem 0 1rem;display:none}
 </style>
 </head>
 <body>
@@ -50,6 +61,11 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 <h1>Разборы ИИ-аналитика</h1>
 <p class="intro">Публичные разборы финансовой отчётности компаний: долговая нагрузка, покрытие процентов, денежный поток и светофор риска — простым языком. Читает отчётность <a href="pro/ai-analyst.html" style="color:var(--accent2)">ИИ-аналитик</a>, а автор проверяет.</p>
 <div class="aiflag">🤖 Материалы этого раздела подготовлены с помощью ИИ-аналитика по публичной отчётности и проверены автором. ИИ может ошибаться в прочтении цифры — сверяйтесь с первоисточником. Ничто здесь не является индивидуальной инвестиционной рекомендацией.</div>
+<div class="filterbar">
+  <input id="razSearch" class="search" type="search" placeholder="Поиск по названию — Газпром, Сбербанк, Полюс…" autocomplete="off">
+  <div id="razChips" class="chips"></div>
+</div>
+<p id="razNoRes" class="noRes">Ничего не найдено. Попробуйте другое название или выберите другой сектор.</p>
 
 <a class="card" href="novosti/razbor-gazprom-1p2026.html">
 <div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
@@ -314,5 +330,59 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 <a href="https://t.me/kutnyak_invest" target="_blank">Telegram-канал</a> · © 2025–2026
 </div>
 </div>
+<script>
+(function(){
+  var RULES=[
+    ['Финансы', /Сбербанк|Газпромбанк|Авто Финанс Банк|Банк ПСБ|Промсвязьбанк|МГКЛ|Мосгорломбард/],
+    ['Нефтегаз', /Газпром нефть|Газпром|НОВАТЭК|Новые технологии/],
+    ['Металлы и добыча', /Норникель|Металлоинвест|РУСАЛ|Уральская кузница|Мечел|Северсталь|Полюс|ЮГК|Южуралзолото/],
+    ['Химия и удобрения', /ФосАгро|Акрон|СИБУР|Русбонд|Полипласт/],
+    ['Энергетика', /Эн\+|En\+|Атомэнергопром|Интер РАО/],
+    ['Транспорт', /Совкомфлот|контейнерный|ПКТ|ДелоПортс|РЖД/],
+    ['Технологии и связь', /ВымпелКом|билайн|\bVK\b|Позитив|Воксис/],
+    ['Потребительский и медицина', /НоваБев|Парк Сказка|ИНАРКТИКА|АПРИ|Гельтек|Медскан/]
+  ];
+  var ORDER=['Нефтегаз','Металлы и добыча','Химия и удобрения','Энергетика','Транспорт','Финансы','Технологии и связь','Потребительский и медицина'];
+  var cards=[].slice.call(document.querySelectorAll('a.card'));
+  var counts={};
+  cards.forEach(function(c){
+    var h=c.querySelector('h3'); var t=h?h.textContent:'';
+    var sec='Прочее';
+    for(var i=0;i<RULES.length;i++){ if(RULES[i][1].test(t)){ sec=RULES[i][0]; break; } }
+    c.setAttribute('data-sector',sec);
+    c.setAttribute('data-text',(c.textContent||'').toLowerCase());
+    counts[sec]=(counts[sec]||0)+1;
+  });
+  var box=document.getElementById('razChips');
+  var search=document.getElementById('razSearch');
+  var noRes=document.getElementById('razNoRes');
+  var active='Все', chipEls=[];
+  function apply(){
+    var q=(search.value||'').trim().toLowerCase(), shown=0;
+    cards.forEach(function(c){
+      var okS=(active==='Все'||c.getAttribute('data-sector')===active);
+      var okQ=(!q||c.getAttribute('data-text').indexOf(q)>=0);
+      var vis=okS&&okQ; c.style.display=vis?'':'none'; if(vis)shown++;
+    });
+    noRes.style.display=shown?'none':'block';
+  }
+  function makeChip(label,sector,count){
+    var b=document.createElement('button');
+    b.className='chip'+(sector==='Все'?' active':'');
+    b.innerHTML=label+(count!=null?' <span class="c">'+count+'</span>':'');
+    b.addEventListener('click',function(){
+      active=sector;
+      chipEls.forEach(function(e){ e.el.classList.toggle('active',e.sector===sector); });
+      apply();
+    });
+    box.appendChild(b); chipEls.push({el:b,sector:sector});
+  }
+  makeChip('Все','Все',cards.length);
+  ORDER.forEach(function(s){ if(counts[s]) makeChip(s,s,counts[s]); });
+  Object.keys(counts).forEach(function(s){ if(ORDER.indexOf(s)<0 && s!=='Все') makeChip(s,s,counts[s]); });
+  search.addEventListener('input',apply);
+  apply();
+})();
+</script>
 </body>
 </html>
