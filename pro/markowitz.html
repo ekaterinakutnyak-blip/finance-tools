@@ -199,8 +199,10 @@ table.var-tbl td.method-row{background:#FAFAF8;font-weight:600;text-align:left;c
     <button class="btn-sm" onclick="downloadTemplate()">Скачать шаблон</button>
     <input type="file" id="xlsImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPortfolioFile(this)">
     <button class="btn" id="calcBtn" onclick="run()">Оптимизировать</button>
+    <label style="font-family:var(--sans);font-size:0.78rem;color:var(--text2);display:inline-flex;align-items:center;gap:6px;margin-left:8px">Сумма портфеля, ₽ <input type="text" id="myTotalRub" placeholder="напр. 1 000 000" inputmode="numeric" oninput="updateMyTotal()" style="width:130px;font-family:var(--mono);font-size:0.8rem;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);outline:none"></label>
     <span class="weight-total" id="myWeightStatus" style="font-family:var(--mono);font-size:0.78rem;margin-left:auto"></span>
   </div>
+  <div style="font-size:0.72rem;color:var(--text3);margin-top:0.3rem">При вводе долями укажите сумму портфеля — тогда он попадёт в «Мой капитал». При вводе в штуках сумма считается автоматически.</div>
   <div class="btn-row" id="pfBar" style="margin-top:0.4rem">
     <span style="font-size:0.78rem;color:var(--text2)">Портфели:</span>
     <select id="pfSelect" style="font-family:var(--mono);font-size:0.78rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--surface2);max-width:220px"></select>
@@ -794,7 +796,9 @@ function getUserWeights(tickers){
     const sum=arr.reduce((a,b)=>a+b,0);
     if(sum<0.01)return null;
     if(Math.abs(sum-1)>0.02)return {error:'Сумма ваших долей должна быть 100% (сейчас '+(sum*100).toFixed(1)+'%)'};
-    return {weights:arr,mode:'percent'};
+    var _tvEl=document.getElementById('myTotalRub');
+    var _tv=_tvEl?parseFloat((_tvEl.value||'').replace(/\s/g,'').replace(',','.')):NaN;
+    return {weights:arr,mode:'percent',totalValue:(!isNaN(_tv)&&_tv>0)?_tv:undefined};
   }
 
   return null;
@@ -844,7 +848,10 @@ function updateMyTotal(){
     status.textContent='Портфель: '+totalValue.toLocaleString('ru',{maximumFractionDigits:0})+' ₽';
     status.style.color='var(--green)';
   }else if(hasAnyWeight){
-    status.textContent='Сумма долей: '+totalWeight.toFixed(1)+'%';
+    var _tvEl2=document.getElementById('myTotalRub');
+    var _tv2=_tvEl2?parseFloat((_tvEl2.value||'').replace(/\s/g,'').replace(',','.')):NaN;
+    var _ex=(!isNaN(_tv2)&&_tv2>0)?' · '+Math.round(_tv2).toLocaleString('ru')+' ₽':'';
+    status.textContent='Сумма долей: '+totalWeight.toFixed(1)+'%'+_ex;
     status.style.color=Math.abs(totalWeight-100)<0.5?'var(--green)':'var(--yellow)';
   }else{
     status.textContent='';
