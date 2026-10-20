@@ -70,6 +70,11 @@ th:first-child{text-align:center}
 td{text-align:right;padding:0.35rem 0.5rem;border-bottom:1px solid var(--surface2);font-family:var(--mono);font-size:0.75rem}
 td:first-child{text-align:center;color:var(--text2)}
 .footer-note{font-size:0.72rem;color:var(--text3);margin-top:1.5rem;line-height:1.5}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none;display:inline-block;margin-bottom:0.9rem}
+.back-link:hover{color:var(--accent)}
+.site-foot{max-width:860px;margin:0 auto;padding:1.2rem 1.5rem 2.5rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.8;text-align:center}
+.site-foot a{color:var(--text2);text-decoration:none}
+.site-foot a:hover{color:var(--accent)}
 .toggle-detail{font-family:var(--sans);font-size:0.75rem;color:var(--accent2);background:none;border:none;cursor:pointer;margin-top:8px;text-decoration:underline}
 .ofz-toggle{display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:0.88rem;line-height:1.5}
 .ofz-toggle input{margin-top:4px}
@@ -111,6 +116,7 @@ td:first-child{text-align:center;color:var(--text2)}
   .hint{display:none!important}
   input,select{border:none!important;background:transparent!important;font-weight:600;padding:2px 0!important}
   #ofzList,#bondHint{display:none!important}
+  .back-link,.site-foot{display:none!important}
   /* колонки сравнения — три рядом, каждая целиком, без разрыва между страницами */
   .compare{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important;break-inside:avoid;page-break-inside:avoid}
   .compare-col{break-inside:avoid;page-break-inside:avoid;padding:0.6rem}
@@ -132,6 +138,7 @@ td:first-child{text-align:center;color:var(--text2)}
 </head>
 <body>
 <div class="container">
+<a href="index.html" class="back-link">← Все калькуляторы</a>
 <h1>Кредитный калькулятор</h1>
 <p class="subtitle">Аннуитетный платёж · досрочное погашение · сравнение стратегий</p>
 
@@ -924,5 +931,9 @@ renderVariants();
 <h3>Учитывается ли налоговый вычет?</h3>
 <p>Да. В расчёте стоимости квартиры калькулятор учитывает имущественный налоговый вычет 13%, чтобы итоговая цифра была честной.</p>
 </section></div>
+<div class="site-foot">
+<a href="index.html">← Все калькуляторы</a> · <a href="articles.html">Статьи</a> · <a href="novosti.html">Новости и обзоры</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram-канал</a><br>
+Автор: Екатерина Кутняк · © 2025–2026
+</div>
 </body>
 </html>
