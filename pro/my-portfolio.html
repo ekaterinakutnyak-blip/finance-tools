@@ -21,6 +21,7 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
 body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
 .container{max-width:1180px;margin:0 auto;padding:1.6rem 1.2rem 3rem}
 .sub2{display:block;font-size:0.72rem;color:var(--text3);font-weight:400;line-height:1.3}
+.fxtag{display:inline-block;background:rgba(27,107,154,0.1);color:#1B6B9A;font-family:var(--mono);font-size:0.66rem;font-weight:600;padding:1px 5px;border-radius:4px;vertical-align:1px}
 .back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
 h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:0.9rem 0 0.3rem}
 .sub{font-size:0.88rem;color:var(--text3);margin-bottom:1.4rem}
@@ -107,7 +108,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
   <button id="btnExp" class="ghost">↓ Выгрузить мой портфель</button>
   <input type="file" id="fileIn" accept=".xlsx,.xls,.csv" style="display:none">
 </div>
-<div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи.<br>
+<div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи. По валютным выпускам цена покупки тоже в рублях — ровно та сумма, что ушла со счёта; пересчитывать её по курсу не нужно.<br>
 Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Это обычный файл Excel — ничего пересохранять в другой формат не нужно.</div>
 <div class="status" id="calcStatus"></div>
 
@@ -115,6 +116,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div id="resultWrap" style="display:none">
 <h2>Прибыль и убыток</h2>
 <div id="resWarn"></div>
+<div id="fxInfo"></div>
 <div class="tblwrap">
 <table id="resTable">
 <thead><tr>
@@ -130,7 +132,9 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 </table>
 </div>
 <div class="note">Купоны и амортизация берутся с Московской биржи: сверяются даты выплат с вашей датой покупки, и всё, что прошло после неё, умножается на количество бумаг. Суммы брутто, до НДФЛ. Купон считается по дате выплаты — вы заплатили НКД в грязной цене, значит весь последующий купон ваш. Прибыль считается уже после этого: переоценка плюс купоны плюс амортизация.<br>
-Амортизация показана отдельно не случайно: это возврат вашего же номинала, а не доход. Но учитывать её обязательно — после неё бумага стоит дешевле, и без этой колонки выглядела бы убыточной.</div>
+Амортизация показана отдельно не случайно: это возврат вашего же номинала, а не доход. Но учитывать её обязательно — после неё бумага стоит дешевле, и без этой колонки выглядела бы убыточной.<br>
+<b>Валютные выпуски.</b> Бумага считается валютной, если биржа указала валюту номинала не в рублях: доллар, евро или юань. Номинал, цена и купоны у неё в этой валюте, поэтому стоимость и выплаты пересчитываются в рубли по курсу. Вложенное не пересчитывается — вы заплатили рубли. Из-за этого результат по валютной бумаге складывается из двух движений сразу: цены самой бумаги и курса. Уже полученные купоны пересчитаны по сегодняшнему курсу, а не по курсу на день каждой выплаты — на суммах купонов разница небольшая, но знать об этом стоит.<br>
+<b>Откуда берётся курс.</b> Биржевого спота по доллару и евро после 2024 года нет, поэтому курс берётся из вечных фьючерсов Московской биржи — это живая биржевая цена валюты, обновляется в течение дня. Но выплаты по валютным облигациям эмитент пересчитывает по официальному курсу ЦБ, а он с биржевым совпадает не копейка в копейку: обычно расхождение в пределах доли процента, иногда чуть больше при резких движениях. Поэтому рублёвая стоимость валютной бумаги здесь — корректная оценка, а не точная сумма зачисления.</div>
 
 <!-- ================= РАЗБОРЫ ЭМИТЕНТОВ ================= -->
 <h2>Кредитное качество эмитентов из портфеля</h2>
@@ -470,11 +474,45 @@ async function quote(isin){
     mat: sec.MATDATE || ''
   };
 }
+/* ============================================================
+   КУРСЫ ВАЛЮТ.
+   Спот по доллару и евро на бирже больше не торгуется, поэтому курс берём
+   из вечных фьючерсов (доска RFUD) — так же, как в «Портфеле облигаций».
+   Если по валюте фьючерса нет, курс можно вписать руками.
+   ============================================================ */
+let FX={RUB:1,SUR:1};
+const FX_TICKERS={USD:'USDRUBF',EUR:'EURRUBF',CNY:'CNYRUBF'};
+function isRub(u){ const s=String(u||'SUR').toUpperCase(); return s==='SUR'||s==='RUB'; }
+function curSym(u){ return u==='USD'?'$':u==='EUR'?'€':u==='CNY'?'¥':u; }
+
+async function loadFxRates(){
+  const map={RUB:1,SUR:1};
+  for(const cur of Object.keys(FX_TICKERS)){
+    try{
+      const r=await fetch('https://iss.moex.com/iss/engines/futures/markets/forts/boards/RFUD/securities/'+
+                          FX_TICKERS[cur]+'.json?iss.meta=off');
+      if(!r.ok) continue;
+      const j=await r.json();
+      const md=toObj(j.marketdata)[0]||{};
+      let rate=num(md.LAST)||num(md.SETTLEPRICE)||0;
+      if(!rate){ const sc=toObj(j.securities)[0]||{}; rate=num(sc.LASTSETTLEPRICE)||num(sc.PREVSETTLEPRICE)||0; }
+      if(rate>0) map[cur]=rate;
+    }catch(e){}
+  }
+  // курс, вписанный руками, перебивает биржевой
+  document.querySelectorAll('[data-fxmanual]').forEach(inp=>{
+    const v=parseFloat(String(inp.value||'').replace(',','.'));
+    if(isFinite(v)&&v>0) map[inp.getAttribute('data-fxmanual')]=v;
+  });
+  return map;
+}
+
 /* Выплаты по бумаге после даты покупки: купоны и погашения части номинала.
    Купон берём по дате выплаты: покупатель заплатил НКД в грязной цене,
    значит весь последующий купон — его. Суммы брутто, до НДФЛ. */
-async function payouts(isin, fromISO, qty){
-  const empty={cpn:0, amt:0, items:[]};
+async function payouts(isin, fromISO, qty, fx){
+  const empty={cpn:0, amt:0, cpnLoc:0, amtLoc:0, items:[]};
+  const k=(fx>0?fx:1);
   if(!fromISO) return empty;
   try{
     const r=await fetch('https://iss.moex.com/iss/securities/'+encodeURIComponent(isin)+
@@ -491,17 +529,16 @@ async function payouts(isin, fromISO, qty){
       j[block].data.forEach(row=>{
         const d=row[ci]; const v=parseFloat(row[vi]);
         if(!d||!isFinite(v)) return;
-        // рубли биржа помечает то как SUR, то как RUB — принимаем оба
-        const u=String(row[ui]==null?'':row[ui]).toUpperCase();
-        if(ui>=0 && u && u!=='SUR' && u!=='RUB') return;      // валютные не считаем
+        // Выплата приходит в валюте номинала (рубли биржа помечает то как SUR, то как RUB).
+        // Пересчитываем в рубли по курсу: k=1 для рублёвых бумаг.
         const t=new Date(d+'T00:00:00').getTime();
-        if(t>from && t<=now){ s+=v*qty; items.push({date:d, sum:v*qty}); }
+        if(t>from && t<=now){ s+=v*qty*k; items.push({date:d, sum:v*qty*k}); }
       });
       return s;
     };
     cpn=scan('coupons','coupondate');
     amt=scan('amortizations','amortdate');
-    return {cpn, amt, items};
+    return {cpn, amt, cpnLoc:cpn/k, amtLoc:amt/k, items};
   }catch(e){ return empty; }
 }
 
@@ -567,38 +604,53 @@ document.getElementById('btnCalc').onclick=async function(){
   const rows=readRows();
   const st=document.getElementById('calcStatus');
   if(!rows.length){ st.textContent='Заполните хотя бы одну бумагу: ISIN, количество и цену покупки.'; return; }
-  st.textContent='Загружаю котировки с Московской биржи…';
   this.disabled=true;
-  const out=[], bad=[], foreign=[];
+  st.textContent='Загружаю курсы валют…';
+  FX=await loadFxRates();
+  st.textContent='Загружаю котировки с Московской биржи…';
+  const out=[], bad=[], noFx=new Set(), skipped=[];
   for(const r of rows){
     try{
       const q=await quote(r.isin);
-      if((q.unit||'SUR')!=='SUR'){ foreign.push(r.isin+' ('+q.unit+')'); continue; }
-      const p=await payouts(r.isin, r.date, r.qty);
+      const unit=String(q.unit||'SUR').toUpperCase();
+      // Валюта номинала: SUR/RUB — рублёвая бумага, всё остальное пересчитываем курсом.
+      const fx=isRub(unit)?1:(FX[unit]||0);
+      if(!fx){ noFx.add(unit); skipped.push(r.isin+' ('+unit+')'); continue; }
+      const p=await payouts(r.isin, r.date, r.qty, fx);
       const got=p.cpn+p.amt;
-      const invested=r.price*r.qty, now=q.dirty*r.qty;
-      out.push({...r, q, p, got, invested, now,
+      // Вложено — рубли, которые реально списали: курс тут не нужен.
+      // Сейчас и купоны — в валюте номинала, поэтому умножаем на курс.
+      const invested=r.price*r.qty, now=q.dirty*r.qty*fx;
+      out.push({...r, q, unit, fx, p, got, invested, now, nowLoc:q.dirty*r.qty,
                 d:now+got-invested, dp:invested?((now+got)/invested-1)*100:0});
     }catch(e){ bad.push(r.isin+' — '+e.message); }
   }
   this.disabled=false;
-  if(!out.length){ st.textContent='Не удалось посчитать ни одной бумаги. '+bad.join('; '); return; }
+  if(!out.length){
+    st.textContent='Не удалось посчитать ни одной бумаги. '+bad.concat(skipped).join('; ');
+    render([], bad, noFx, skipped); return;
+  }
   st.textContent='';
   LAST=out;
-  render(out, bad, foreign);
+  render(out, bad, noFx, skipped);
 };
 
-function render(out, bad, foreign){
+function render(out, bad, noFx, skipped){
   const totInv=out.reduce((s,x)=>s+x.invested,0), totNow=out.reduce((s,x)=>s+x.now,0);
   const body=document.getElementById('resBody'); body.innerHTML='';
   out.forEach(x=>{
     const cls=x.d>=0?'pos':'neg';
+    const fxb=!isRub(x.unit), sym=fxb?curSym(x.unit):'';
+    const tag=fxb?' <span class="fxtag">'+x.unit+'</span>':'';
+    const nowSub=fxb
+      ? 'по '+money(x.q.dirty)+' '+sym+'<br>курс '+money(x.fx)+' ₽'
+      : 'по '+money(x.q.dirty);
     body.insertAdjacentHTML('beforeend',
-      '<tr><td>'+x.q.name+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
+      '<tr><td>'+x.q.name+tag+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
       '<td class="mono">'+(x.date?x.date.split('-').reverse().join('.'):'—')+'</td>'+
       '<td class="mono">'+money(x.invested)+'<span class="sub2">по '+money(x.price)+'</span></td>'+
-      '<td class="mono">'+money(x.now)+'<span class="sub2">по '+money(x.q.dirty)+'</span></td>'+
+      '<td class="mono">'+money(x.now)+'<span class="sub2">'+nowSub+'</span></td>'+
       '<td class="mono">'+(x.p.cpn?money(x.p.cpn):'—')+
         (x.p.amt?'<span class="sub2">аморт. '+money(x.p.amt)+'</span>':'')+'</td>'+
       '<td class="mono '+cls+'">'+rubStr(x.d)+'<span class="sub2 '+cls+'">'+pctStr(x.dp)+'</span></td>'+
@@ -617,9 +669,29 @@ function render(out, bad, foreign){
     '<td class="mono">100%</td></tr>';
 
   let w='';
-  if(foreign.length) w+='<div class="warn">Валютные выпуски в этой версии не считаются — результат по ним зависит ещё и от курса: '+foreign.join(', ')+'.</div>';
-  if(bad.length)     w+='<div class="warn">Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.</div>';
+  if(bad.length) w+='<div class="warn">Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.</div>';
   document.getElementById('resWarn').innerHTML=w;
+
+  // Курсы, по которым пересчитаны валютные бумаги
+  const used=[...new Set(out.filter(x=>!isRub(x.unit)).map(x=>x.unit))];
+  let fxHtml='';
+  if(used.length){
+    fxHtml+='<div class="okbox"><b>Курсы для пересчёта в рубли:</b> '+
+      used.map(u=>u+' = '+money(FX[u])+' ₽').join(' · ')+
+      ' — по вечным фьючерсам Московской биржи (доска RFUD): спот по доллару и евро там больше не торгуется.'+
+      '<br><span style="font-size:.85rem">Это биржевой курс фьючерса, а не официальный курс ЦБ, по которому эмитент считает выплаты. '+
+      'Расхождение обычно в пределах доли процента, но оно есть — поэтому стоимость валютной части считайте оценкой, а не суммой до копейки.</span></div>';
+  }
+  if(noFx && noFx.size){
+    fxHtml+='<div class="warn">Нет биржевого курса для: '+[...noFx].join(', ')+
+      ' — фьючерс по этой валюте не торгуется, поэтому бумаги '+skipped.join(', ')+
+      ' в расчёт не вошли. Впишите курс руками и нажмите «Рассчитать» ещё раз:'+
+      '<div style="margin-top:.6rem;display:flex;gap:12px;flex-wrap:wrap">'+
+      [...noFx].map(c=>'<label style="font-size:.85rem">'+c+' = <input type="text" data-fxmanual="'+c+
+        '" inputmode="decimal" style="width:84px;padding:.35rem .5rem;border:1px solid var(--border);'+
+        'border-radius:8px;font-family:var(--mono)"> ₽</label>').join('')+'</div></div>';
+  }
+  document.getElementById('fxInfo').innerHTML=fxHtml;
   renderRazbory(out);
   document.getElementById('resultWrap').style.display='';
 }
