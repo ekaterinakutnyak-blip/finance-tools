@@ -103,10 +103,10 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
   <button id="btnTpl" class="ghost">↓ Скачать шаблон</button>
   <button id="btnUp" class="ghost">↑ Загрузить заполненный</button>
   <button id="btnExp" class="ghost">↓ Выгрузить мой портфель</button>
-  <input type="file" id="fileIn" accept=".csv,.txt" style="display:none">
+  <input type="file" id="fileIn" accept=".xlsx,.xls,.csv" style="display:none">
 </div>
 <div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи.<br>
-Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Файл открывается и сохраняется как обычная таблица, даты в виде 15.01.2026, цены можно писать через запятую.</div>
+Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Это обычный файл Excel — ничего пересохранять в другой формат не нужно.</div>
 <div class="status" id="calcStatus"></div>
 
 <!-- ================= РЕЗУЛЬТАТ ================= -->
@@ -179,6 +179,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
    ХРАНЕНИЕ. Полка отдельная — 'bondpos', чтобы другие инструменты
@@ -264,20 +265,28 @@ document.getElementById('btnAdd').onclick=()=>addRow();
 document.getElementById('btnAddFlow').onclick=()=>addFlow();
 
 /* ============================================================
-   ШАБЛОН: скачать / заполнить в Excel / загрузить обратно
-   Разделитель ';' — так русский Excel открывает файл по столбцам,
-   а запятая остаётся свободной для дробной части цены.
+   ШАБЛОН: скачать Excel / заполнить / загрузить обратно.
+   Читаем и пишем через SheetJS — той же библиотекой, что и
+   остальные инструменты сайта. Принимаем .xlsx, .xls и .csv.
    ============================================================ */
-const CSV_HEAD='ISIN;Количество;Дата покупки;Цена покупки, руб (грязная)';
+const HEAD=['ISIN','Количество','Дата покупки','Цена покупки, ₽ (грязная)'];
 
-function download(name, text){
-  const blob=new Blob(['﻿'+text],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+function saveSheet(rows, fileName, sheetName){
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:16},{wch:12},{wch:14},{wch:24}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||'Портфель');
+  XLSX.writeFile(wb, fileName);
 }
 function ddmmyyyy(iso){ return iso ? iso.split('-').reverse().join('.') : ''; }
+/* Excel хранит дату числом — переводим в обычную дату */
+function excelDate(v){
+  if(typeof v==='number' && v>20000 && v<70000){
+    const d=new Date(Math.round((v-25569)*86400000));
+    return isNaN(d) ? '' : d.toISOString().slice(0,10);
+  }
+  return isoDate(String(v==null?'':v));
+}
 function isoDate(s){
   s=(s||'').trim();
   let m=s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
@@ -291,19 +300,19 @@ function numRu(s){
 }
 
 document.getElementById('btnTpl').onclick=function(){
-  download('shablon-portfelya.csv',
-    CSV_HEAD+'\n'+
-    'RU000A106G80;10;15.01.2026;950,40\n'+
-    'RU000A105SG2;5;03.02.2026;1012,15\n');
-  document.getElementById('calcStatus').textContent='Шаблон скачан. Заполните его в Excel и загрузите кнопкой «Загрузить заполненный».';
+  saveSheet([HEAD,
+    ['RU000A106G80', 10, '15.01.2026', 950.40],
+    ['RU000A105SG2',  5, '03.02.2026', 1012.15]
+  ], 'shablon-portfelya.xlsx', 'Портфель');
+  document.getElementById('calcStatus').textContent='Шаблон скачан. Замените строки-примеры своими бумагами, сохраните и загрузите кнопкой «Загрузить заполненный».';
 };
 
 document.getElementById('btnExp').onclick=function(){
   const rows=readRows();
   if(!rows.length){ document.getElementById('calcStatus').textContent='Пока нечего выгружать — заполните хотя бы одну бумагу.'; return; }
-  const body=rows.map(r=>[r.isin, r.qty, ddmmyyyy(r.date), String(r.price).replace('.',',')].join(';')).join('\n');
-  download('moy-portfel.csv', CSV_HEAD+'\n'+body+'\n');
-  document.getElementById('calcStatus').textContent='Портфель выгружен в файл — его же можно загрузить обратно.';
+  saveSheet([HEAD].concat(rows.map(r=>[r.isin, r.qty, ddmmyyyy(r.date), r.price])),
+            'moy-portfel.xlsx', 'Портфель');
+  document.getElementById('calcStatus').textContent='Портфель выгружен в Excel — этот же файл можно загрузить обратно.';
 };
 
 document.getElementById('btnUp').onclick=()=>document.getElementById('fileIn').click();
@@ -311,19 +320,25 @@ document.getElementById('btnUp').onclick=()=>document.getElementById('fileIn').c
 document.getElementById('fileIn').onchange=function(e){
   const f=e.target.files && e.target.files[0];
   if(!f) return;
+  const st=document.getElementById('calcStatus');
   const rd=new FileReader();
+  rd.onerror=function(){ st.textContent='Не удалось прочитать файл.'; };
   rd.onload=function(){
-    const st=document.getElementById('calcStatus');
-    let text=String(rd.result||'').replace(/^﻿/,'');
-    const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+    let rows;
+    try{
+      const wb=XLSX.read(new Uint8Array(rd.result), {type:'array', cellDates:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false, defval:''});
+    }catch(err){
+      st.textContent='Не удалось открыть файл. Подойдёт Excel (.xlsx, .xls) или .csv.';
+      e.target.value=''; return;
+    }
     const good=[], bad=[];
-    lines.forEach((ln,i)=>{
-      const sep = ln.indexOf(';')>=0 ? ';' : ',';
-      const c = ln.split(sep).map(s=>s.trim().replace(/^"|"$/g,''));
-      const isin=(c[0]||'').toUpperCase();
-      if(!isin || /^isin$/i.test(isin)) return;                 // шапка
-      if(!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin)){ bad.push('строка '+(i+1)+': «'+c[0]+'» не похоже на ISIN'); return; }
-      const qty=numRu(c[1]), date=isoDate(c[2]), price=numRu(c[3]);
+    rows.forEach((c,i)=>{
+      const isin=String(c[0]==null?'':c[0]).trim().toUpperCase();
+      if(!isin || /^isin$/i.test(isin)) return;                      // шапка и пустые
+      if(!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin)){ bad.push('строка '+(i+1)+': «'+isin+'» не похоже на ISIN'); return; }
+      const qty=numRu(c[1]), date=excelDate(c[2]), price=numRu(c[3]);
       if(!(qty>0)){ bad.push('строка '+(i+1)+': количество'); return; }
       if(!(price>0)){ bad.push('строка '+(i+1)+': цена покупки'); return; }
       good.push({isin, qty, date, price});
@@ -331,14 +346,14 @@ document.getElementById('fileIn').onchange=function(e){
     if(good.length){
       inBody.innerHTML='';
       good.forEach(addRow);
-      st.textContent='Загружено бумаг: '+good.length+'. Нажмите «Рассчитать».'+(bad.length?' Пропущено: '+bad.length+'.':'');
+      st.textContent='Загружено бумаг: '+good.length+'. Нажмите «Рассчитать».'+(bad.length?' Пропущено строк: '+bad.length+'.':'');
     } else {
-      st.textContent='Не удалось прочитать ни одной строки. Проверьте, что столбцы идут как в шаблоне: ISIN, количество, дата, цена.';
+      st.textContent='Не удалось прочитать ни одной строки. Столбцы должны идти как в шаблоне: ISIN, количество, дата покупки, цена покупки.';
     }
     if(bad.length) st.textContent+=' '+bad.slice(0,4).join('; ')+(bad.length>4?'…':'');
     e.target.value='';
   };
-  rd.readAsText(f,'utf-8');
+  rd.readAsArrayBuffer(f);
 };
 
 /* ============================================================
