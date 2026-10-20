@@ -19,7 +19,8 @@ ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLa
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
-.container{max-width:1060px;margin:0 auto;padding:1.6rem 1.2rem 3rem}
+.container{max-width:1180px;margin:0 auto;padding:1.6rem 1.2rem 3rem}
+.sub2{display:block;font-size:0.72rem;color:var(--text3);font-weight:400;line-height:1.3}
 .back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
 h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:0.9rem 0 0.3rem}
 .sub{font-size:0.88rem;color:var(--text3);margin-bottom:1.4rem}
@@ -98,6 +99,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="row">
   <button id="btnAdd" class="ghost">+ Добавить бумагу</button>
   <button id="btnCalc">Рассчитать</button>
+  <button id="btnClear" class="ghost">Очистить</button>
 </div>
 <div class="row" style="margin-top:.5rem">
   <button id="btnTpl" class="ghost">↓ Скачать шаблон</button>
@@ -116,8 +118,12 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="tblwrap">
 <table id="resTable">
 <thead><tr>
-  <th>Бумага</th><th>Кол-во</th><th>Куплено</th><th>Цена покупки</th>
-  <th>Вложено</th><th>Цена сейчас</th><th>Стоимость сейчас</th><th>Купоны<br><span style="font-weight:400;font-size:.72rem">выплачено</span></th><th>Амортизация<br><span style="font-weight:400;font-size:.72rem">выплачено</span></th><th>Δ&nbsp;₽</th><th>Δ&nbsp;%</th><th>Доля</th>
+  <th>Бумага</th><th>Кол-во</th><th>Куплено</th>
+  <th>Вложено<span class="sub2">цена покупки</span></th>
+  <th>Сейчас<span class="sub2">цена сейчас</span></th>
+  <th>Купоны<span class="sub2">и амортизация</span></th>
+  <th>Результат<span class="sub2">в % к вложенному</span></th>
+  <th>Доля</th>
 </tr></thead>
 <tbody id="resBody"></tbody>
 <tfoot id="resFoot"></tfoot>
@@ -125,6 +131,10 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 </div>
 <div class="note">Купоны и амортизация берутся с Московской биржи: сверяются даты выплат с вашей датой покупки, и всё, что прошло после неё, умножается на количество бумаг. Суммы брутто, до НДФЛ. Купон считается по дате выплаты — вы заплатили НКД в грязной цене, значит весь последующий купон ваш. Прибыль считается уже после этого: переоценка плюс купоны плюс амортизация.<br>
 Амортизация показана отдельно не случайно: это возврат вашего же номинала, а не доход. Но учитывать её обязательно — после неё бумага стоит дешевле, и без этой колонки выглядела бы убыточной.</div>
+
+<!-- ================= РАЗБОРЫ ЭМИТЕНТОВ ================= -->
+<h2>Кредитное качество эмитентов из портфеля</h2>
+<div class="panel"><div id="razboryOut"></div></div>
 
 <!-- ================= ДОХОДНОСТЬ ================= -->
 <h2>Доходность портфеля</h2>
@@ -272,8 +282,66 @@ function readFlows(){
   })).filter(f=>f.date && isFinite(f.amount) && f.amount!==0);
 }
 
-document.getElementById('btnAdd').onclick=()=>addRow();
-document.getElementById('btnAddFlow').onclick=()=>addFlow();
+document.getElementById('btnAdd').onclick=()=>{addRow();saveDraft();};
+document.getElementById('btnAddFlow').onclick=()=>{addFlow();saveDraft();};
+
+/* ============================================================
+   ЧЕРНОВИК. Набранное запоминается в этом браузере само, чтобы
+   при уходе на другую страницу и возврате ничего не пропадало.
+   Это рабочий буфер, он не заменяет сохранение под именем.
+   ============================================================ */
+const DRAFT_KEY='invest_bondpos_draft';
+
+function rawRows(){
+  return [...inBody.querySelectorAll('tr')].map(tr=>({
+    isin:tr.querySelector('.isin').value,
+    qty:tr.querySelector('.qty').value,
+    date:tr.querySelector('.date').value,
+    price:tr.querySelector('.price').value
+  }));
+}
+function rawFlows(){
+  return [...flowBody.querySelectorAll('tr')].map(tr=>({
+    date:tr.querySelector('.fdate').value,
+    amount:tr.querySelector('.famt').value
+  }));
+}
+function saveDraft(){
+  try{
+    const items=rawRows();
+    if(!items.some(r=>r.isin||r.qty||r.date||r.price) && !rawFlows().length){
+      localStorage.removeItem(DRAFT_KEY); return;
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      name:(pfName.value||''), items:items, flows:rawFlows(),
+      cash:document.getElementById('cash').value||''
+    }));
+  }catch(e){}
+}
+function loadDraft(){
+  try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); }catch(e){ return null; }
+}
+/* любое изменение полей — сразу в черновик */
+document.addEventListener('input', function(e){
+  if(e.target.closest('#inBody,#flowBody') || e.target.id==='cash' || e.target.id==='pfName') saveDraft();
+});
+document.addEventListener('change', function(e){
+  if(e.target.closest('#inBody,#flowBody') || e.target.id==='cash') saveDraft();
+});
+
+document.getElementById('btnClear').onclick=function(){
+  const has=rawRows().some(r=>r.isin||r.qty||r.date||r.price);
+  if(has && !confirm('Очистить таблицу? Сохранённые под именем портфели останутся на месте.')) return;
+  inBody.innerHTML=''; addRow(); addRow(); addRow();
+  flowBody.innerHTML='';
+  document.getElementById('cash').value='0';
+  pfName.value=''; pfSelect.value='';
+  LAST=null;
+  document.getElementById('resultWrap').style.display='none';
+  document.getElementById('yieldOut').innerHTML='';
+  document.getElementById('calcStatus').textContent='';
+  try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+};
 
 /* ============================================================
    ШАБЛОН: скачать Excel / заполнить / загрузить обратно.
@@ -357,6 +425,7 @@ document.getElementById('fileIn').onchange=function(e){
     if(good.length){
       inBody.innerHTML='';
       good.forEach(addRow);
+      saveDraft();
       st.textContent='Загружено бумаг: '+good.length+'. Нажмите «Рассчитать».'+(bad.length?' Пропущено строк: '+bad.length+'.':'');
     } else {
       st.textContent='Не удалось прочитать ни одной строки. Столбцы должны идти как в шаблоне: ISIN, количество, дата покупки, цена покупки.';
@@ -442,6 +511,54 @@ function pctStr(x){ return (x>=0?'+':'−')+Math.abs(x).toFixed(2).replace('.','
 function rubStr(x){ return (x>=0?'+':'−')+money(Math.abs(x))+' ₽'; }
 
 /* ============================================================
+   РАЗБОРЫ ЭМИТЕНТОВ.
+   Ключи — куски названия бумаги с биржи, в нижнем регистре.
+   Чтобы добавить новый разбор, достаточно дописать строку сюда.
+   ============================================================ */
+const RAZBORY=[
+ {k:['пик','лср','самолет','самолёт'], t:'ПИК, ЛСР, Самолёт: полугодие, которое развело троих', u:'../novosti/pik-lsr-samolet-1p2026.html'},
+ {k:['ростелеком','эр-телеком','эртелеком'], t:'Ростелеком vs ЭР-Телеком: один бизнес — разные деньги', u:'../novosti/rostelecom-vs-ertelecom.html'},
+ {k:['полюс','селигдар'], t:'Полюс vs Селигдар: одно золото — противоположный исход', u:'../novosti/polyus-vs-seligdar.html'},
+ {k:['биннофарм'], t:'Биннофарм Групп: бизнес работает, а денег не хватает на проценты', u:'../novosti/binnofarm-grupp-kreditnyy-razbor.html'},
+ {k:['делопортс','трансконтейнер'], t:'ДелоПортс vs ТрансКонтейнер: одинаковый рейтинг AA− — разный кредит', u:'../novosti/deloports-vs-transkonteyner.html'},
+ {k:['втб лизинг','совкомбанк лизинг'], t:'ВТБ Лизинг vs Совкомбанк Лизинг: решает не долг, а капитал', u:'../novosti/vtb-lizing-vs-sovkombank-lizing.html'},
+ {k:['позитив','софтлайн'], t:'Позитив vs Софтлайн: один сектор ИТ — два разных кредита', u:'../novosti/pozitiv-vs-softline.html'},
+ {k:['трансмашхолдинг','тмх','стм'], t:'Трансмашхолдинг vs СТМ: прибыль против убытка', u:'../novosti/tmh-vs-stm.html'},
+ {k:['брусника'], t:'Брусника vs ЛСР: растущий застройщик против тормозящего гиганта', u:'../novosti/brusnika-vs-lsr.html'},
+ {k:['гтлк','балтийский лизинг'], t:'ГТЛК vs Балтийский лизинг: у одного лизинг не зарабатывает вообще', u:'../novosti/gtlk-vs-baltiyskiy-lizing.html'},
+ {k:['иэк','электрорешения','ekf'], t:'ИЭК Холдинг vs Электрорешения (EKF): одинаковая маржа — разный исход', u:'../novosti/iek-vs-elektroresheniya.html'},
+ {k:['северсталь','уральская сталь'], t:'Северсталь vs Уральская Сталь: один обвал цен — разный исход', u:'../novosti/severstal-vs-uralskaya-stal.html'},
+ {k:['акрон','полипласт'], t:'Акрон vs Полипласт: одинаковая EBITDA — разный запас прочности', u:'../novosti/akron-vs-poliplast.html'}
+];
+function razborFor(name){
+  const n=String(name||'').toLowerCase();
+  return RAZBORY.find(r=>r.k.some(k=>n.indexOf(k)>=0))||null;
+}
+function renderRazbory(out){
+  const box=document.getElementById('razboryOut');
+  const found=new Map(), missing=[];
+  out.forEach(x=>{
+    const r=razborFor(x.q.name);
+    if(r){ if(!found.has(r.u)) found.set(r.u,{r, who:[]}); found.get(r.u).who.push(x.q.name); }
+    else missing.push(x.q.name);
+  });
+  let h='';
+  if(found.size){
+    h+='<div class="links" style="flex-direction:column;align-items:stretch">';
+    found.forEach(v=>{
+      h+='<a href="'+v.r.u+'" style="justify-content:flex-start">'+v.r.t+' →</a>'+
+         '<span class="sub2" style="margin:-4px 0 8px 4px">по бумаге: '+v.who.join(', ')+'</span>';
+    });
+    h+='</div>';
+  }
+  if(missing.length){
+    h+='<div class="note" style="margin-top:'+(found.size?'.6rem':'0')+'">По этим эмитентам разбора пока нет: '+
+       missing.join(', ')+'. Можно проверить их самостоятельно — <a href="credit-metrics.html" style="color:var(--accent);font-weight:600;text-decoration:none">кредитный анализ по отчётности →</a></div>';
+  }
+  box.innerHTML=h||'<div class="note">Рассчитайте портфель, и здесь появятся разборы по вашим эмитентам.</div>';
+}
+
+/* ============================================================
    РАСЧЁТ
    ============================================================ */
 let LAST=null;
@@ -480,31 +597,30 @@ function render(out, bad, foreign){
       '<tr><td>'+x.q.name+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
       '<td class="mono">'+(x.date?x.date.split('-').reverse().join('.'):'—')+'</td>'+
-      '<td class="mono">'+money(x.price)+'</td>'+
-      '<td class="mono">'+money(x.invested)+'</td>'+
-      '<td class="mono">'+money(x.q.dirty)+'</td>'+
-      '<td class="mono">'+money(x.now)+'</td>'+
-      '<td class="mono">'+(x.p.cpn?money(x.p.cpn):'—')+'</td>'+
-      '<td class="mono">'+(x.p.amt?money(x.p.amt):'—')+'</td>'+
-      '<td class="mono '+cls+'">'+rubStr(x.d)+'</td>'+
-      '<td class="mono '+cls+'">'+pctStr(x.dp)+'</td>'+
+      '<td class="mono">'+money(x.invested)+'<span class="sub2">по '+money(x.price)+'</span></td>'+
+      '<td class="mono">'+money(x.now)+'<span class="sub2">по '+money(x.q.dirty)+'</span></td>'+
+      '<td class="mono">'+(x.p.cpn?money(x.p.cpn):'—')+
+        (x.p.amt?'<span class="sub2">аморт. '+money(x.p.amt)+'</span>':'')+'</td>'+
+      '<td class="mono '+cls+'">'+rubStr(x.d)+'<span class="sub2 '+cls+'">'+pctStr(x.dp)+'</span></td>'+
       '<td class="mono">'+(totNow?(x.now/totNow*100).toFixed(1).replace('.',','):'0')+'%</td></tr>');
   });
   const totCpn=out.reduce((s,x)=>s+x.p.cpn,0), totAmt=out.reduce((s,x)=>s+x.p.amt,0);
   const totGot=totCpn+totAmt;
   const d=totNow+totGot-totInv, dp=totInv?((totNow+totGot)/totInv-1)*100:0, cls=d>=0?'pos':'neg';
   document.getElementById('resFoot').innerHTML=
-    '<tr><td>Итого</td><td></td><td></td><td></td><td class="mono">'+money(totInv)+'</td><td></td>'+
+    '<tr><td>Итого</td><td></td><td></td>'+
+    '<td class="mono">'+money(totInv)+'</td>'+
     '<td class="mono">'+money(totNow)+'</td>'+
-    '<td class="mono">'+(totCpn?money(totCpn):'—')+'</td>'+
-    '<td class="mono">'+(totAmt?money(totAmt):'—')+'</td>'+
-    '<td class="mono '+cls+'">'+rubStr(d)+'</td>'+
-    '<td class="mono '+cls+'">'+pctStr(dp)+'</td><td class="mono">100%</td></tr>';
+    '<td class="mono">'+(totCpn?money(totCpn):'—')+
+      (totAmt?'<span class="sub2">аморт. '+money(totAmt)+'</span>':'')+'</td>'+
+    '<td class="mono '+cls+'">'+rubStr(d)+'<span class="sub2 '+cls+'">'+pctStr(dp)+'</span></td>'+
+    '<td class="mono">100%</td></tr>';
 
   let w='';
   if(foreign.length) w+='<div class="warn">Валютные выпуски в этой версии не считаются — результат по ним зависит ещё и от курса: '+foreign.join(', ')+'.</div>';
   if(bad.length)     w+='<div class="warn">Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.</div>';
   document.getElementById('resWarn').innerHTML=w;
+  renderRazbory(out);
   document.getElementById('resultWrap').style.display='';
 }
 
@@ -617,6 +733,7 @@ function apply(data){
   if(!(data.items||[]).length) addRow();
   (data.flows||[]).forEach(addFlow);
   document.getElementById('cash').value=data.cash||0;
+  saveDraft();
 }
 
 pfSelect.onchange=function(){
@@ -675,7 +792,18 @@ document.getElementById('btnExport').onclick=async function(){
    СТАРТ
    ============================================================ */
 (async function(){
-  addRow(); addRow(); addRow();
+  const d=loadDraft();
+  if(d && (d.items||[]).length){
+    (d.items||[]).forEach(addRow);
+    (d.flows||[]).forEach(addFlow);
+    document.getElementById('cash').value = d.cash || '0';
+    if(d.name) pfName.value = d.name;
+    const filled=(d.items||[]).filter(r=>r.isin).length;
+    if(filled) document.getElementById('calcStatus').textContent=
+      'Восстановлено то, что вы набрали раньше ('+filled+' бум.). Нажмите «Рассчитать», чтобы обновить цены.';
+  } else {
+    addRow(); addRow(); addRow();
+  }
   try{
     PF=await pfLoad(PF_SCOPE);
     fillSelect('');
