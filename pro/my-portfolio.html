@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<script src="../gate.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мой портфель облигаций — прибыль и убыток · InvestTools</title>
+<meta name="description" content="Учёт портфеля облигаций: дата покупки, грязная цена в рублях и количество. Прибыль и убыток по каждой позиции и доходность портфеля (XIRR) с учётом вводов и выводов.">
+<link rel="canonical" href="https://investtools.pro/pro/my-portfolio.html">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:1060px;margin:0 auto;padding:1.6rem 1.2rem 3rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:0.9rem 0 0.3rem}
+.sub{font-size:0.88rem;color:var(--text3);margin-bottom:1.4rem}
+h2{font-size:1.1rem;font-weight:700;margin:2rem 0 0.6rem;padding-top:1.2rem;border-top:2px solid var(--border)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:1rem}
+label{font-size:0.78rem;color:var(--text2);font-weight:500;display:block;margin-bottom:3px}
+input,select{font-family:var(--sans);font-size:0.92rem;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.42rem 0.55rem;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+input[type=number]{font-family:var(--mono)}
+button{font-family:var(--sans);font-size:0.86rem;font-weight:600;border-radius:8px;padding:0.5rem 0.9rem;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.sec{background:#F1F6F2;color:var(--accent)}
+button.ghost{background:transparent;color:var(--text2);border-color:var(--border)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.tblwrap{overflow-x:auto;margin:0.5rem 0}
+table{width:100%;border-collapse:collapse;font-size:0.88rem}
+th,td{padding:0.45rem 0.5rem;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{background:var(--accent-light);color:var(--accent);font-weight:600;font-size:0.8rem}
+tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
+.pos{color:var(--green);font-weight:600}
+.neg{color:var(--red);font-weight:600}
+.mono{font-family:var(--mono)}
+.note{font-size:0.82rem;color:var(--text3);line-height:1.6;margin-top:0.5rem}
+.warn{background:rgba(230,161,0,0.08);border:1px solid rgba(230,161,0,0.3);border-radius:var(--radius);padding:0.7rem 0.9rem;margin:0.7rem 0;font-size:0.88rem}
+.okbox{background:rgba(46,158,91,0.07);border:1px solid rgba(46,158,91,0.25);border-radius:var(--radius);padding:0.7rem 0.9rem;margin:0.7rem 0;font-size:0.88rem}
+.big{font-size:1.5rem;font-weight:700;font-family:var(--mono)}
+.kpi{display:flex;gap:1.6rem;flex-wrap:wrap;margin:0.6rem 0}
+.kpi div span{display:block;font-size:0.76rem;color:var(--text2);font-weight:500}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:0.6rem}
+.links a{display:inline-flex;align-items:center;font-size:0.84rem;font-weight:600;text-decoration:none;padding:0.45rem 0.8rem;border-radius:8px;background:#F1F6F2;color:var(--accent);border:1px solid var(--accent)}
+.status{font-size:0.84rem;color:var(--text2);margin-top:0.4rem;min-height:1.2em}
+.del{border:none;background:transparent;color:var(--text3);font-size:1.1rem;padding:0 .3rem;cursor:pointer}
+.footer{margin-top:2.4rem;padding-top:1.1rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
+.footer a{color:var(--text2)}
+@media(max-width:700px){.container{padding:1.2rem .8rem 2rem}}
+</style>
+</head>
+<body>
+<div class="container">
+<a href="../index.html" class="back-link">← Все калькуляторы</a>
+<h1>Мой портфель облигаций</h1>
+<div class="sub">Дата покупки, грязная цена в рублях и количество. Считает прибыль и убыток по каждой бумаге и доходность портфеля.</div>
+
+<!-- ================= ПОРТФЕЛИ ================= -->
+<div class="panel">
+  <div class="row">
+    <div style="flex:2;min-width:220px">
+      <label>Портфель</label>
+      <select id="pfSelect"><option value="">— новый портфель —</option></select>
+    </div>
+    <div style="flex:2;min-width:200px">
+      <label>Название</label>
+      <input id="pfName" placeholder="Например: Основной">
+    </div>
+    <button id="btnSave" class="sec">Сохранить</button>
+    <button id="btnDelete" class="ghost">Удалить</button>
+  </div>
+  <div class="status" id="pfStatus"></div>
+</div>
+
+<!-- ================= ВВОД ================= -->
+<h2>Состав портфеля</h2>
+<div class="tblwrap">
+<table id="inTable">
+<thead><tr>
+  <th style="min-width:150px">ISIN</th>
+  <th style="min-width:90px">Количество</th>
+  <th style="min-width:140px">Дата покупки</th>
+  <th style="min-width:130px">Цена покупки, ₽<br><span style="font-weight:400;font-size:.72rem">грязная, за 1 бумагу</span></th>
+  <th></th>
+</tr></thead>
+<tbody id="inBody"></tbody>
+</table>
+</div>
+<div class="row">
+  <button id="btnAdd" class="ghost">+ Добавить бумагу</button>
+  <button id="btnCalc">Рассчитать</button>
+</div>
+<div class="row" style="margin-top:.5rem">
+  <button id="btnTpl" class="ghost">↓ Скачать шаблон</button>
+  <button id="btnUp" class="ghost">↑ Загрузить заполненный</button>
+  <button id="btnExp" class="ghost">↓ Выгрузить мой портфель</button>
+  <input type="file" id="fileIn" accept=".csv,.txt" style="display:none">
+</div>
+<div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи.<br>
+Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Файл открывается и сохраняется как обычная таблица, даты в виде 15.01.2026, цены можно писать через запятую.</div>
+<div class="status" id="calcStatus"></div>
+
+<!-- ================= РЕЗУЛЬТАТ ================= -->
+<div id="resultWrap" style="display:none">
+<h2>Прибыль и убыток</h2>
+<div id="resWarn"></div>
+<div class="tblwrap">
+<table id="resTable">
+<thead><tr>
+  <th>Бумага</th><th>Кол-во</th><th>Куплено</th><th>Цена покупки</th>
+  <th>Вложено</th><th>Цена сейчас</th><th>Стоимость сейчас</th><th>Δ&nbsp;₽</th><th>Δ&nbsp;%</th><th>Доля</th>
+</tr></thead>
+<tbody id="resBody"></tbody>
+<tfoot id="resFoot"></tfoot>
+</table>
+</div>
+<div class="note">Разница по бумаге — это переоценка: текущая грязная цена против грязной цены покупки. Полученные купоны сюда не входят, они учитываются ниже, в доходности портфеля.</div>
+
+<!-- ================= ДОХОДНОСТЬ ================= -->
+<h2>Доходность портфеля</h2>
+<div class="panel">
+  <div class="row">
+    <div style="flex:1;min-width:200px">
+      <label>Свободные деньги на счёте, ₽</label>
+      <input type="number" id="cash" step="0.01" placeholder="0" value="0">
+    </div>
+    <div style="flex:2;min-width:240px">
+      <div class="note" style="margin:0">Сюда — рубли, которые лежат на брокерском счёте, включая полученные купоны. Они входят в текущую стоимость портфеля.</div>
+    </div>
+  </div>
+
+  <div style="margin-top:0.9rem">
+    <label>Вводы и выводы денег</label>
+    <div class="note" style="margin:0 0 .4rem">Только движение между вами и брокерским счётом. Завели деньги — плюс, вывели — минус. Купоны и дивиденды, оставшиеся на счёте, сюда не вносятся: они уже посчитаны выше.</div>
+    <div class="tblwrap">
+      <table id="flowTable">
+        <thead><tr><th style="min-width:150px">Дата</th><th style="min-width:130px">Сумма, ₽</th><th></th></tr></thead>
+        <tbody id="flowBody"></tbody>
+      </table>
+    </div>
+    <button id="btnAddFlow" class="ghost">+ Добавить движение</button>
+  </div>
+
+  <div class="row" style="margin-top:0.9rem">
+    <button id="btnYield">Посчитать доходность</button>
+  </div>
+  <div id="yieldOut"></div>
+</div>
+
+<!-- ================= КНОПКИ НАРУЖУ ================= -->
+<h2>Что дальше с этим портфелем</h2>
+<div class="panel">
+  <div class="note" style="margin:0 0 .6rem">Состав можно передать в другие инструменты — они подхватят его из сохранённых портфелей.</div>
+  <div class="row">
+    <button id="btnExport" class="sec">Передать состав в инструменты</button>
+  </div>
+  <div class="status" id="expStatus"></div>
+  <div class="links">
+    <a href="bond-portfolio.html">Портфель облигаций: дюрация и стресс-тест →</a>
+    <a href="vdo-risk.html">Риск портфеля ВДО →</a>
+    <a href="credit-metrics.html">Кредитный анализ эмитента →</a>
+    <a href="../novosti.html">Разборы эмитентов →</a>
+  </div>
+</div>
+</div><!-- /resultWrap -->
+
+<div class="footer">
+Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../novosti.html">Новости и обзоры</a><br>
+Данные: MOEX ISS API. Не является индивидуальной инвестиционной рекомендацией.
+</div>
+</div>
+
+<script>
+/* ============================================================
+   ХРАНЕНИЕ. Полка отдельная — 'bondpos', чтобы другие инструменты
+   не перезаписали даты и цены покупок.
+   Вход по токену -> сервер. Иначе -> localStorage.
+   ============================================================ */
+const PF_API   = 'https://investtools.pro/api/portfolios';
+const PF_SCOPE = 'bondpos';
+const LS_KEY   = 'invest_bondpos';
+
+function token(){ try{ return localStorage.getItem('pro_access_token')||''; }catch(e){ return ''; } }
+
+async function pfLoad(scope){
+  const t = token();
+  if(t){
+    try{
+      const r = await fetch(PF_API+'?token='+encodeURIComponent(t)+'&scope='+encodeURIComponent(scope));
+      if(r.ok){
+        const j = await r.json();
+        return (j.portfolios||[]).map(p=>({name:p.name, updated:p.updated, data:parse(p.data)}));
+      }
+    }catch(e){}
+  }
+  if(scope!==PF_SCOPE) return [];
+  try{ return JSON.parse(localStorage.getItem(LS_KEY)||'[]'); }catch(e){ return []; }
+}
+function parse(d){ if(typeof d!=='string') return d; try{ return JSON.parse(d); }catch(e){ return null; } }
+
+async function pfSaveAll(scope, list){
+  const t = token();
+  if(t){
+    const body = { token:t, scope:scope, portfolios:list.map(p=>({name:p.name, data:JSON.stringify(p.data), updated:p.updated||new Date().toISOString()})) };
+    const r = await fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('Сервер ответил '+r.status);
+    return true;
+  }
+  if(scope!==PF_SCOPE) throw new Error('нет токена');
+  localStorage.setItem(LS_KEY, JSON.stringify(list));
+  return false;
+}
+
+/* ============================================================
+   ВВОД
+   ============================================================ */
+const inBody=document.getElementById('inBody'), flowBody=document.getElementById('flowBody');
+
+function addRow(v){
+  v=v||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="isin" placeholder="RU000A..." value="'+(v.isin||'')+'"></td>'+
+    '<td><input class="qty" type="number" min="0" step="1" value="'+(v.qty!=null?v.qty:'')+'"></td>'+
+    '<td><input class="date" type="date" value="'+(v.date||'')+'"></td>'+
+    '<td><input class="price" type="number" min="0" step="0.01" value="'+(v.price!=null?v.price:'')+'"></td>'+
+    '<td><button class="del" title="Убрать">×</button></td>';
+  tr.querySelector('.del').onclick=()=>tr.remove();
+  inBody.appendChild(tr);
+}
+function addFlow(v){
+  v=v||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="fdate" type="date" value="'+(v.date||'')+'"></td>'+
+    '<td><input class="famt" type="number" step="0.01" value="'+(v.amount!=null?v.amount:'')+'"></td>'+
+    '<td><button class="del" title="Убрать">×</button></td>';
+  tr.querySelector('.del').onclick=()=>tr.remove();
+  flowBody.appendChild(tr);
+}
+function readRows(){
+  return [...inBody.querySelectorAll('tr')].map(tr=>({
+    isin:(tr.querySelector('.isin').value||'').trim().toUpperCase(),
+    qty:parseFloat(tr.querySelector('.qty').value),
+    date:tr.querySelector('.date').value,
+    price:parseFloat(tr.querySelector('.price').value)
+  })).filter(r=>r.isin && r.qty>0 && r.price>0);
+}
+function readFlows(){
+  return [...flowBody.querySelectorAll('tr')].map(tr=>({
+    date:tr.querySelector('.fdate').value,
+    amount:parseFloat(tr.querySelector('.famt').value)
+  })).filter(f=>f.date && isFinite(f.amount) && f.amount!==0);
+}
+
+document.getElementById('btnAdd').onclick=()=>addRow();
+document.getElementById('btnAddFlow').onclick=()=>addFlow();
+
+/* ============================================================
+   ШАБЛОН: скачать / заполнить в Excel / загрузить обратно
+   Разделитель ';' — так русский Excel открывает файл по столбцам,
+   а запятая остаётся свободной для дробной части цены.
+   ============================================================ */
+const CSV_HEAD='ISIN;Количество;Дата покупки;Цена покупки, руб (грязная)';
+
+function download(name, text){
+  const blob=new Blob(['﻿'+text],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function ddmmyyyy(iso){ return iso ? iso.split('-').reverse().join('.') : ''; }
+function isoDate(s){
+  s=(s||'').trim();
+  let m=s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+  if(m) return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return '';
+}
+function numRu(s){
+  const v=parseFloat(String(s==null?'':s).replace(/\s| /g,'').replace(',','.'));
+  return isFinite(v)?v:NaN;
+}
+
+document.getElementById('btnTpl').onclick=function(){
+  download('shablon-portfelya.csv',
+    CSV_HEAD+'\n'+
+    'RU000A106G80;10;15.01.2026;950,40\n'+
+    'RU000A105SG2;5;03.02.2026;1012,15\n');
+  document.getElementById('calcStatus').textContent='Шаблон скачан. Заполните его в Excel и загрузите кнопкой «Загрузить заполненный».';
+};
+
+document.getElementById('btnExp').onclick=function(){
+  const rows=readRows();
+  if(!rows.length){ document.getElementById('calcStatus').textContent='Пока нечего выгружать — заполните хотя бы одну бумагу.'; return; }
+  const body=rows.map(r=>[r.isin, r.qty, ddmmyyyy(r.date), String(r.price).replace('.',',')].join(';')).join('\n');
+  download('moy-portfel.csv', CSV_HEAD+'\n'+body+'\n');
+  document.getElementById('calcStatus').textContent='Портфель выгружен в файл — его же можно загрузить обратно.';
+};
+
+document.getElementById('btnUp').onclick=()=>document.getElementById('fileIn').click();
+
+document.getElementById('fileIn').onchange=function(e){
+  const f=e.target.files && e.target.files[0];
+  if(!f) return;
+  const rd=new FileReader();
+  rd.onload=function(){
+    const st=document.getElementById('calcStatus');
+    let text=String(rd.result||'').replace(/^﻿/,'');
+    const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+    const good=[], bad=[];
+    lines.forEach((ln,i)=>{
+      const sep = ln.indexOf(';')>=0 ? ';' : ',';
+      const c = ln.split(sep).map(s=>s.trim().replace(/^"|"$/g,''));
+      const isin=(c[0]||'').toUpperCase();
+      if(!isin || /^isin$/i.test(isin)) return;                 // шапка
+      if(!/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(isin)){ bad.push('строка '+(i+1)+': «'+c[0]+'» не похоже на ISIN'); return; }
+      const qty=numRu(c[1]), date=isoDate(c[2]), price=numRu(c[3]);
+      if(!(qty>0)){ bad.push('строка '+(i+1)+': количество'); return; }
+      if(!(price>0)){ bad.push('строка '+(i+1)+': цена покупки'); return; }
+      good.push({isin, qty, date, price});
+    });
+    if(good.length){
+      inBody.innerHTML='';
+      good.forEach(addRow);
+      st.textContent='Загружено бумаг: '+good.length+'. Нажмите «Рассчитать».'+(bad.length?' Пропущено: '+bad.length+'.':'');
+    } else {
+      st.textContent='Не удалось прочитать ни одной строки. Проверьте, что столбцы идут как в шаблоне: ISIN, количество, дата, цена.';
+    }
+    if(bad.length) st.textContent+=' '+bad.slice(0,4).join('; ')+(bad.length>4?'…':'');
+    e.target.value='';
+  };
+  rd.readAsText(f,'utf-8');
+};
+
+/* ============================================================
+   КОТИРОВКИ С МОСБИРЖИ
+   ============================================================ */
+const BOARD_PRIORITY=['TQOB','TQCB','TQIR','TQRD','TQUD','TQOD','TQOY','EQOB'];
+
+function toObj(block){
+  if(!block||!block.columns) return [];
+  return block.data.map(r=>{const o={};block.columns.forEach((c,i)=>o[c]=r[i]);return o;});
+}
+
+async function quote(isin){
+  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/securities/'+encodeURIComponent(isin)+
+            '.json?iss.meta=off&iss.only=securities,marketdata';
+  const r=await fetch(url);
+  if(!r.ok) throw new Error('биржа недоступна');
+  const j=await r.json();
+  const secs=toObj(j.securities), mds=toObj(j.marketdata);
+  if(!secs.length) throw new Error('бумага не найдена');
+  let sec=null;
+  for(const b of BOARD_PRIORITY){ const f=secs.find(s=>s.BOARDID===b); if(f){sec=f;break;} }
+  if(!sec) sec=secs[0];
+  const md=mds.find(m=>m.BOARDID===sec.BOARDID)||{};
+  const pct = num(md.LAST) || num(md.LCLOSEPRICE) || num(md.MARKETPRICE) || num(sec.PREVPRICE);
+  const face= num(sec.FACEVALUE);
+  const nkd = num(sec.ACCRUEDINT)||0;
+  if(!pct || !face) throw new Error('нет цены');
+  return {
+    name: sec.SECNAME || sec.SHORTNAME || isin,
+    unit: sec.FACEUNIT || 'SUR',
+    pct: pct, face: face, nkd: nkd,
+    dirty: face*pct/100 + nkd,
+    mat: sec.MATDATE || ''
+  };
+}
+function num(x){ const v=parseFloat(x); return isFinite(v)?v:0; }
+function money(x){ return (Math.round(x*100)/100).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pctStr(x){ return (x>=0?'+':'−')+Math.abs(x).toFixed(2).replace('.',',')+'%'; }
+function rubStr(x){ return (x>=0?'+':'−')+money(Math.abs(x))+' ₽'; }
+
+/* ============================================================
+   РАСЧЁТ
+   ============================================================ */
+let LAST=null;
+
+document.getElementById('btnCalc').onclick=async function(){
+  const rows=readRows();
+  const st=document.getElementById('calcStatus');
+  if(!rows.length){ st.textContent='Заполните хотя бы одну бумагу: ISIN, количество и цену покупки.'; return; }
+  st.textContent='Загружаю котировки с Московской биржи…';
+  this.disabled=true;
+  const out=[], bad=[], foreign=[];
+  for(const r of rows){
+    try{
+      const q=await quote(r.isin);
+      if((q.unit||'SUR')!=='SUR'){ foreign.push(r.isin+' ('+q.unit+')'); continue; }
+      const invested=r.price*r.qty, now=q.dirty*r.qty;
+      out.push({...r, q, invested, now, d:now-invested, dp:invested?(now/invested-1)*100:0});
+    }catch(e){ bad.push(r.isin+' — '+e.message); }
+  }
+  this.disabled=false;
+  if(!out.length){ st.textContent='Не удалось посчитать ни одной бумаги. '+bad.join('; '); return; }
+  st.textContent='';
+  LAST=out;
+  render(out, bad, foreign);
+};
+
+function render(out, bad, foreign){
+  const totInv=out.reduce((s,x)=>s+x.invested,0), totNow=out.reduce((s,x)=>s+x.now,0);
+  const body=document.getElementById('resBody'); body.innerHTML='';
+  out.forEach(x=>{
+    const cls=x.d>=0?'pos':'neg';
+    body.insertAdjacentHTML('beforeend',
+      '<tr><td>'+x.q.name+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
+      '<td class="mono">'+x.qty+'</td>'+
+      '<td class="mono">'+(x.date?x.date.split('-').reverse().join('.'):'—')+'</td>'+
+      '<td class="mono">'+money(x.price)+'</td>'+
+      '<td class="mono">'+money(x.invested)+'</td>'+
+      '<td class="mono">'+money(x.q.dirty)+'</td>'+
+      '<td class="mono">'+money(x.now)+'</td>'+
+      '<td class="mono '+cls+'">'+rubStr(x.d)+'</td>'+
+      '<td class="mono '+cls+'">'+pctStr(x.dp)+'</td>'+
+      '<td class="mono">'+(totNow?(x.now/totNow*100).toFixed(1).replace('.',','):'0')+'%</td></tr>');
+  });
+  const d=totNow-totInv, dp=totInv?(totNow/totInv-1)*100:0, cls=d>=0?'pos':'neg';
+  document.getElementById('resFoot').innerHTML=
+    '<tr><td>Итого</td><td></td><td></td><td></td><td class="mono">'+money(totInv)+'</td><td></td>'+
+    '<td class="mono">'+money(totNow)+'</td><td class="mono '+cls+'">'+rubStr(d)+'</td>'+
+    '<td class="mono '+cls+'">'+pctStr(dp)+'</td><td class="mono">100%</td></tr>';
+
+  let w='';
+  if(foreign.length) w+='<div class="warn">Валютные выпуски в этой версии не считаются — результат по ним зависит ещё и от курса: '+foreign.join(', ')+'.</div>';
+  if(bad.length)     w+='<div class="warn">Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.</div>';
+  document.getElementById('resWarn').innerHTML=w;
+  document.getElementById('resultWrap').style.display='';
+}
+
+/* ============================================================
+   ДОХОДНОСТЬ: XIRR
+   ============================================================ */
+function xnpv(rate, cf){
+  const t0=cf[0].d;
+  return cf.reduce((s,c)=>s + c.a/Math.pow(1+rate,(c.d-t0)/(365*24*3600*1000)),0);
+}
+function xirr(cf){
+  let lo=-0.9999, hi=10;
+  let flo=xnpv(lo,cf), fhi=xnpv(hi,cf);
+  if(!isFinite(flo)||!isFinite(fhi)||flo*fhi>0) return null;
+  for(let i=0;i<200;i++){
+    const mid=(lo+hi)/2, f=xnpv(mid,cf);
+    if(Math.abs(f)<1e-7) return mid;
+    if(flo*f<0){ hi=mid; fhi=f; } else { lo=mid; flo=f; }
+  }
+  return (lo+hi)/2;
+}
+
+document.getElementById('btnYield').onclick=function(){
+  const out=document.getElementById('yieldOut');
+  if(!LAST){ out.innerHTML='<div class="warn">Сначала нажмите «Рассчитать».</div>'; return; }
+  const cash=num(document.getElementById('cash').value);
+  const bondsVal=LAST.reduce((s,x)=>s+x.now,0);
+  const flows=readFlows();
+  const cf=[]; let mode, nowVal, invested, noDate=[];
+
+  if(flows.length){
+    // Модель «доходность портфеля»: считаем только движение денег между вами и счётом.
+    // Покупки бумаг сюда НЕ входят — это перекладывание внутри счёта.
+    mode='account';
+    nowVal = bondsVal + cash;
+    flows.forEach(f=>cf.push({d:new Date(f.date+'T12:00:00').getTime(), a:-f.amount}));
+    invested = flows.reduce((s,f)=>s+f.amount,0);   // заведено минус выведено
+  } else {
+    // Модель «доходность вложений в бумаги»: вводов нет, считаем от самих покупок.
+    // Свободные деньги на счёте исключаем — они пришли не из этих покупок.
+    mode='positions';
+    nowVal = bondsVal;
+    LAST.forEach(x=>{ if(x.date) cf.push({d:new Date(x.date+'T12:00:00').getTime(), a:-x.invested}); });
+    noDate = LAST.filter(x=>!x.date);
+    invested = LAST.reduce((s,x)=>s+x.invested,0);
+  }
+
+  cf.push({d:Date.now(), a:nowVal});
+  cf.sort((a,b)=>a.d-b.d);
+
+  const abs=nowVal-invested, absPct=invested?(nowVal/invested-1)*100:0;
+  const days=(Date.now()-cf[0].d)/(24*3600*1000);
+
+  let html='<div class="kpi">'+
+    '<div><span>'+(mode==='account'?'Заведено на счёт':'Вложено в бумаги')+'</span><b class="big">'+money(invested)+' ₽</b></div>'+
+    '<div><span>Сейчас</span><b class="big">'+money(nowVal)+' ₽</b></div>'+
+    '<div><span>Результат</span><b class="big '+(abs>=0?'pos':'neg')+'">'+rubStr(abs)+'</b></div>'+
+    '<div><span>За период</span><b class="big '+(abs>=0?'pos':'neg')+'">'+pctStr(absPct)+'</b></div></div>';
+
+  html+='<div class="note">'+(mode==='account'
+    ? 'Считаю доходность ваших денег: по вводам и выводам, а текущая стоимость — бумаги плюс свободные деньги на счёте.'
+    : 'Вводов и выводов вы не указали, поэтому считаю доходность вложений в бумаги: от цен покупок к текущей стоимости. Свободные деньги на счёте в расчёт не взяты.')+'</div>';
+
+  if(noDate.length){
+    html+='<div class="warn">У части бумаг не указана дата покупки — годовая доходность по ним посчитана быть не может. Заполните даты, чтобы получить XIRR.</div>';
+  } else if(days<90){
+    html+='<div class="warn">Портфель живёт '+Math.round(days)+' дн. Годовую доходность на таком сроке показывать нечестно — она раздувает любой случайный результат. Выше абсолютный результат за период, он корректен.</div>';
+  } else {
+    const r=xirr(cf);
+    if(r==null){
+      html+='<div class="warn">Не удалось посчитать XIRR на этих движениях — проверьте даты и суммы вводов-выводов.</div>';
+    } else {
+      html+='<div class="okbox"><b>'+(mode==='account'?'Доходность портфеля':'Доходность вложений')+
+        ' (XIRR): '+pctStr(r*100)+' годовых.</b><br>'+
+        (mode==='account'
+          ? 'Доходность ваших денег с учётом того, когда и сколько вы заводили на счёт.'
+          : 'Доходность вложенных в бумаги денег с учётом дат покупок.')+
+        ' Период — '+Math.round(days)+' дн.</div>';
+    }
+  }
+  out.innerHTML=html;
+};
+
+/* ============================================================
+   СОХРАНЕНИЕ ПОРТФЕЛЕЙ
+   ============================================================ */
+const pfSelect=document.getElementById('pfSelect'), pfName=document.getElementById('pfName'), pfStatus=document.getElementById('pfStatus');
+let PF=[];
+
+function fillSelect(sel){
+  pfSelect.innerHTML='<option value="">— новый портфель —</option>';
+  PF.forEach(p=>{
+    const o=document.createElement('option'); o.value=p.name; o.textContent=p.name;
+    if(p.name===sel) o.selected=true;
+    pfSelect.appendChild(o);
+  });
+}
+function current(){
+  return { items:readRows(), cash:num(document.getElementById('cash').value), flows:readFlows() };
+}
+function apply(data){
+  inBody.innerHTML=''; flowBody.innerHTML='';
+  (data.items||[]).forEach(addRow);
+  if(!(data.items||[]).length) addRow();
+  (data.flows||[]).forEach(addFlow);
+  document.getElementById('cash').value=data.cash||0;
+}
+
+pfSelect.onchange=function(){
+  const p=PF.find(x=>x.name===this.value);
+  if(p&&p.data){ apply(p.data); pfName.value=p.name; pfStatus.textContent='Загружен портфель «'+p.name+'».'; }
+  else { inBody.innerHTML=''; addRow(); flowBody.innerHTML=''; pfName.value=''; pfStatus.textContent=''; }
+};
+
+document.getElementById('btnSave').onclick=async function(){
+  const name=(pfName.value||'').trim();
+  if(!name){ pfStatus.textContent='Укажите название портфеля.'; return; }
+  const data=current();
+  if(!data.items.length){ pfStatus.textContent='Нечего сохранять — заполните хотя бы одну бумагу.'; return; }
+  const i=PF.findIndex(p=>p.name===name);
+  const rec={name, data, updated:new Date().toISOString()};
+  if(i>=0) PF[i]=rec; else PF.push(rec);
+  this.disabled=true; pfStatus.textContent='Сохраняю…';
+  try{
+    const onServer=await pfSaveAll(PF_SCOPE, PF);
+    pfStatus.textContent=onServer
+      ? 'Сохранено на сервере — портфель откроется с любого устройства по вашему токену.'
+      : 'Сохранено в этом браузере. Чтобы портфель был виден с других устройств, войдите по токену.';
+    fillSelect(name);
+  }catch(e){ pfStatus.textContent='Не удалось сохранить: '+e.message; }
+  this.disabled=false;
+};
+
+document.getElementById('btnDelete').onclick=async function(){
+  const name=(pfSelect.value||'').trim();
+  if(!name){ pfStatus.textContent='Выберите портфель, который нужно удалить.'; return; }
+  PF=PF.filter(p=>p.name!==name);
+  pfStatus.textContent='Удаляю…';
+  try{ await pfSaveAll(PF_SCOPE, PF); fillSelect(''); pfSelect.onchange(); pfStatus.textContent='Портфель «'+name+'» удалён.'; }
+  catch(e){ pfStatus.textContent='Не удалось удалить: '+e.message; }
+};
+
+/* передача состава в другие инструменты (полка 'bonds') */
+document.getElementById('btnExport').onclick=async function(){
+  const st=document.getElementById('expStatus');
+  const items=readRows();
+  if(!items.length){ st.textContent='Нечего передавать.'; return; }
+  if(!token()){ st.textContent='Передача работает при входе по токену — тогда другие инструменты увидят портфель.'; return; }
+  this.disabled=true; st.textContent='Передаю…';
+  try{
+    const existing=await pfLoad('bonds');
+    const name='Из моего портфеля';
+    const rec={name, data:{name, items:items.map(r=>({isin:r.isin, qty:r.qty})), updated:new Date().toISOString()}, updated:new Date().toISOString()};
+    const list=existing.filter(p=>p.name!==name).concat([rec]);
+    await pfSaveAll('bonds', list);
+    st.textContent='Готово. Откройте нужный инструмент и выберите портфель «'+name+'».';
+  }catch(e){ st.textContent='Не удалось передать: '+e.message; }
+  this.disabled=false;
+};
+
+/* ============================================================
+   СТАРТ
+   ============================================================ */
+(async function(){
+  addRow(); addRow(); addRow();
+  try{
+    PF=await pfLoad(PF_SCOPE);
+    fillSelect('');
+    if(PF.length) pfStatus.textContent='Сохранённых портфелей: '+PF.length+'. Выберите в списке.';
+  }catch(e){}
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>
