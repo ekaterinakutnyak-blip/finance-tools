@@ -117,13 +117,14 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <table id="resTable">
 <thead><tr>
   <th>Бумага</th><th>Кол-во</th><th>Куплено</th><th>Цена покупки</th>
-  <th>Вложено</th><th>Цена сейчас</th><th>Стоимость сейчас</th><th>Δ&nbsp;₽</th><th>Δ&nbsp;%</th><th>Доля</th>
+  <th>Вложено</th><th>Цена сейчас</th><th>Стоимость сейчас</th><th>Купоны<br><span style="font-weight:400;font-size:.72rem">выплачено</span></th><th>Амортизация<br><span style="font-weight:400;font-size:.72rem">выплачено</span></th><th>Δ&nbsp;₽</th><th>Δ&nbsp;%</th><th>Доля</th>
 </tr></thead>
 <tbody id="resBody"></tbody>
 <tfoot id="resFoot"></tfoot>
 </table>
 </div>
-<div class="note">Разница по бумаге — это переоценка: текущая грязная цена против грязной цены покупки. Полученные купоны сюда не входят, они учитываются ниже, в доходности портфеля.</div>
+<div class="note">Купоны и амортизация берутся с Московской биржи: сверяются даты выплат с вашей датой покупки, и всё, что прошло после неё, умножается на количество бумаг. Суммы брутто, до НДФЛ. Купон считается по дате выплаты — вы заплатили НКД в грязной цене, значит весь последующий купон ваш. Прибыль считается уже после этого: переоценка плюс купоны плюс амортизация.<br>
+Амортизация показана отдельно не случайно: это возврат вашего же номинала, а не доход. Но учитывать её обязательно — после неё бумага стоит дешевле, и без этой колонки выглядела бы убыточной.</div>
 
 <!-- ================= ДОХОДНОСТЬ ================= -->
 <h2>Доходность портфеля</h2>
@@ -190,7 +191,14 @@ const PF_API   = 'https://investtools.pro/api/portfolios';
 const PF_SCOPE = 'bondpos';
 const LS_KEY   = 'invest_bondpos';
 
-function token(){ try{ return localStorage.getItem('pro_access_token')||''; }catch(e){ return ''; } }
+/* Токен отдаём только при входе ПО ТОКЕНУ. При входе по паролю в этой же
+   ячейке лежит хеш пароля — сервер его не знает и ответит 403. */
+function token(){
+  try{
+    if(localStorage.getItem('pro_access_type')!=='token') return '';
+    return localStorage.getItem('pro_access_token')||'';
+  }catch(e){ return ''; }
+}
 
 async function pfLoad(scope){
   const t = token();
@@ -213,10 +221,13 @@ async function pfSaveAll(scope, list){
   if(t){
     const body = { token:t, scope:scope, portfolios:list.map(p=>({name:p.name, data:JSON.stringify(p.data), updated:p.updated||new Date().toISOString()})) };
     const r = await fetch(PF_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok) throw new Error('Сервер ответил '+r.status);
-    return true;
+    if(r.ok) return true;
+    if(r.status!==403) throw new Error('Сервер ответил '+r.status);
+    // токен истёк — не теряем портфель, кладём в браузер
+  } else if(scope!==PF_SCOPE){
+    throw new Error('нужен вход по токену');
   }
-  if(scope!==PF_SCOPE) throw new Error('нет токена');
+  if(scope!==PF_SCOPE) throw new Error('нужен вход по токену');
   localStorage.setItem(LS_KEY, JSON.stringify(list));
   return false;
 }
@@ -390,6 +401,39 @@ async function quote(isin){
     mat: sec.MATDATE || ''
   };
 }
+/* Выплаты по бумаге после даты покупки: купоны и погашения части номинала.
+   Купон берём по дате выплаты: покупатель заплатил НКД в грязной цене,
+   значит весь последующий купон — его. Суммы брутто, до НДФЛ. */
+async function payouts(isin, fromISO, qty){
+  const empty={cpn:0, amt:0, items:[]};
+  if(!fromISO) return empty;
+  try{
+    const r=await fetch('https://iss.moex.com/iss/securities/'+encodeURIComponent(isin)+
+                        '/bondization.json?iss.meta=off&limit=unlimited');
+    if(!r.ok) return empty;
+    const j=await r.json();
+    const from=new Date(fromISO+'T00:00:00').getTime(), now=Date.now();
+    let cpn=0, amt=0; const items=[];
+    const scan=(block, dateCol, acc)=>{
+      if(!j[block]||!j[block].columns) return 0;
+      const ci=j[block].columns.indexOf(dateCol), vi=j[block].columns.indexOf('value'),
+            ui=j[block].columns.indexOf('faceunit');
+      let s=0;
+      j[block].data.forEach(row=>{
+        const d=row[ci]; const v=parseFloat(row[vi]);
+        if(!d||!isFinite(v)) return;
+        if(ui>=0 && row[ui] && row[ui]!=='SUR') return;      // валютные не считаем
+        const t=new Date(d+'T00:00:00').getTime();
+        if(t>from && t<=now){ s+=v*qty; items.push({date:d, sum:v*qty}); }
+      });
+      return s;
+    };
+    cpn=scan('coupons','coupondate');
+    amt=scan('amortizations','amortdate');
+    return {cpn, amt, items};
+  }catch(e){ return empty; }
+}
+
 function num(x){ const v=parseFloat(x); return isFinite(v)?v:0; }
 function money(x){ return (Math.round(x*100)/100).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function pctStr(x){ return (x>=0?'+':'−')+Math.abs(x).toFixed(2).replace('.',',')+'%'; }
@@ -411,8 +455,11 @@ document.getElementById('btnCalc').onclick=async function(){
     try{
       const q=await quote(r.isin);
       if((q.unit||'SUR')!=='SUR'){ foreign.push(r.isin+' ('+q.unit+')'); continue; }
+      const p=await payouts(r.isin, r.date, r.qty);
+      const got=p.cpn+p.amt;
       const invested=r.price*r.qty, now=q.dirty*r.qty;
-      out.push({...r, q, invested, now, d:now-invested, dp:invested?(now/invested-1)*100:0});
+      out.push({...r, q, p, got, invested, now,
+                d:now+got-invested, dp:invested?((now+got)/invested-1)*100:0});
     }catch(e){ bad.push(r.isin+' — '+e.message); }
   }
   this.disabled=false;
@@ -435,14 +482,21 @@ function render(out, bad, foreign){
       '<td class="mono">'+money(x.invested)+'</td>'+
       '<td class="mono">'+money(x.q.dirty)+'</td>'+
       '<td class="mono">'+money(x.now)+'</td>'+
+      '<td class="mono">'+(x.p.cpn?money(x.p.cpn):'—')+'</td>'+
+      '<td class="mono">'+(x.p.amt?money(x.p.amt):'—')+'</td>'+
       '<td class="mono '+cls+'">'+rubStr(x.d)+'</td>'+
       '<td class="mono '+cls+'">'+pctStr(x.dp)+'</td>'+
       '<td class="mono">'+(totNow?(x.now/totNow*100).toFixed(1).replace('.',','):'0')+'%</td></tr>');
   });
-  const d=totNow-totInv, dp=totInv?(totNow/totInv-1)*100:0, cls=d>=0?'pos':'neg';
+  const totCpn=out.reduce((s,x)=>s+x.p.cpn,0), totAmt=out.reduce((s,x)=>s+x.p.amt,0);
+  const totGot=totCpn+totAmt;
+  const d=totNow+totGot-totInv, dp=totInv?((totNow+totGot)/totInv-1)*100:0, cls=d>=0?'pos':'neg';
   document.getElementById('resFoot').innerHTML=
     '<tr><td>Итого</td><td></td><td></td><td></td><td class="mono">'+money(totInv)+'</td><td></td>'+
-    '<td class="mono">'+money(totNow)+'</td><td class="mono '+cls+'">'+rubStr(d)+'</td>'+
+    '<td class="mono">'+money(totNow)+'</td>'+
+    '<td class="mono">'+(totCpn?money(totCpn):'—')+'</td>'+
+    '<td class="mono">'+(totAmt?money(totAmt):'—')+'</td>'+
+    '<td class="mono '+cls+'">'+rubStr(d)+'</td>'+
     '<td class="mono '+cls+'">'+pctStr(dp)+'</td><td class="mono">100%</td></tr>';
 
   let w='';
@@ -492,25 +546,31 @@ document.getElementById('btnYield').onclick=function(){
     mode='positions';
     nowVal = bondsVal;
     LAST.forEach(x=>{ if(x.date) cf.push({d:new Date(x.date+'T12:00:00').getTime(), a:-x.invested}); });
+    // купоны и амортизация — приход на свои даты
+    LAST.forEach(x=>((x.p&&x.p.items)||[]).forEach(it=>cf.push({d:new Date(it.date+'T12:00:00').getTime(), a:it.sum})));
     noDate = LAST.filter(x=>!x.date);
     invested = LAST.reduce((s,x)=>s+x.invested,0);
   }
 
+  const received = LAST.reduce((s,x)=>s+(x.got||0),0);
   cf.push({d:Date.now(), a:nowVal});
   cf.sort((a,b)=>a.d-b.d);
 
-  const abs=nowVal-invested, absPct=invested?(nowVal/invested-1)*100:0;
+  const endVal = mode==='account' ? nowVal : nowVal + received;
+  const abs=endVal-invested, absPct=invested?(endVal/invested-1)*100:0;
   const days=(Date.now()-cf[0].d)/(24*3600*1000);
 
   let html='<div class="kpi">'+
     '<div><span>'+(mode==='account'?'Заведено на счёт':'Вложено в бумаги')+'</span><b class="big">'+money(invested)+' ₽</b></div>'+
-    '<div><span>Сейчас</span><b class="big">'+money(nowVal)+' ₽</b></div>'+
+    '<div><span>'+(mode==='account'?'Сейчас':'Бумаги сейчас')+'</span><b class="big">'+money(nowVal)+' ₽</b></div>'+
+    (mode==='account'?'':'<div><span>Купоны и амортизация</span><b class="big">'+money(received)+' ₽</b></div>')+
     '<div><span>Результат</span><b class="big '+(abs>=0?'pos':'neg')+'">'+rubStr(abs)+'</b></div>'+
     '<div><span>За период</span><b class="big '+(abs>=0?'pos':'neg')+'">'+pctStr(absPct)+'</b></div></div>';
 
   html+='<div class="note">'+(mode==='account'
-    ? 'Считаю доходность ваших денег: по вводам и выводам, а текущая стоимость — бумаги плюс свободные деньги на счёте.'
-    : 'Вводов и выводов вы не указали, поэтому считаю доходность вложений в бумаги: от цен покупок к текущей стоимости. Свободные деньги на счёте в расчёт не взяты.')+'</div>';
+    ? 'Считаю доходность ваших денег: по вводам и выводам, а текущая стоимость — бумаги плюс свободные деньги на счёте.'+
+      (received?' После покупок пришло купонами и амортизацией '+money(received)+' ₽ — если эти деньги остались на счёте, они должны быть учтены в поле «свободные деньги», иначе доходность занизится.':'')
+    : 'Вводов и выводов вы не указали, поэтому считаю доходность вложений в бумаги: покупки, затем купоны и амортизация на свои даты, затем текущая стоимость бумаг. Свободные деньги на счёте в расчёт не взяты, чтобы не посчитать их дважды.')+'</div>';
 
   if(noDate.length){
     html+='<div class="warn">У части бумаг не указана дата покупки — годовая доходность по ним посчитана быть не может. Заполните даты, чтобы получить XIRR.</div>';
