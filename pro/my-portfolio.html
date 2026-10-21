@@ -134,6 +134,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="note">Купоны и амортизация берутся с Московской биржи: сверяются даты выплат с вашей датой покупки, и всё, что прошло после неё, умножается на количество бумаг. Суммы брутто, до НДФЛ. Купон считается по дате выплаты — вы заплатили НКД в грязной цене, значит весь последующий купон ваш. Прибыль считается уже после этого: переоценка плюс купоны плюс амортизация.<br>
 Амортизация показана отдельно не случайно: это возврат вашего же номинала, а не доход. Но учитывать её обязательно — после неё бумага стоит дешевле, и без этой колонки выглядела бы убыточной.<br>
 <b>Валютные выпуски.</b> Бумага считается валютной, если биржа указала валюту номинала не в рублях: доллар, евро или юань. Номинал, цена и купоны у неё в этой валюте, поэтому стоимость и выплаты пересчитываются в рубли по курсу. Вложенное не пересчитывается — вы заплатили рубли. Из-за этого результат по валютной бумаге складывается из двух движений сразу: цены самой бумаги и курса. Уже полученные купоны пересчитаны по сегодняшнему курсу, а не по курсу на день каждой выплаты — на суммах купонов разница небольшая, но знать об этом стоит.<br>
+<b>Почему не всё умножается на курс.</b> У валютной бумаги номинал и цена — в валюте, а вот НКД биржа отдаёт в той валюте, в которой идут расчёты на доске: на рублёвой доске он уже в рублях, на валютной — в валюте. Купоны тоже бывают по-разному: у одного выпуска биржа отдаёт их в долларах, у замещающего — сразу в рублях. Поэтому курс применяется не ко всей сумме подряд, а к каждой части по её собственной валюте — иначе НКД или купон удваивается.<br>
 <b>Откуда берётся курс.</b> Биржевого спота по доллару и евро после 2024 года нет, поэтому курс берётся из вечных фьючерсов Московской биржи — это живая биржевая цена валюты, обновляется в течение дня. Но выплаты по валютным облигациям эмитент пересчитывает по официальному курсу ЦБ, а он с биржевым совпадает не копейка в копейку: обычно расхождение в пределах доли процента, иногда чуть больше при резких движениях. Поэтому рублёвая стоимость валютной бумаги здесь — корректная оценка, а не точная сумма зачисления.</div>
 
 <!-- ================= РАЗБОРЫ ЭМИТЕНТОВ ================= -->
@@ -176,6 +177,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="panel">
   <div class="note" style="margin:0 0 .6rem">Состав можно передать в другие инструменты — они подхватят его из сохранённых портфелей.</div>
   <div class="row">
+    <button id="btnOpenBP">Открыть в анализе портфеля →</button>
     <button id="btnExport" class="sec">Передать состав в инструменты</button>
   </div>
   <div class="status" id="expStatus"></div>
@@ -468,9 +470,10 @@ async function quote(isin){
   if(!pct || !face) throw new Error('нет цены');
   return {
     name: sec.SECNAME || sec.SHORTNAME || isin,
-    unit: sec.FACEUNIT || 'SUR',
+    unit: String(sec.FACEUNIT||'SUR').toUpperCase(),   // валюта номинала: в ней цена и тело
+    curId: String(sec.CURRENCYID||'SUR').toUpperCase(),// валюта расчётов на доске: в ней НКД
     pct: pct, face: face, nkd: nkd,
-    dirty: face*pct/100 + nkd,
+    clean: face*pct/100,                               // тело бумаги в валюте номинала
     mat: sec.MATDATE || ''
   };
 }
@@ -510,9 +513,8 @@ async function loadFxRates(){
 /* Выплаты по бумаге после даты покупки: купоны и погашения части номинала.
    Купон берём по дате выплаты: покупатель заплатил НКД в грязной цене,
    значит весь последующий купон — его. Суммы брутто, до НДФЛ. */
-async function payouts(isin, fromISO, qty, fx){
-  const empty={cpn:0, amt:0, cpnLoc:0, amtLoc:0, items:[]};
-  const k=(fx>0?fx:1);
+async function payouts(isin, fromISO, qty){
+  const empty={cpn:0, amt:0, items:[]};
   if(!fromISO) return empty;
   try{
     const r=await fetch('https://iss.moex.com/iss/securities/'+encodeURIComponent(isin)+
@@ -529,8 +531,11 @@ async function payouts(isin, fromISO, qty, fx){
       j[block].data.forEach(row=>{
         const d=row[ci]; const v=parseFloat(row[vi]);
         if(!d||!isFinite(v)) return;
-        // Выплата приходит в валюте номинала (рубли биржа помечает то как SUR, то как RUB).
-        // Пересчитываем в рубли по курсу: k=1 для рублёвых бумаг.
+        // У КАЖДОЙ выплаты своя валюта — биржа помечает её в строке. По одной бумаге
+        // купон может приходить в валюте, по другой (замещающей) сразу в рублях.
+        const u=String(row[ui]==null?'':row[ui]).toUpperCase();
+        const k=(!u||u==='SUR'||u==='RUB')?1:(FX[u]||0);
+        if(!k) return;                                   // валюта без курса — не считаем
         const t=new Date(d+'T00:00:00').getTime();
         if(t>from && t<=now){ s+=v*qty*k; items.push({date:d, sum:v*qty*k}); }
       });
@@ -538,7 +543,7 @@ async function payouts(isin, fromISO, qty, fx){
     };
     cpn=scan('coupons','coupondate');
     amt=scan('amortizations','amortdate');
-    return {cpn, amt, cpnLoc:cpn/k, amtLoc:amt/k, items};
+    return {cpn, amt, items};
   }catch(e){ return empty; }
 }
 
@@ -612,16 +617,21 @@ document.getElementById('btnCalc').onclick=async function(){
   for(const r of rows){
     try{
       const q=await quote(r.isin);
-      const unit=String(q.unit||'SUR').toUpperCase();
-      // Валюта номинала: SUR/RUB — рублёвая бумага, всё остальное пересчитываем курсом.
-      const fx=isRub(unit)?1:(FX[unit]||0);
-      if(!fx){ noFx.add(unit); skipped.push(r.isin+' ('+unit+')'); continue; }
-      const p=await payouts(r.isin, r.date, r.qty, fx);
+      const unit=q.unit, curId=q.curId;
+      // Тело бумаги — в валюте номинала. НКД — в валюте расчётов доски:
+      // по одной и той же бумаге на рублёвой доске он в рублях, на валютной в валюте.
+      const fx    = isRub(unit) ?1:(FX[unit] ||0);
+      const fxNkd = isRub(curId)?1:(FX[curId]||0);
+      if(!fx || !fxNkd){
+        const miss=!fx?unit:curId;
+        noFx.add(miss); skipped.push(r.isin+' ('+miss+')'); continue;
+      }
+      const p=await payouts(r.isin, r.date, r.qty);
       const got=p.cpn+p.amt;
       // Вложено — рубли, которые реально списали: курс тут не нужен.
-      // Сейчас и купоны — в валюте номинала, поэтому умножаем на курс.
-      const invested=r.price*r.qty, now=q.dirty*r.qty*fx;
-      out.push({...r, q, unit, fx, p, got, invested, now, nowLoc:q.dirty*r.qty,
+      const dirty1 = q.clean*fx + q.nkd*fxNkd;          // грязная цена одной бумаги в рублях
+      const invested=r.price*r.qty, now=dirty1*r.qty;
+      out.push({...r, q, unit, curId, fx, fxNkd, dirty1, p, got, invested, now,
                 d:now+got-invested, dp:invested?((now+got)/invested-1)*100:0});
     }catch(e){ bad.push(r.isin+' — '+e.message); }
   }
@@ -642,9 +652,11 @@ function render(out, bad, noFx, skipped){
     const cls=x.d>=0?'pos':'neg';
     const fxb=!isRub(x.unit), sym=fxb?curSym(x.unit):'';
     const tag=fxb?' <span class="fxtag">'+x.unit+'</span>':'';
+    const nkdSym=isRub(x.curId)?'₽':curSym(x.curId);
     const nowSub=fxb
-      ? 'по '+money(x.q.dirty)+' '+sym+'<br>курс '+money(x.fx)+' ₽'
-      : 'по '+money(x.q.dirty);
+      ? 'тело '+money(x.q.clean)+' '+sym+' · курс '+money(x.fx)+' ₽<br>НКД '+money(x.q.nkd)+' '+nkdSym+
+        ' · грязная '+money(x.dirty1)+' ₽'
+      : 'по '+money(x.dirty1);
     body.insertAdjacentHTML('beforeend',
       '<tr><td>'+x.q.name+tag+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
@@ -843,19 +855,68 @@ document.getElementById('btnDelete').onclick=async function(){
 };
 
 /* передача состава в другие инструменты (полка 'bonds') */
+/* ============================================================
+   ПЕРЕДАЧА СОСТАВА В ДРУГИЕ ИНСТРУМЕНТЫ.
+   Там портфели лежат в двух местах: в браузере под ключом invest_portfolios
+   (вход по паролю) и в серверной полке 'bonds' (вход по токену). Пишем в оба,
+   чтобы передача работала независимо от того, как вы вошли.
+   Формат состава там — массив [{isin, qty}], именно массив, не объект.
+   ============================================================ */
+const TOOLS_LS='invest_portfolios';     // ключ портфелей в других инструментах
+const AUTOLOAD_KEY='invest_pf_autoload';// имя портфеля, который инструмент откроет сам
+
+function curPfName(){
+  const n=(document.getElementById('pfName').value||'').trim();
+  if(n) return n;
+  const sel=(document.getElementById('pfSelect').value||'').trim();
+  return sel || 'Из моего портфеля';
+}
+
+async function handoff(){
+  const rows=readRows();
+  if(!rows.length) throw new Error('Заполните состав портфеля.');
+  const name=curPfName();
+  const items=rows.map(r=>({isin:r.isin, qty:String(r.qty)}));
+  const stamp=new Date().toISOString();
+
+  // 1) в браузер — это видят инструменты при входе по паролю
+  let localOk=false;
+  try{
+    let list=[]; const v=JSON.parse(localStorage.getItem(TOOLS_LS)||'[]');
+    if(Array.isArray(v)) list=v.filter(x=>x&&x.name!==name);
+    list.push({name:name, items:items, updated:stamp});
+    localStorage.setItem(TOOLS_LS, JSON.stringify(list));
+    localStorage.setItem(AUTOLOAD_KEY, name);
+    localOk=true;
+  }catch(e){}
+
+  // 2) на сервер — это видят инструменты при входе по токену
+  if(token()){
+    const existing=await pfLoad('bonds');
+    const keep=existing.filter(p=>p.name!==name);
+    await pfSaveAll('bonds', keep.concat([{name:name, data:items, updated:stamp}]));
+  } else if(!localOk){
+    throw new Error('браузер не разрешил сохранение');
+  }
+  return name;
+}
+
+document.getElementById('btnOpenBP').onclick=async function(){
+  const st=document.getElementById('expStatus');
+  this.disabled=true; st.textContent='Передаю состав…';
+  try{
+    const name=await handoff();
+    st.textContent='Открываю «'+name+'» в анализе портфеля…';
+    location.href='bond-portfolio.html';
+  }catch(e){ st.textContent='Не удалось передать: '+e.message; this.disabled=false; }
+};
+
 document.getElementById('btnExport').onclick=async function(){
   const st=document.getElementById('expStatus');
-  const items=readRows();
-  if(!items.length){ st.textContent='Нечего передавать.'; return; }
-  if(!token()){ st.textContent='Передача работает при входе по токену — тогда другие инструменты увидят портфель.'; return; }
   this.disabled=true; st.textContent='Передаю…';
   try{
-    const existing=await pfLoad('bonds');
-    const name='Из моего портфеля';
-    const rec={name, data:{name, items:items.map(r=>({isin:r.isin, qty:r.qty})), updated:new Date().toISOString()}, updated:new Date().toISOString()};
-    const list=existing.filter(p=>p.name!==name).concat([rec]);
-    await pfSaveAll('bonds', list);
-    st.textContent='Готово. Откройте нужный инструмент и выберите портфель «'+name+'».';
+    const name=await handoff();
+    st.textContent='Готово. В любом из инструментов ниже выберите портфель «'+name+'».';
   }catch(e){ st.textContent='Не удалось передать: '+e.message; }
   this.disabled=false;
 };

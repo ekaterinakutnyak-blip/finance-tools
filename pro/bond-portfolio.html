@@ -999,6 +999,8 @@ function pfStore(list){
 // Загрузка портфелей при старте: с сервера (если токен), иначе из localStorage.
 function pfInit(){
   const tok=_pfToken();
+  // Автозагрузку переданного портфеля здесь не вызываем: строки по умолчанию
+  // добавляются ниже по файлу и затёрли бы её. Вызов — в блоке «Default bonds».
   if(!tok){ _pfCache=_pfReadLocal(); pfRefresh(); return; }
   fetch(PF_API+'?token='+encodeURIComponent(tok)+'&scope='+encodeURIComponent(PF_SCOPE))
     .then(function(r){return r.json();})
@@ -1015,8 +1017,32 @@ function pfInit(){
         _pfWriteLocal(_pfCache); // держим локальную копию как кэш
       }
       pfRefresh();
+      if(!pfAutoload())_pfAutoGiveUp();
     })
-    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); }); // сервер недоступен → локальный кэш
+    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); if(!pfAutoload())_pfAutoGiveUp(); }); // сервер недоступен → локальный кэш
+
+}
+
+// Портфель, переданный со страницы «Мой портфель облигаций»: открываем сами,
+// чтобы пользователю осталось только нажать «Рассчитать».
+// Имя лежит в invest_pf_autoload. Ключ снимаем только после удачной загрузки,
+// потому что список портфелей может подтянуться с сервера позже.
+function _pfAutoName(){ try{ return localStorage.getItem('invest_pf_autoload')||''; }catch(e){ return ''; } }
+function _pfAutoClear(){ try{ localStorage.removeItem('invest_pf_autoload'); }catch(e){} }// Переданный портфель не нашёлся — снимаем ключ и не оставляем пустой экран.
+function _pfAutoGiveUp(){
+  if(!_pfAutoName())return;
+  _pfAutoClear();
+  if(rowsContainer && !rowsContainer.querySelector('.bond-row')){ addRow(); renumber(); }
+}
+function pfAutoload(){
+  const nm=_pfAutoName();
+  if(!nm)return false;
+  if(!pfAll().some(p=>p.name===nm))return false;   // ещё не загрузился список — ждём
+  _pfAutoClear();
+  const sel=document.getElementById('pfSelect');
+  if(sel)sel.value=nm;
+  pfLoad();
+  return true;
 }
 
 function pfRefresh(){
@@ -1262,8 +1288,15 @@ function getPortfolio(){
   return items;
 }
 
-// Default bonds
-['RU000A10EYJ1','RU000A10EAC6','RU000A10EMU3','RU000A10EYV6','RU000A10DZU7'].forEach((b,i)=>addRow(b,[50,40,40,40,30][i]));
+// Default bonds — но только если не ждём портфель, переданный со страницы «Мой портфель»:
+// иначе демо-состав допишется к переданному и портфель окажется чужим.
+if(_pfAutoName()){
+  // вход по паролю — список портфелей уже локальный, грузим сразу;
+  // вход по токену — список придёт с сервера, загрузит pfInit
+  if(!pfAutoload() && !_pfToken()) _pfAutoGiveUp();
+}else{
+  ['RU000A10EYJ1','RU000A10EAC6','RU000A10EMU3','RU000A10EYV6','RU000A10DZU7'].forEach((b,i)=>addRow(b,[50,40,40,40,30][i]));
+}
 
 let couponChart=null;
 let _optBonds=null;
