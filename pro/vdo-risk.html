@@ -680,6 +680,31 @@ function _pfWriteLocal(list){try{localStorage.setItem(PF_KEY,JSON.stringify(list
 function _pfToServer(list){return list.map(p=>({name:p.name,data:JSON.stringify(p.items||[]),updated:p.updated||new Date().toISOString()}));}
 function _pfFromServer(arr){return (arr||[]).map(p=>{let items=[];try{items=JSON.parse(p.data)}catch(e){items=[]}return{name:p.name,items:Array.isArray(items)?items:[],updated:p.updated};});}
 function pfAll(){return _pfCache.slice();}
+
+// Портфель, переданный со страницы «Мой портфель облигаций»: открываем сами,
+// чтобы осталось только нажать «Рассчитать». Имя лежит в invest_pf_autoload.
+// Ключ снимаем только после удачной загрузки — список портфелей может прийти с сервера позже.
+function _pfAutoName(){ try{ return localStorage.getItem('invest_pf_autoload')||''; }catch(e){ return ''; } }
+function _pfAutoClear(){ try{ localStorage.removeItem('invest_pf_autoload'); }catch(e){} }
+function pfAutoload(){
+  const nm=_pfAutoName();
+  if(!nm)return false;
+  if(!pfAll().some(p=>p.name===nm))return false;   // список ещё не загружен — ждём
+  _pfAutoClear();
+  const sel=document.getElementById('pfSelect');
+  if(sel)sel.value=nm;
+  pfLoad();
+  return true;
+}
+// Переданный портфель не нашёлся — снимаем ключ и не оставляем пустой экран.
+function _pfAutoGiveUp(){
+  if(!_pfAutoName())return;
+  _pfAutoClear();
+  if(rowsContainer && !rowsContainer.querySelector('.bond-row')){
+    for(let i=0;i<5;i++)addRow();
+    renumber();
+  }
+}
 function pfStore(list){
   _pfCache=list.slice();
   _pfWriteLocal(_pfCache);
@@ -691,6 +716,8 @@ function pfStore(list){
 }
 function pfInit(){
   const tok=_pfToken();
+  // В локальной ветке автозагрузку здесь не зовём: стартовые пустые строки добавляются
+  // ниже по файлу и затёрли бы её. Вызов — в блоке «старт».
   if(!tok){ _pfCache=_pfReadLocal(); pfRefresh(); return; }
   fetch(PF_API+'?token='+encodeURIComponent(tok)+'&scope='+encodeURIComponent(PF_SCOPE))
     .then(function(r){return r.json();})
@@ -706,8 +733,9 @@ function pfInit(){
         _pfWriteLocal(_pfCache);
       }
       pfRefresh();
+      if(!pfAutoload())_pfAutoGiveUp();
     })
-    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); });
+    .catch(function(){ _pfCache=_pfReadLocal(); pfRefresh(); if(!pfAutoload())_pfAutoGiveUp(); });
 }
 function pfRefresh(){
   const sel=document.getElementById('pfSelect');if(!sel)return;
@@ -766,8 +794,14 @@ function loadExample(){
   [['RU000A10EYJ1',50],['RU000A10EAC6',40],['RU000A10EMU3',40],['RU000A10EYV6',40],['RU000A10DZU7',30]]
     .forEach(([b,q])=>addRow(b,q));
 }
-// старт: 5 пустых
-for(let i=0;i<5;i++)addRow();
+// старт: 5 пустых — но только если не ждём портфель, переданный со страницы «Мой портфель»
+if(_pfAutoName()){
+  // вход по паролю — список уже локальный, грузим сразу;
+  // вход по токену — список придёт с сервера, загрузит pfInit
+  if(!pfAutoload() && !_pfToken()) _pfAutoGiveUp();
+}else{
+  for(let i=0;i<5;i++)addRow();
+}
 
 // ---- Recovery slider ----
 let RR_user=0.20;

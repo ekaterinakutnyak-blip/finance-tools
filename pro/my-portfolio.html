@@ -911,6 +911,20 @@ document.getElementById('btnOpenBP').onclick=async function(){
   }catch(e){ st.textContent='Не удалось передать: '+e.message; this.disabled=false; }
 };
 
+/* Ссылки на инструменты, которые умеют принимать портфель: передаём состав и переходим,
+   чтобы там не пришлось выбирать портфель руками. */
+['bond-portfolio.html','vdo-risk.html'].forEach(function(href){
+  document.querySelectorAll('.links a[href="'+href+'"]').forEach(function(a){
+    a.addEventListener('click', async function(ev){
+      ev.preventDefault();
+      const st=document.getElementById('expStatus');
+      st.textContent='Передаю состав…';
+      try{ await handoff(); location.href=href; }
+      catch(e){ st.textContent='Не удалось передать: '+e.message; }
+    });
+  });
+});
+
 document.getElementById('btnExport').onclick=async function(){
   const st=document.getElementById('expStatus');
   this.disabled=true; st.textContent='Передаю…';
