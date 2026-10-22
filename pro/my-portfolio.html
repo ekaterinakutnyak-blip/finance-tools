@@ -944,11 +944,63 @@ function rubStr(x){ return (x>=0?'+':'−')+money(Math.abs(x))+' ₽'; }
    Чтобы добавить новый разбор, достаточно дописать строку сюда.
    ============================================================ */
 const RAZBORY=[
+ /* --- разборы по эмитенту --- */
+ {k:['акрон'], t:'ПАО «Акрон» — производство минеральных удобрений', u:'../novosti/razbor-akron-1p2026.html'},
+ {k:['апри'], t:'АПРИ — девелопер', u:'../novosti/razbor-apri-1p2026.html'},
+ {k:['атомэнергопром','атомэнпр'], t:'АО «Атомэнергопром» — холдинг Росатома', u:'../novosti/razbor-atomenergoprom-1p2026.html'},
+ {k:['автобан'], t:'АО «ИСК «АВТОБАН» — дорожное строительство и концессии', u:'../novosti/razbor-avtoban-2025.html'},
+ {k:['авто финанс банк','афбанк','автофинанс'], t:'АО «Авто Финанс Банк»', u:'../novosti/razbor-avtofinansbank-1p2026.html'},
+ {k:['облачные технологии','cloud.ru'], t:'ООО «Облачные технологии» (Cloud.ru) — облако и ИИ-платформа', u:'../novosti/razbor-cloud-ru-1p2026.html'},
+ {k:['делопортс','делпорт'], t:'ООО «ДелоПортс» — портовый холдинг группы «Дело»', u:'../novosti/razbor-deloports-1p2026.html'},
+ {k:['дом.рф','домрф','дом рф'], t:'ПАО «ДОМ.РФ» — институт развития жилищной сферы', u:'../novosti/razbor-domrf-1p2026.html'},
+ {k:['эконива'], t:'ООО «ЭкоНива» — АПК: молоко, земля, переработка', u:'../novosti/razbor-ekoniva-1p2026.html'},
+ {k:['эн+','en+','энплюс'], t:'МКПАО «ЭН+ ГРУП» (En+) — энергетика и алюминий', u:'../novosti/razbor-enplus-1p2026.html'},
+ {k:['фосагро'], t:'ПАО «ФосАгро» — производитель фосфорных удобрений', u:'../novosti/razbor-fosagro-1p2026.html'},
+ {k:['газпром капитал','газкап'], t:'ПАО «Газпром» — газ, нефть и энергетика', u:'../novosti/razbor-gazprom-1p2026.html'},
+ {k:['газпромбанк','газпрбанк'], t:'«Газпромбанк» (АО)', u:'../novosti/razbor-gazprombank-1p2026.html'},
+ {k:['газпром нефть','газпрнефть','газпн'], t:'ПАО «Газпром нефть»', u:'../novosti/razbor-gazpromneft-1p2026.html'},
+ {k:['гельтек'], t:'ООО «Гельтек-Медика»', u:'../novosti/razbor-geltek-2025.html'},
+ {k:['инарктика'], t:'ПАО «ИНАРКТИКА»', u:'../novosti/razbor-inarktika-1p2026.html'},
+ {k:['интер рао','интеррао'], t:'ПАО «Интер РАО»', u:'../novosti/razbor-interrao-1p2026.html'},
+ {k:['легенда'], t:'ООО «Легенда» — девелопер жилья на эскроу', u:'../novosti/razbor-legenda-1p2026.html'},
+ {k:['мечел'], t:'ПАО «Мечел»', u:'../novosti/razbor-mechel-2025.html'},
+ {k:['медскан'], t:'Медскан — сеть медицинских центров', u:'../novosti/razbor-medscan-6m2026.html'},
+ {k:['металлоинвест'], t:'АО «ХК «Металлоинвест» — железная руда и сталь', u:'../novosti/razbor-metalloinvest-1p2026.html'},
+ {k:['мгкл','мосгорломбард'], t:'ПАО «МГКЛ» (Мосгорломбард)', u:'../novosti/razbor-mgkl-1p2026.html'},
+ {k:['ммцб','гемабанк'], t:'ПАО «ММЦБ» — хранение стволовых клеток (Гемабанк)', u:'../novosti/razbor-mmcb-1p2026.html'},
+ {k:['норильский никель','норникель'], t:'ПАО «ГМК «Норильский никель»', u:'../novosti/razbor-nornikel-2025.html'},
+ {k:['новабев','нова бев'], t:'ПАО «НоваБев Групп»', u:'../novosti/razbor-novabev-1p2026.html'},
+ {k:['новатэк'], t:'ПАО «НОВАТЭК» — газ, конденсат и СПГ', u:'../novosti/razbor-novatek-1p2026.html'},
+ {k:['новые технологии','новтех'], t:'«Новые технологии» — нефтепогружное оборудование', u:'../novosti/razbor-novye-tehnologii-2026.html'},
+ {k:['парк сказка','сказка'], t:'ООО «Парк Сказка»', u:'../novosti/razbor-park-skazka-2025.html'},
+ {k:['пкт','первый контейнерный'], t:'АО «Первый контейнерный терминал» (ПКТ)', u:'../novosti/razbor-pkt-1p2026.html'},
+ {k:['полипласт'], t:'Полипласт — химия для строительства', u:'../novosti/razbor-polyplast-2025.html'},
+ {k:['полюс'], t:'ПАО «Полюс» — крупнейший золотодобытчик', u:'../novosti/razbor-polyus-1p2026.html'},
+ {k:['позитив'], t:'ПАО «Группа Позитив»', u:'../novosti/razbor-pozitiv-1p2026.html'},
+ {k:['промсвязьбанк','псб '], t:'ПАО «Банк ПСБ» (Промсвязьбанк)', u:'../novosti/razbor-psb-1p2026.html'},
+ {k:['россети','рсети'], t:'ПАО «Россети» — магистральные и распределительные сети', u:'../novosti/razbor-rosseti-1p2026.html'},
+ {k:['русал'], t:'МКПАО «ОК РУСАЛ»', u:'../novosti/razbor-rusal-1p2026.html'},
+ {k:['русбонд'], t:'ООО «Русбонд-Удобрения» — юаневый выпуск', u:'../novosti/razbor-rusbond-udobreniya-1p2026.html'},
+ {k:['ржд','российские железные дороги'], t:'ОАО «Российские железные дороги»', u:'../novosti/razbor-rzd-1p2026.html'},
+ {k:['сбербанк','сбер sb','сбер бо'], t:'ПАО Сбербанк', u:'../novosti/razbor-sberbank-1p2026.html'},
+ {k:['сегежа'], t:'ПАО «Сегежа Групп» — лесопромышленный холдинг', u:'../novosti/razbor-segezha-1p2026.html'},
+ {k:['селектел'], t:'АО «Селектел» — провайдер IT-инфраструктуры', u:'../novosti/razbor-selectel-1p2026.html'},
+ {k:['северсталь'], t:'ПАО «Северсталь»', u:'../novosti/razbor-severstal-6m2026.html'},
+ {k:['сибур'], t:'ПАО «СИБУР Холдинг»', u:'../novosti/razbor-sibur-1p2026.html'},
+ {k:['софтлайн'], t:'ПАО «Софтлайн» — IT-дистрибуция', u:'../novosti/razbor-softline-1p2026.html'},
+ {k:['совкомфлот'], t:'ПАО «Совкомфлот» — морские перевозки', u:'../novosti/razbor-sovkomflot-1p2026.html'},
+ {k:['уральская кузница','уралкуз'], t:'ПАО «Уральская кузница»', u:'../novosti/razbor-uralkuz-1p2026.html'},
+ {k:['мкпао «вк»','вк 00','vk 00'], t:'МКПАО «ВК» (VK) — интернет-холдинг', u:'../novosti/razbor-vk-1p2026.html'},
+ {k:['воксис'], t:'Группа компаний «Воксис»', u:'../novosti/razbor-voksis-2025.html'},
+ {k:['вымпелком','вымпелк','билайн'], t:'ПАО «ВымпелКом» (билайн) — мобильный оператор', u:'../novosti/razbor-vympelkom-1p2026.html'},
+ {k:['южуралзолото','югк'], t:'ПАО «Южуралзолото ГК» (ЮГК) — золотодобытчик', u:'../novosti/razbor-yugk-1p2026.html'},
+
+ /* --- сравнения двух эмитентов --- */
  {k:['пик','лср','самолет','самолёт'], t:'ПИК, ЛСР, Самолёт: полугодие, которое развело троих', u:'../novosti/pik-lsr-samolet-1p2026.html'},
  {k:['ростелеком','эр-телеком','эртелеком'], t:'Ростелеком vs ЭР-Телеком: один бизнес — разные деньги', u:'../novosti/rostelecom-vs-ertelecom.html'},
  {k:['полюс','селигдар'], t:'Полюс vs Селигдар: одно золото — противоположный исход', u:'../novosti/polyus-vs-seligdar.html'},
  {k:['биннофарм'], t:'Биннофарм Групп: бизнес работает, а денег не хватает на проценты', u:'../novosti/binnofarm-grupp-kreditnyy-razbor.html'},
- {k:['делопортс','трансконтейнер'], t:'ДелоПортс vs ТрансКонтейнер: одинаковый рейтинг AA− — разный кредит', u:'../novosti/deloports-vs-transkonteyner.html'},
+ {k:['делопортс','делпорт','трансконтейнер'], t:'ДелоПортс vs ТрансКонтейнер: одинаковый рейтинг AA− — разный кредит', u:'../novosti/deloports-vs-transkonteyner.html'},
  {k:['втб лизинг','совкомбанк лизинг'], t:'ВТБ Лизинг vs Совкомбанк Лизинг: решает не долг, а капитал', u:'../novosti/vtb-lizing-vs-sovkombank-lizing.html'},
  {k:['позитив','софтлайн'], t:'Позитив vs Софтлайн: один сектор ИТ — два разных кредита', u:'../novosti/pozitiv-vs-softline.html'},
  {k:['трансмашхолдинг','тмх','стм'], t:'Трансмашхолдинг vs СТМ: прибыль против убытка', u:'../novosti/tmh-vs-stm.html'},
@@ -956,20 +1008,53 @@ const RAZBORY=[
  {k:['гтлк','балтийский лизинг'], t:'ГТЛК vs Балтийский лизинг: у одного лизинг не зарабатывает вообще', u:'../novosti/gtlk-vs-baltiyskiy-lizing.html'},
  {k:['иэк','электрорешения','ekf'], t:'ИЭК Холдинг vs Электрорешения (EKF): одинаковая маржа — разный исход', u:'../novosti/iek-vs-elektroresheniya.html'},
  {k:['северсталь','уральская сталь'], t:'Северсталь vs Уральская Сталь: один обвал цен — разный исход', u:'../novosti/severstal-vs-uralskaya-stal.html'},
- {k:['акрон','полипласт'], t:'Акрон vs Полипласт: одинаковая EBITDA — разный запас прочности', u:'../novosti/akron-vs-poliplast.html'}
+ {k:['акрон','полипласт'], t:'Акрон vs Полипласт: одинаковая EBITDA — разный запас прочности', u:'../novosti/akron-vs-poliplast.html'},
+ {k:['сэтл','setl','брусника','эталон'], t:'Сетл, Брусника, Эталон: три девелопера за полугодие', u:'../novosti/developery-setl-brusnika-etalon-1p2026.html'},
+
+ /* --- подборка по типу бумаги --- */
+ {k:['область','край','республика','депфин','югры','хмао','янао','округ'], t:'Облигации регионов: где здесь премия и стоит ли она того', u:'../novosti/obligacii-regionov.html'}
 ];
-function razborFor(name){
+/* Все подходящие разборы, а не первый попавшийся: у эмитента может быть
+   и свой разбор, и сравнение с конкурентом. */
+function razborsFor(name){
   const n=String(name||'').toLowerCase();
-  return RAZBORY.find(r=>r.k.some(k=>n.indexOf(k)>=0))||null;
+  return RAZBORY.filter(r=>r.k.some(k=>n.indexOf(k)>=0));
 }
+
+/* Эмитент из названия бумаги: отрезаем на первом слове с цифрой.
+   «Сбербанк ПАО 001Р-SBER51» -> «Сбербанк ПАО». Нужно, чтобы один
+   эмитент не повторялся в списке по числу своих выпусков. */
+function issuerOf(name){
+  const words=String(name||'').trim().split(/\s+/), keep=[];
+  for(const w of words){ if(/\d/.test(w)) break; keep.push(w); }
+  const s=keep.join(' ').replace(/[.,;:—-]+$/,'').trim();
+  return s.length>=3 ? s : String(name||'').trim();
+}
+
+/* Госбумаги: кредитного разбора по отчётности у них не бывает */
+function isGovBond(x){
+  return /^ОФЗ/i.test(String(x.q.name||'')) || /^SU\d/i.test(String(x.q.code||''));
+}
+
 function renderRazbory(out){
   const box=document.getElementById('razboryOut');
-  const found=new Map(), missing=[];
+  const found=new Map(), missSet=new Map();
+  let gov=0;
   out.forEach(x=>{
-    const r=razborFor(x.q.name);
-    if(r){ if(!found.has(r.u)) found.set(r.u,{r, who:[]}); found.get(r.u).who.push(x.q.name); }
-    else missing.push(x.q.name);
+    if(isGovBond(x)){ gov++; return; }
+    const list=razborsFor(x.q.name);
+    if(list.length){
+      list.forEach(r=>{
+        if(!found.has(r.u)) found.set(r.u,{r:r, who:[]});
+        const w=found.get(r.u).who;
+        if(w.indexOf(x.q.name)<0) w.push(x.q.name);
+      });
+    } else {
+      const em=issuerOf(x.q.name);
+      if(!missSet.has(em)) missSet.set(em, true);
+    }
   });
+  const missing=[...missSet.keys()];
   let h='';
   if(found.size){
     h+='<div class="links" style="flex-direction:column;align-items:stretch">';
@@ -982,6 +1067,9 @@ function renderRazbory(out){
   if(missing.length){
     h+='<div class="note" style="margin-top:'+(found.size?'.6rem':'0')+'">По этим эмитентам разбора пока нет: '+
        missing.join(', ')+'. Можно проверить их самостоятельно — <a href="credit-metrics.html" style="color:var(--accent);font-weight:600;text-decoration:none">кредитный анализ по отчётности →</a></div>';
+  }
+  if(gov){
+    h+='<div class="note">ОФЗ в этот список не вошли ('+gov+' шт.): у государственных облигаций кредитного разбора по отчётности не бывает, платит по ним Минфин.</div>';
   }
   box.innerHTML=h||'<div class="note">Рассчитайте портфель, и здесь появятся разборы по вашим эмитентам.</div>';
 }
