@@ -722,14 +722,49 @@ function toObj(block){
   return block.data.map(r=>{const o={};block.columns.forEach((c,i)=>o[c]=r[i]);return o;});
 }
 
-async function quote(isin){
-  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/securities/'+encodeURIComponent(isin)+
+/* Биржевой код по ISIN. У ОФЗ они не совпадают: ISIN RU000A0JS3W6,
+   а на бирже бумага лежит под кодом SU26207RMFS9. У корпоративных
+   обычно совпадают, поэтому сначала пробуем напрямую и только потом ищем. */
+const SECID={};
+async function resolveSecid(isin){
+  if(SECID[isin]!==undefined) return SECID[isin];
+  let res={secid:'', traded:null, name:''};
+  try{
+    const r=await fetch('https://iss.moex.com/iss/securities.json?iss.meta=off&limit=10&q='+encodeURIComponent(isin));
+    if(r.ok){
+      const j=await r.json();
+      const rows=toObj(j.securities).filter(x=>String(x.group||'').indexOf('bond')>=0);
+      const exact=rows.filter(x=>String(x.isin||'').toUpperCase()===isin);
+      const pick=exact.find(x=>x.is_traded===1)||exact[0]||rows.find(x=>x.is_traded===1)||rows[0];
+      if(pick) res={secid:String(pick.secid||''), traded:pick.is_traded, name:String(pick.shortname||'')};
+    }
+  }catch(e){}
+  SECID[isin]=res;
+  return res;
+}
+
+async function issQuote(code){
+  const url='https://iss.moex.com/iss/engines/stock/markets/bonds/securities/'+encodeURIComponent(code)+
             '.json?iss.meta=off&iss.only=securities,marketdata';
   const r=await fetch(url);
   if(!r.ok) throw new Error('биржа недоступна');
-  const j=await r.json();
-  const secs=toObj(j.securities), mds=toObj(j.marketdata);
-  if(!secs.length) throw new Error('бумага не найдена');
+  return r.json();
+}
+
+async function quote(isin){
+  let code=isin, j=await issQuote(isin);
+  let secs=toObj(j.securities), mds=toObj(j.marketdata);
+  if(!secs.length){
+    const f=await resolveSecid(isin);
+    if(f.secid && f.secid!==isin){
+      code=f.secid; j=await issQuote(code);
+      secs=toObj(j.securities); mds=toObj(j.marketdata);
+    }
+    if(!secs.length){
+      if(f.traded===0) throw new Error((f.name?f.name+': ':'')+'бумага погашена или снята с торгов');
+      throw new Error('бумага не найдена на бирже');
+    }
+  }
   let sec=null;
   for(const b of BOARD_PRIORITY){ const f=secs.find(s=>s.BOARDID===b); if(f){sec=f;break;} }
   if(!sec) sec=secs[0];
@@ -739,6 +774,7 @@ async function quote(isin){
   const nkd = num(sec.ACCRUEDINT)||0;
   if(!pct || !face) throw new Error('нет цены');
   return {
+    code: code,                                        // код для запроса купонов
     name: sec.SECNAME || sec.SHORTNAME || isin,
     unit: String(sec.FACEUNIT||'SUR').toUpperCase(),   // валюта номинала: в ней цена и тело
     curId: String(sec.CURRENCYID||'SUR').toUpperCase(),// валюта расчётов на доске: в ней НКД
@@ -898,7 +934,7 @@ document.getElementById('btnCalc').onclick=async function(){
         const miss=!fx?unit:curId;
         noFx.add(miss); skipped.push(r.isin+' ('+miss+')'); continue;
       }
-      const p=await payouts(r.isin, r.date, r.qty);
+      const p=await payouts(q.code||r.isin, r.date, r.qty);
       const got=p.cpn+p.amt;
       // Вложено — рубли, которые реально списали: курс тут не нужен.
       const dirty1 = q.clean*fx + q.nkd*fxNkd;          // грязная цена одной бумаги в рублях
