@@ -446,6 +446,56 @@ function isinOf(x){
   return m?m[0]:'';
 }
 
+/* Сборка партий из остатков и покупок — общая для Excel и HTML.
+   held: {isin: {qty, price}} — сколько лежит и цена на дату отчёта (запасная).
+   buys: [{isin, date, qty, unit}] — покупки, цена уже за одну бумагу с комиссией. */
+function buildLots(held, buys, date){
+  const lots=[]; let fromTrades=0, rebased=0;
+  Object.keys(held).forEach(isin=>{
+    let need=held[isin].qty, got=0;
+    const mine=buys.filter(b=>b.isin===isin).sort((a,b)=>b.date.localeCompare(a.date)); // от поздних к ранним
+    for(const b of mine){
+      if(need<=0) break;
+      const take=Math.min(need, b.qty);
+      lots.push({isin:isin, qty:take, date:b.date, price:b.unit});
+      need-=take; got+=take;
+    }
+    if(need>0){ lots.push({isin:isin, qty:need, date:date, price:held[isin].price}); rebased++; }
+    if(got>0) fromTrades++;
+  });
+
+  // склейка: одна бумага, один день -> одна строка по средневзвешенной цене
+  const merged={};
+  lots.forEach(l=>{
+    const k=l.isin+'|'+l.date;
+    if(!merged[k]) merged[k]={isin:l.isin, date:l.date, qty:0, cost:0};
+    merged[k].qty+=l.qty; merged[k].cost+=l.qty*l.price;
+  });
+  const rows=Object.keys(merged).map(k=>{
+    const m=merged[k];
+    return {isin:m.isin, qty:m.qty, date:m.date, price:Math.round(m.cost/m.qty*100)/100};
+  }).sort((a,b)=>a.isin.localeCompare(b.isin)||a.date.localeCompare(b.date));
+
+  return {rows:rows, date:date, fromTrades:fromTrades, rebased:rebased, bonds:Object.keys(held).length};
+}
+
+/* Первая дата вида ДД.ММ.ГГГГ в тексте ячейки */
+function cellDate(x){
+  const m=String(x==null?'':x).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2) : '';
+}
+
+/* Один текст статуса на оба формата отчёта */
+function brokerStatus(res){
+  const sum=res.rows.reduce((a,x)=>a+x.price*x.qty,0);
+  let h='Загружен брокерский отчёт на '+ddmmyyyy(res.date)+': облигаций '+res.bonds+
+        ', строк '+res.rows.length+' на '+money(sum)+' ₽.';
+  if(res.fromTrades) h+='<br>По '+res.fromTrades+' бумагам нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
+  if(res.rebased)    h+='<br>По '+res.rebased+' бумагам покупок в отчёте не хватило: недостающее количество взято по рыночной цене на дату отчёта вместе с НКД, отдельной строкой. Прибыль по ним считается с '+ddmmyyyy(res.date)+', а не со дня покупки. Отчёт за более длинный период подтянет настоящие цены.';
+  h+='<br>Дальше нажмите «Рассчитать».';
+  return h;
+}
+
 function parseBrokerXlsx(wb){
   const sheets=wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}));
 
@@ -513,35 +563,69 @@ function parseBrokerXlsx(wb){
   });
 
   if(!Object.keys(held).length) return null;   // не брокерский отчёт — пусть читает шаблон
+  return buildLots(held, buys, date);
+}
 
-  const lots=[], fromTrades=[], rebased=[];
-  Object.keys(held).forEach(isin=>{
-    let need=held[isin].qty;
-    const mine=buys.filter(b=>b.isin===isin).sort((a,b)=>b.date.localeCompare(a.date)); // от поздних к ранним
-    let got=0;
-    for(const b of mine){
-      if(need<=0) break;
-      const take=Math.min(need, b.qty);
-      lots.push({isin:isin, qty:take, date:b.date, price:b.unit});
-      need-=take; got+=take;
+/* Сделки в HTML-отчёте. Таблицу узнаём по смыслу, а не по названию:
+   есть столбец с ISIN, есть количество, есть сумма или цена, и в теле
+   встречаются слова «покупка»/«продажа». Так находится у любого брокера. */
+function htmlTrades(tables, fallbackDate){
+  const buys=[];
+  tables.forEach(t=>{
+    const rows=tableRows(t); if(rows.length<3) return;
+    for(let r=0;r<Math.min(rows.length,4);r++){
+      const h=rows[r].map(cellText);
+      if(!h.some(x=>/колич/i.test(x))) continue;
+      if(!h.some(x=>/сумма|цена/i.test(x))) continue;
+      const body=rows.slice(r+1);
+
+      let isinI=h.findIndex(x=>/ISIN/i.test(x));
+      if(isinI<0){
+        for(let c=0;c<h.length;c++){
+          if(body.some(cc=>ISIN_RE.test(cellText(cc[c]).toUpperCase()))){ isinI=c; break; }
+        }
+      }
+      if(isinI<0) return;
+
+      let dirI=-1;                                  // столбец «покупка/продажа»
+      for(let c=0;c<h.length;c++){
+        if(body.some(cc=>/покупк|продаж/i.test(cellText(cc[c])))){ dirI=c; break; }
+      }
+      if(dirI<0) return;                            // это не сделки, а остатки
+
+      const col=(re,not)=>h.findIndex(x=>re.test(x)&&!(not&&not.test(x)));
+      const qtyI=col(/колич/i),
+            dateI=col(/дата/i,/расч|постав|погаш|оферт/i),
+            sumSpec=col(/сумма сделки/i),
+            sumI=sumSpec>=0?sumSpec:col(/сумма/i,/комисс|налог|нкд/i),
+            priceI=col(/цена/i,/валют/i),
+            faceI=col(/номинал/i,/валют/i),
+            nkdI=col(/^НКД/i);
+      const comI=[]; h.forEach((x,i)=>{ if(/комисс/i.test(x)) comI.push(i); });
+      if(qtyI<0) return;
+
+      body.forEach(cc=>{
+        const m=cellText(cc[isinI]).toUpperCase().match(/[A-Z]{2}[A-Z0-9]{9}[0-9]/);
+        if(!m) return;
+        if(!/покупк/i.test(cellText(cc[dirI]))) return;        // продажи не берём
+        const qty=numRu(cellText(cc[qtyI]));
+        if(!(qty>0)) return;
+        let sum = sumI>=0 ? numRu(cellText(cc[sumI])) : NaN;
+        if(!(sum>0) && priceI>=0){                             // суммы нет — считаем из цены
+          const face=numRu(cellText(cc[faceI]))||1000,
+                pct=numRu(cellText(cc[priceI])),
+                nkd=numRu(cellText(cc[nkdI]))||0;
+          if(pct>0) sum=face*pct/100*qty+nkd;
+        }
+        if(!(sum>0)) return;
+        const com=comI.reduce((a,i)=>a+(numRu(cellText(cc[i]))||0),0);
+        buys.push({isin:m[0], date:(dateI>=0?cellDate(cellText(cc[dateI])):'')||fallbackDate,
+                   qty:qty, unit:(sum+com)/qty});
+      });
+      return;
     }
-    if(need>0){ lots.push({isin:isin, qty:need, date:date, price:held[isin].price}); rebased.push(isin); }
-    if(got>0) fromTrades.push(isin);
   });
-
-  // склейка: одна бумага, один день -> одна строка по средневзвешенной цене
-  const merged={};
-  lots.forEach(l=>{
-    const k=l.isin+'|'+l.date;
-    if(!merged[k]) merged[k]={isin:l.isin, date:l.date, qty:0, cost:0};
-    merged[k].qty+=l.qty; merged[k].cost+=l.qty*l.price;
-  });
-  const rows=Object.keys(merged).map(k=>{
-    const m=merged[k];
-    return {isin:m.isin, qty:m.qty, date:m.date, price:Math.round(m.cost/m.qty*100)/100};
-  }).sort((a,b)=>a.isin.localeCompare(b.isin)||a.date.localeCompare(b.date));
-
-  return {rows:rows, date:date, fromTrades:fromTrades.length, rebased:rebased.length, bonds:Object.keys(held).length};
+  return buys;
 }
 
 function parseBrokerHtml(text){
@@ -580,6 +664,10 @@ function parseBrokerHtml(text){
       const h=rows[r].map(cellText);
       if(!h.some(x=>/ISIN/i.test(x))) continue;
       if(!h.some(x=>/Колич/i.test(x))) continue;
+      // Таблица сделок тоже имеет ISIN и количество — её сюда пускать нельзя.
+      // Узнаём по шапке «вид сделки» или по словам «покупка»/«продажа» в теле.
+      if(h.some(x=>/вид сделки|вид операции|тип операции/i.test(x))) break;
+      if(rows.slice(r+1).some(c=>c.some(td=>/покупк|продаж/i.test(cellText(td))))) break;
       const n=rows.slice(r+1).filter(c=>c.some(td=>ISIN_RE.test(cellText(td).toUpperCase()))).length;
       if(n>0 && (!best || n>best.n)) best={rows:rows, hi:r, h:h, n:n};
       break;
@@ -607,7 +695,7 @@ function parseBrokerHtml(text){
         nkdIdx=pick(/^НКД/i);
   if(isinIdx<0||qtyIdx<0||priceIdx<0) return {rows:[], date:date, skipped:[], fail:'не удалось понять столбцы таблицы портфеля'};
 
-  const out=[], skipped=[];
+  const held={}, skipped=[];
   best.rows.slice(best.hi+1).forEach(c=>{
     const t=c.map(cellText);
     const isin=(t[isinIdx]||'').toUpperCase();
@@ -621,9 +709,12 @@ function parseBrokerHtml(text){
     if(!(pct>0)) return;
     const price=Math.round((face*pct/100 + nkd/qty)*100)/100;     // грязная цена одной бумаги
     if(!(price>0)) return;
-    out.push({isin:isin, qty:qty, date:date, price:price});
+    held[isin]={qty:qty, price:price};
   });
-  return {rows:out, date:date, skipped:skipped, fail:''};
+  if(!Object.keys(held).length) return {rows:[], date:date, skipped:skipped, fail:'в таблице портфеля не нашлось облигаций'};
+  const res=buildLots(held, htmlTrades(tables, date), date);
+  res.skipped=skipped; res.fail='';
+  return res;
 }
 
 /* Текст файла: обычно UTF-8, но брокеры шлют и windows-1251 */
@@ -657,13 +748,7 @@ document.getElementById('fileIn').onchange=function(e){
       inBody.innerHTML='';
       res.rows.forEach(addRow);
       saveDraft();
-      const sum=res.rows.reduce((a,x)=>a+x.price*x.qty,0);
-      st.innerHTML='Загружено бумаг: '+res.rows.length+' на '+money(sum)+' ₽ — портфель из отчёта на '+ddmmyyyy(res.date)+
-        '. Сверьте сумму с отчётом: она должна совпасть до копеек.'+
-        (res.skipped.length?' Пропущено не-облигаций: '+res.skipped.length+'.':'')+
-        '<br>В брокерском отчёте нет цены покупки, поэтому взята рыночная цена на дату отчёта вместе с НКД. '+
-        'Значит прибыль будет считаться с '+ddmmyyyy(res.date)+', а не с того дня, когда вы бумаги купили. '+
-        'Если какие-то покупки помните — поправьте дату и цену в строке руками. Дальше нажмите «Рассчитать».';
+      st.innerHTML=brokerStatus(res)+((res.skipped&&res.skipped.length)?' Пропущено не-облигаций: '+res.skipped.length+'.':'');
       e.target.value=''; return;
     }
     let rows;
@@ -676,12 +761,7 @@ document.getElementById('fileIn').onchange=function(e){
         inBody.innerHTML='';
         br.rows.forEach(addRow);
         saveDraft();
-        const sum=br.rows.reduce((a,x)=>a+x.price*x.qty,0);
-        st.innerHTML='Загружен брокерский отчёт на '+ddmmyyyy(br.date)+': облигаций '+br.bonds+
-          ', строк '+br.rows.length+' на '+money(sum)+' ₽.'+
-          (br.fromTrades?'<br>По '+br.fromTrades+' бумагам нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.':'')+
-          (br.rebased?'<br>По '+br.rebased+' бумагам покупок в отчёте не хватило: недостающее количество взято по цене на дату отчёта, отдельной строкой. Прибыль по ним считается с '+ddmmyyyy(br.date)+'. Закажите отчёт за более длинный период — и подтянется настоящая цена.':'')+
-          '<br>Дальше нажмите «Рассчитать».';
+        st.innerHTML=brokerStatus(br);
         e.target.value=''; return;
       }
     }catch(err){
