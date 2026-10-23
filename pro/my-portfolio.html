@@ -481,8 +481,10 @@ function buildLots(held, buys, date){
 
 /* Первая дата вида ДД.ММ.ГГГГ в тексте ячейки */
 function cellDate(x){
-  const m=String(x==null?'':x).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  return m ? m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2) : '';
+  const m=String(x==null?'':x).match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if(!m) return '';
+  const y=m[3].length===2 ? '20'+m[3] : m[3];
+  return y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
 }
 
 /* Один текст статуса на оба формата отчёта */
@@ -503,61 +505,116 @@ function parseBrokerXlsx(wb){
   let date='';
   for(const aoa of sheets){
     const txt=aoa.map(r=>r.join(' ')).join(' ').replace(/\s+/g,' ');
-    const m=txt.match(/за период с\s*(\d{1,2}\.\d{1,2}\.\d{4})\s*по\s*(\d{1,2}\.\d{1,2}\.\d{4})/i);
-    if(m){ date=isoDate(m[2]); break; }
+    const m=txt.match(/период[:\s]*(?:с)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*по\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/i);
+    if(m){ date=cellDate(m[2]); break; }
   }
   if(!date) date=new Date().toISOString().slice(0,10);
 
   const held={}, buys=[], seen={};
 
   sheets.forEach(aoa=>{
-    // Границы разделов: каждая строка с «Наименование ценной бумаги» — начало нового.
+    const H=aoa.map(r=>r.map(normH));
+    // Начало раздела: строка-шапка, где есть и опознание бумаги, и количество.
+    // У ВТБ это «Наименование ценной бумаги», у БКС — столбец со словом ISIN.
     const bounds=[];
-    aoa.forEach((row,i)=>{ if(row.map(normH).some(x=>/Наименование ценной бумаги/i.test(x))) bounds.push(i); });
+    H.forEach((h,i)=>{
+      const id=h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x));
+      const qt=h.some(x=>/Кол-?во|Колич|Остаток/i.test(x));   // у ВТБ это «Исходящий остаток (шт)»
+      if(id&&qt) bounds.push(i);
+    });
 
     bounds.forEach((hi,bi)=>{
-      const h=aoa[hi].map(normH);
+      const h=H[hi];
       const end=(bi+1<bounds.length)?bounds[bi+1]:aoa.length;
+      const body=aoa.slice(hi+1,end);
       const idx=(re,not)=>h.findIndex(x=>re.test(x) && !(not&&not.test(x)));
-      const nameI=idx(/Наименование/i);
 
-      // --- остатки ценных бумаг
-      if(h.some(x=>/Исходящий остаток/i.test(x))){
-        const qtyI=idx(/Исходящий остаток/i,/Плановый/i),
-              priceI=idx(/Цена/i,/Валюта/i),
-              faceI=idx(/Номинал/i,/Валюта/i),
-              nkdI=idx(/^НКД/i);
-        if(qtyI<0||priceI<0||faceI<0) return;
-        for(let i=hi+1;i<end;i++){
-          const row=aoa[i], isin=isinOf(row[nameI]);
-          if(!isin) continue;
-          const qty=numRu(row[qtyI]), face=numRu(row[faceI]), pct=numRu(row[priceI]), nkd=numRu(row[nkdI])||0;
-          if(!(qty>0)||!(face>0)||!(pct>0)) continue;    // без номинала — это акция, не наш случай
-          held[isin]={qty:qty, price:Math.round((face*pct/100+nkd/qty)*100)/100};
-        }
-        return;
+      // Столбец с бумагой ищем по содержимому: у БКС ISIN лежит под шапкой
+      // «Вид актива», а под шапкой «ISIN» — номер госрегистрации.
+      let isinI=-1, bestN=0, width=0;
+      body.forEach(r=>{ if(r.length>width) width=r.length; });
+      for(let c=0;c<width;c++){
+        let n=0; body.forEach(r=>{ if(isinOf(r[c])) n++; });
+        if(n>bestN){ bestN=n; isinI=c; }
       }
+      if(isinI<0) isinI=idx(/Наименование ценной бумаги/i);
+      if(isinI<0) return;
+
+      // Сделки: либо так написано в шапке, либо в строке есть и бумага, и слово
+      // «покупка»/«продажа». Одного слова где-то в сноске мало — иначе
+      // примечание внизу отчёта превращает таблицу остатков в таблицу сделок.
+      const isTrades = h.some(x=>/Вид сделки|Вид операции/i.test(x)) ||
+                       body.some(r=>r.some(v=>/покупк|продаж/i.test(String(v))) &&
+                                    r.some(v=>isinOf(v)));
 
       // --- сделки (разделов с ними бывает два, одинаковые строки отсеиваем)
-      if(h.some(x=>/Вид сделки/i.test(x))){
-        const dateI=idx(/Дата и время/i),
-              kindI=idx(/Вид сделки/i),
-              qtyI=idx(/^Количество/i),
-              sumI=idx(/Сумма сделки/i),
-              comI=[]; h.forEach((x,i)=>{ if(/Комисси/i.test(x)) comI.push(i); });
-        if(dateI<0||kindI<0||qtyI<0||sumI<0) return;
+      if(isTrades){
+        const dateI=idx(/Дата и время/i)>=0?idx(/Дата и время/i):idx(/Дата/i,/расч|постав|погаш|оферт/i),
+              kindI=idx(/Вид сделки|Вид операции/i),
+              qtyI=idx(/Кол-?во|Колич/i),
+              sumI=idx(/Сумма сделки/i)>=0?idx(/Сумма сделки/i):idx(/Сумма/i,/комисс|налог|нкд/i);
+        const comI=[]; h.forEach((x,c)=>{ if(/Комисси/i.test(x)) comI.push(c); });
+        if(qtyI<0||sumI<0) return;
         for(let i=hi+1;i<end;i++){
-          const row=aoa[i], isin=isinOf(row[nameI]);
+          const row=aoa[i], isin=isinOf(row[isinI]);
           if(!isin) continue;
-          if(!/покупк/i.test(String(row[kindI]||''))) continue;   // продажи не нужны
+          const kind=kindI>=0?String(row[kindI]||''):row.map(v=>String(v||'')).join(' ');
+          if(!/покупк/i.test(kind)) continue;                     // продажи не нужны
           const qty=numRu(row[qtyI]), sum=numRu(row[sumI]);
           if(!(qty>0)||!(sum>0)) continue;
           const key=isin+'|'+String(row[dateI])+'|'+qty+'|'+sum;
           if(seen[key]) continue;
           seen[key]=1;
           const com=comI.reduce((a,c)=>a+(numRu(row[c])||0),0);
-          buys.push({isin:isin, date:excelDate(row[dateI])||date, qty:qty, unit:(sum+com)/qty});
+          buys.push({isin:isin, date:(dateI>=0?(excelDate(row[dateI])||cellDate(row[dateI])):'')||date,
+                     qty:qty, unit:(sum+com)/qty});
         }
+        return;
+      }
+
+      // --- остатки ценных бумаг.
+      // Столбцы «на конец периода» отличаем по строке-группе над шапкой.
+      // Валютная часть портфеля идёт отдельной таблицей, и суммы там не в рублях.
+      const title=(hi>0?(H[hi-1][0]||''):'')+' '+(hi>1?(H[hi-2][0]||''):'');
+      if(/\((CNY|USD|EUR|HKD|KZT|AED)\)/i.test(title)) return;
+
+      let grp=[];
+      if(hi>0){ let cur=''; for(let c=0;c<h.length;c++){ if(H[hi-1][c]) cur=H[hi-1][c]; grp[c]=cur; } }
+      const inEnd=c=>grp.length?/конец|исходящ/i.test(grp[c]||''):false;
+      const pick=(re,not)=>{
+        const all=[]; h.forEach((x,c)=>{ if(re.test(x)&&!(not&&not.test(x))) all.push(c); });
+        if(!all.length) return -1;
+        const e=all.filter(inEnd);
+        return e.length?e[0]:all[all.length-1];
+      };
+      const qtyI = idx(/Исходящий остаток/i,/Плановый/i)>=0 ? idx(/Исходящий остаток/i,/Плановый/i)
+                                                            : pick(/Кол-?во|Колич/i);
+      // «Оценка остатка в валюте номинала» тоже содержит слово «номинал» —
+      // без этого исключения вместо номинала берётся сумма позиции.
+      const priceI=pick(/Цена/i,/валют|оценка/i),
+            faceI =pick(/Номинал/i,/валют|оценка|стоимост|сумма/i),
+            nkdI  =pick(/^НКД|Сумма НКД/i),
+            sumI  =pick(/Сумма, в т.ч. НКД|Сумма в т.ч. НКД/i),
+            typeI =idx(/Тип актива|Вид ЦБ/i);
+      if(qtyI<0) return;
+
+      for(let i=hi+1;i<end;i++){
+        const row=aoa[i], isin=isinOf(row[isinI]);
+        if(!isin) continue;
+        // отсев акций: по типу актива, если он есть, иначе по наличию номинала
+        if(typeI>=0){ if(!/обл/i.test(String(row[typeI]||''))) continue; }
+        else if(faceI>=0){ if(!(numRu(row[faceI])>0)) continue; }
+        const qty=numRu(row[qtyI]);
+        if(!(qty>0)) continue;
+        let price=0;
+        const face=faceI>=0?numRu(row[faceI]):NaN, pct=priceI>=0?numRu(row[priceI]):NaN;
+        if(face>0 && pct>0){                               // ВТБ, Сбер: номинал + цена в процентах
+          price=face*pct/100 + (numRu(row[nkdI])||0)/qty;
+        }else if(sumI>=0 && numRu(row[sumI])>0){           // БКС: готовая сумма с НКД
+          price=numRu(row[sumI])/qty;
+        }
+        if(!(price>0)) continue;
+        held[isin]={qty:qty, price:Math.round(price*100)/100};
       }
     });
   });
@@ -633,8 +690,8 @@ function parseBrokerHtml(text){
   const all=(doc.body?String(doc.body.textContent||''):'').replace(/\s+/g,' ');
 
   // Дата отчёта: конец периода, иначе дата создания, иначе сегодня
-  let date='', m=all.match(/за период с\s*(\d{1,2}\.\d{1,2}\.\d{4})\s*по\s*(\d{1,2}\.\d{1,2}\.\d{4})/i);
-  if(m) date=isoDate(m[2]);
+  let date='', m=all.match(/период[:\s]*(?:с)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*по\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/i);
+  if(m) date=cellDate(m[2]);
   if(!date){ m=all.match(/дата создания\s*(\d{1,2}\.\d{1,2}\.\d{4})/i); if(m) date=isoDate(m[1]); }
   if(!date) date=new Date().toISOString().slice(0,10);
 
