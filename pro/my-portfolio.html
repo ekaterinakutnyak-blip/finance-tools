@@ -109,7 +109,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
   <input type="file" id="fileIn" accept=".xlsx,.xls,.csv,.html,.htm,.pdf" style="display:none">
 </div>
 <div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи. По валютным выпускам цена покупки тоже в рублях — ровно та сумма, что ушла со счёта; пересчитывать её по курсу не нужно.<br>
-Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Это обычный файл Excel — ничего пересохранять в другой формат не нужно.<br>Той же кнопкой загружается <b>брокерский отчёт</b> — страница сама найдёт в нём ваш портфель. Понимает отчёты ВТБ, Сбербанка, БКС, Газпромбанка и Финама: Excel (.xlsx, .xls) и HTML (.html, .htm). <b>PDF не подходит</b> — при заказе отчёта выбирайте другой формат. Цены покупки в отчётах нет, поэтому страница возьмёт рыночную цену на дату отчёта и о замене честно напишет.</div>
+Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Это обычный файл Excel — ничего пересохранять в другой формат не нужно.<br>Той же кнопкой загружается <b>брокерский отчёт</b> — страница сама найдёт в нём ваш портфель. Понимает отчёты ВТБ, Сбербанка, БКС, Газпромбанка, Финама и Т-Банка: Excel (.xlsx, .xls) и HTML (.html, .htm). <b>PDF не подходит</b> — при заказе отчёта выбирайте другой формат. Цены покупки в отчётах нет, поэтому страница возьмёт рыночную цену на дату отчёта и о замене честно напишет.</div>
 <div class="status" id="calcStatus"></div>
 
 <!-- ================= РЕЗУЛЬТАТ ================= -->
@@ -460,7 +460,7 @@ function buildLots(held, buys, date){
       lots.push({isin:isin, qty:take, date:b.date, price:b.unit});
       need-=take; got+=take;
     }
-    if(need>0){ lots.push({isin:isin, qty:need, date:date, price:held[isin].price}); rebased++; }
+    if(need>0){ lots.push({isin:isin, qty:need, date:held[isin].date||date, price:held[isin].price}); rebased++; }
     if(got>0) fromTrades++;
   });
 
@@ -494,6 +494,8 @@ function brokerStatus(res){
         ', строк '+res.rows.length+' на '+money(sum)+' ₽.';
   const bum=n=>(n%10===1&&n%100!==11)?' бумаге':' бумагам';
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
+  if(res.fromExchange) h+='<br>В этом отчёте нет цен, поэтому по '+res.fromExchange+bum(res.fromExchange)+
+        ' цена взята с Московской биржи на сегодня — и дата покупки у них сегодняшняя.';
   if(res.skipped&&res.skipped.length) h+='<br>Пропущено не-облигаций: '+res.skipped.length+' — акции, фонды и расписки страница не считает.';
   if(res.rebased)    h+='<br>По '+res.rebased+bum(res.rebased)+' покупок в отчёте не хватило: недостающее количество взято по рыночной цене на дату отчёта вместе с НКД, отдельной строкой. Прибыль по ним считается с '+ddmmyyyy(res.date)+', а не со дня покупки. Отчёт за более длинный период подтянет настоящие цены.';
   h+='<br>Дальше нажмите «Рассчитать».';
@@ -506,8 +508,25 @@ function brokerStatus(res){
    это либо остатки бумаг, либо сделки. */
 function parseGrids(grids, kind, date){
   const held={}, buys=[], seen={}, skipped=[];
-  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x));
+  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||/Код актива/i.test(x));
   const hasQty = h=>h.some(x=>/Кол-?во|Колич|Остаток/i.test(x));
+
+  /* Справочник «ISIN -> вид бумаги», если он лежит в отчёте отдельной таблицей:
+     у Сбера это «Вид, категория», у Тинькова — «Тип» со значением «обл прочих рез».
+     Это самый надёжный способ отличить облигацию от акции. */
+  grids.forEach(aoa=>{
+    const H=aoa.map(r=>r.map(normH));
+    for(let i=0;i<H.length;i++){
+      const ii=H[i].findIndex(x=>/^ISIN/i.test(x));
+      const vi=H[i].findIndex(x=>/^Тип$|Тип актива|^Вид\b|^Вид,/i.test(x));
+      if(ii<0||vi<0) continue;
+      for(let j=i+1;j<H.length;j++){
+        const v=isinOf(aoa[j][ii]); if(!v||kind[v]) continue;
+        const t=normH(aoa[j][vi]);
+        if(t && t.length<40 && !isinOf(t)) kind[v]=t;
+      }
+    }
+  });
 
   grids.forEach(aoa=>{
     const H=aoa.map(r=>r.map(normH));
@@ -532,6 +551,7 @@ function parseGrids(grids, kind, date){
       let title='';
       for(let t=1;t<=3;t++) if(hd.hi-t>=0) title+=' '+normH(H[hd.hi-t][0]||'');
       if(/оценка обязательств|оценка требований|сделки РЕПО|займа ценных бумаг/i.test(title)) return;
+      if(/неисполненн|прекращен|прекращён/i.test(title)) return;
 
       /* Столбец с бумагой ищем по содержимому: у БКС ISIN лежит под шапкой
          «Вид актива», а под шапкой «ISIN» — номер госрегистрации. */
@@ -619,7 +639,7 @@ function parseGrids(grids, kind, date){
         if(!isin) return;
         // отсев акций: по справочнику бумаг, по типу актива, по наличию
         // номинала, а если ничего этого нет — по названию бумаги
-        if(kind[isin]){ if(!/блигаци/i.test(kind[isin])){ skipped.push(isin); return; } }
+        if(kind[isin]){ if(!/обл|бонд/i.test(kind[isin])){ skipped.push(isin); return; } }
         else if(typeI>=0){ if(!/обл/i.test(String(row[typeI]||''))){ skipped.push(isin); return; } }
         else if(faceI>=0){ if(!(numRu(row[faceI])>0)){ skipped.push(isin); return; } }
         else {
@@ -639,17 +659,45 @@ function parseGrids(grids, kind, date){
         }else if(evalI>=0 && numRu(row[evalI])>0){              // ГПБ, Финам: оценка позиции в рублях
           price=numRu(row[evalI])/qty;
         }
-        if(!(price>0)) return;
+        if(!(price>0)){
+          // Тинькофф в разделе остатков даёт только количество. Цены в отчёте нет
+          // ни в каком виде — значит её неоткуда взять, кроме биржи. Помечаем
+          // строку нулём, цену подставим котировкой уже после разбора файла.
+          const hasPriceCol = (faceI>=0&&priceI>=0) || sumI>=0 || evalI>=0;
+          if(!hasPriceCol) held[isin]={qty:qty, price:0};
+          return;
+        }
         held[isin]={qty:qty, price:Math.round(price*100)/100};
       });
     });
   });
 
   if(!Object.keys(held).length) return null;
-  const res=buildLots(held, buys, date);
   const uniq={}; skipped.forEach(x=>{ if(!held[x]) uniq[x]=1; });
-  res.skipped=Object.keys(uniq);
-  return res;
+  return {held:held, buys:buys, date:date, skipped:Object.keys(uniq)};
+}
+
+/* Если у брокера в остатках нет цен (Тинькофф), берём их с Московской биржи.
+   Цена получается на сегодня, а не на дату отчёта, — и дата покупки у таких
+   строк ставится сегодняшняя, чтобы прибыль не считалась задним числом. */
+async function fillPrices(raw){
+  const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0));
+  if(!need.length) return 0;
+  const today=new Date().toISOString().slice(0,10);
+  let ok=0;
+  try{ await loadFxRates(); }catch(e){}
+  for(const isin of need){
+    try{
+      const q=await quote(isin);
+      const fx    = isRub(q.unit) ?1:(FX[q.unit] ||0);
+      const fxNkd = isRub(q.curId)?1:(FX[q.curId]||0);
+      const dirty = q.clean*fx + q.nkd*fxNkd;
+      if(dirty>0){ raw.held[isin].price=Math.round(dirty*100)/100; raw.held[isin].date=today; ok++; }
+      else delete raw.held[isin];
+    }catch(err){ delete raw.held[isin]; }
+  }
+  raw.fromExchange=ok;
+  return ok;
 }
 
 /* Дата отчёта: конец периода, иначе дата формирования, иначе сегодня.
@@ -709,25 +757,8 @@ function parseBrokerHtml(text){
   const date=reportDate(all);
   const tables=Array.prototype.slice.call(doc.querySelectorAll('table'));
 
-  // Справочник бумаг (ISIN -> вид), чтобы отбросить акции
-  const kind={};
-  tables.forEach(t=>{
-    const rows=tableRows(t); if(rows.length<2) return;
-    for(let r=0;r<Math.min(rows.length,4);r++){
-      const h=rows[r].map(cellText);
-      const ii=h.findIndex(x=>/ISIN/i.test(x)), vi=h.findIndex(x=>/^Вид\b|^Вид,/i.test(x));
-      if(ii<0||vi<0) continue;
-      rows.slice(r+1).forEach(c=>{
-        const v=cellText(c[ii]).toUpperCase();
-        if(ISIN_RE.test(v)) kind[v]=cellText(c[vi]);
-      });
-      break;
-    }
-  });
-
-  const res=parseGrids(tables.map(gridFromTable), kind, date);
-  if(!res) return {rows:[], date:date, skipped:[], fail:'в файле не нашлась таблица портфеля'};
-  res.fail='';
+  const res=parseGrids(tables.map(gridFromTable), {}, date);
+  if(!res) return null;
   return res;
 }
 
@@ -747,7 +778,7 @@ document.getElementById('fileIn').onchange=function(e){
   const st=document.getElementById('calcStatus');
   const rd=new FileReader();
   rd.onerror=function(){ st.textContent='Не удалось прочитать файл.'; };
-  rd.onload=function(){
+  rd.onload=async function(){
     const buf=rd.result;
     const head=new Uint8Array(buf.slice(0,5));
     const isPdf=/\.pdf$/i.test(f.name) ||
@@ -758,24 +789,35 @@ document.getElementById('fileIn').onchange=function(e){
         'Ошибка в них получается тихая — портфель выглядит правдоподобно, а числа не те. Лучше честно отказаться.'+
         '<br><b>Что делать:</b> возьмите тот же отчёт в другом формате. В личном кабинете брокера при заказе отчёта '+
         'обычно можно выбрать XLS, XLSX или HTML вместо PDF. Если выбора нет — отчёт в Excel присылают по запросу в поддержку.'+
-        '<br>Страница понимает отчёты ВТБ, Сбербанка, БКС, Газпромбанка и Финама. Если ваш брокер другой — '+
+        '<br>Страница понимает отчёты ВТБ, Сбербанка, БКС, Газпромбанка, Финама и Т-Банка. Если ваш брокер другой — '+
         'пришлите мне файл, и я научу страницу его понимать.';
       e.target.value=''; return;
     }
-    const isHtml=/\.html?$/i.test(f.name) || /<\s*table/i.test(decodeText(buf).slice(0,4000));
-    if(isHtml){
-      let res;
-      try{ res=parseBrokerHtml(decodeText(buf)); }
-      catch(err){ st.textContent='Не удалось разобрать отчёт: '+err.message; e.target.value=''; return; }
-      if(res.fail || !res.rows.length){
-        st.textContent='Не получилось прочитать портфель из этого отчёта'+(res.fail?' — '+res.fail:'')+
-                       '. Пришлите мне файл, и я научу страницу его понимать.';
-        e.target.value=''; return;
-      }
+    const show=async function(raw){
+      if(!raw || !Object.keys(raw.held||{}).length) return false;
+      const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0)).length;
+      if(need) st.textContent='В этом отчёте нет цен — спрашиваю котировки у Московской биржи по '+need+' бумагам…';
+      await fillPrices(raw);
+      if(!Object.keys(raw.held).length) return false;
+      const res=buildLots(raw.held, raw.buys, raw.date);
+      res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
+      if(!res.rows.length) return false;
       inBody.innerHTML='';
       res.rows.forEach(addRow);
       saveDraft();
       st.innerHTML=brokerStatus(res);
+      return true;
+    };
+
+    const isHtml=/\.html?$/i.test(f.name) || /<\s*table/i.test(decodeText(buf).slice(0,4000));
+    if(isHtml){
+      let raw;
+      try{ raw=parseBrokerHtml(decodeText(buf)); }
+      catch(err){ st.textContent='Не удалось разобрать отчёт: '+err.message; e.target.value=''; return; }
+      if(!(await show(raw))){
+        st.textContent='Не получилось прочитать портфель из этого отчёта — в файле не нашлась таблица портфеля. '+
+                       'Пришлите мне файл, и я научу страницу его понимать.';
+      }
       e.target.value=''; return;
     }
     let rows;
@@ -783,14 +825,7 @@ document.getElementById('fileIn').onchange=function(e){
       const wb=XLSX.read(new Uint8Array(rd.result), {type:'array', cellDates:false});
       const ws=wb.Sheets[wb.SheetNames[0]];
       rows=XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false, defval:''});
-      const br=parseBrokerXlsx(wb);
-      if(br && br.rows.length){
-        inBody.innerHTML='';
-        br.rows.forEach(addRow);
-        saveDraft();
-        st.innerHTML=brokerStatus(br);
-        e.target.value=''; return;
-      }
+      if(await show(parseBrokerXlsx(wb))){ e.target.value=''; return; }
     }catch(err){
       st.textContent='Не удалось открыть файл. Подойдёт Excel (.xlsx, .xls) или .csv.';
       e.target.value=''; return;
