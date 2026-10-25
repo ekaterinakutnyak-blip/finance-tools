@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Короткие флоатеры против фондов ликвидности · живой портфель</title>
+<meta name="description" content="Живой портфель из 10 коротких корпоративных флоатеров (1 млн ₽, погашения 2027, не ниже AA−) против четырёх фондов ликвидности и двух фондов флоатеров. Что внутри фондов, где они берут риск, и календарь купонов.">
+<meta name="keywords" content="флоатеры, облигации с плавающим купоном, фонд ликвидности, LQDT, SBMM, AKMM, BCSD, AMFL, SBFR, ключевая ставка, портфель облигаций, премия к ключевой ставке, investtools, Екатерина Кутняк">
+<link rel="canonical" href="https://investtools.pro/novosti/portfeli-floatery.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/portfeli-floatery.html">
+<meta property="og:title" content="Короткие флоатеры против фондов ликвидности">
+<meta property="og:description" content="Десять коротких корпоративных флоатеров против четырёх фондов ликвидности. Пять из десяти бумаг лежат внутри фонда флоатеров — и это самое интересное в сравнении.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#c9c8c2;--border:rgba(11,11,11,.10);--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;--chip:#f1f0ec;--c25:#2f6fb0;--c26:#2f8f5b;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3a3a37;--border:rgba(255,255,255,.12);--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;--chip:#242422;--c25:#5b9bd8;--c26:#4fb07a;}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3a3a37;--border:rgba(255,255,255,.12);--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;--chip:#242422;--c25:#5b9bd8;--c26:#4fb07a;}
+  *{box-sizing:border-box}
+  body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:940px;margin:0 auto;padding:26px 18px 60px}
+  .back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:16px}
+  h1{font-size:30px;margin:0 0 8px;letter-spacing:-.015em;line-height:1.15}
+  .lede{color:var(--ink2);font-size:15.5px;margin:0 0 22px;max-width:720px}
+  .lede b{color:var(--ink)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 8px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px 14px}
+  .stat .v{font-size:21px;font-weight:700;letter-spacing:-.01em}
+  .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-top:2px}
+  .disc{font-size:12px;color:var(--muted);margin:6px 0 0}
+  h2{font-size:20px;margin:38px 0 4px;letter-spacing:-.01em}
+  .h2sub{color:var(--ink2);font-size:13.5px;margin:0 0 14px;max-width:720px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:22px 0 10px}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+  /* tracker */
+  .tblwrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+  thead th{position:sticky;top:0;background:var(--card);text-align:right;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;z-index:2}
+  thead th:first-child,tbody td:first-child{text-align:left}
+  tbody td{padding:9px 12px;border-top:1px solid var(--hair);text-align:right;white-space:nowrap}
+  tbody tr:hover{background:var(--chip)}
+  .nm b{font-weight:700}.nm .sec{color:var(--muted);font-weight:500;font-size:11.5px}
+  .nm a{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--c25)}.nm a:hover{color:var(--c25)}
+  .rt{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--chip);color:var(--ink2);margin-left:4px}
+  .prop{display:inline-block;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--border);color:var(--muted);margin-left:4px}
+  tfoot td{padding:11px 12px;border-top:2px solid var(--border);font-weight:700;text-align:right}
+  tfoot td:first-child{text-align:left}
+  .pos{color:var(--good)}.neg{color:var(--crit)}.zero{color:var(--muted)}
+  /* chart */
+  .chart-head{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--ink2)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:16px;height:0;border-top-width:3px;border-top-style:solid;vertical-align:middle}
+  .legend i.dash{border-top-style:dashed}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .dot{cursor:pointer}
+  .asof{font-size:12px;color:var(--muted);margin-top:10px}
+  .endvals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+  .endcard{border:1px solid var(--border);border-radius:12px;padding:11px 13px}
+  .endcard .t{font-size:12px;color:var(--ink2)}
+  .endcard .n{font-size:18px;font-weight:700;margin-top:3px}
+  .endcard .p{font-size:12px;color:var(--muted);margin-top:1px}
+  /* callout */
+  .callout{background:linear-gradient(180deg,rgba(224,160,26,.10),rgba(224,160,26,.03));border:1px solid rgba(224,160,26,.32);border-radius:16px;padding:20px 22px;margin:22px 0}
+  .callout h3{margin:0 0 8px;font-size:18px;display:flex;align-items:center;gap:8px}
+  .callout p{margin:0 0 10px;font-size:14.5px;color:var(--ink)}
+  .callout p:last-child{margin-bottom:0}
+  .calc{font-variant-numeric:tabular-nums;background:var(--chip);border-radius:9px;padding:9px 12px;font-size:13.5px;color:var(--ink);margin:10px 0}
+  .big{color:var(--warn);font-weight:700}
+  /* kpi */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 18px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+  .kpi .lab{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .kpi .val{font-size:21px;font-weight:700;margin-top:5px}
+  .kpi .note{font-size:12px;color:var(--ink2);margin-top:3px}
+  .toggle{font-size:12.5px;color:var(--ink2);cursor:pointer;user-select:none;display:flex;align-items:center;gap:7px}
+  .toggle input{accent-color:var(--c26)}
+  .nearest{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .ev{display:grid;grid-template-columns:50px 1fr auto;gap:11px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 13px}
+  .ev .d{text-align:center;font-size:11px;color:var(--muted);font-weight:700;line-height:1.2}
+  .ev .d b{display:block;font-size:18px;color:var(--ink)}
+  .ev .en{font-weight:600;font-size:13px}
+  .ev .ty{font-size:11px;color:var(--muted)}
+  .ev .rub{text-align:right;font-weight:700;font-size:13.5px;white-space:nowrap}
+  .ev .rub.a{color:var(--warn)}
+  details.tbl{margin-top:4px}
+  details.tbl>summary{cursor:pointer;font-size:13.5px;color:var(--c25);font-weight:600;padding:8px 0;list-style:none}
+  details.tbl>summary::-webkit-details-marker{display:none}
+  details.tbl>summary::before{content:"▸ ";}
+  details.tbl[open]>summary::before{content:"▾ ";}
+  .tbl-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .tbl-tools select{background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:9px;padding:7px 11px;font:inherit;font-size:13px}
+  .paytbl{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:14px}
+  .paytbl table{min-width:560px}
+  .paytbl thead th{text-align:left}
+  .paytbl thead th.r,.paytbl td.r{text-align:right}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--ink2)}
+  .pill.a{background:rgba(224,160,26,.16);color:var(--warn)}
+  /* credit card embedded */
+  .cc .sub{color:var(--ink2);font-size:14px;margin:0 0 14px}
+  .cc .legend2{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:12.5px;color:var(--ink2);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin:0 0 18px}
+  .cc .csect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:22px 0 10px}
+  .cc .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .cc .r{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:start;padding:13px 16px;border-top:1px solid var(--hair)}
+  .cc .r:first-child{border-top:0}
+  .cc .sig{font-size:20px;line-height:1.2;text-align:center}
+  .cc .nm2{font-weight:700;font-size:15px}.cc .nm2 .rt2{color:var(--muted);font-weight:600;font-size:12.5px;margin-left:6px}
+  .cc .ds{color:var(--ink2);font-size:13.5px;margin-top:2px}
+  .cc .rr{text-align:right;white-space:nowrap;font-size:12.5px;color:var(--ink2);align-self:center}
+  .cc .tag{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:11.5px;color:var(--ink2)}
+  .cc .note{color:var(--muted);font-size:12.5px;margin-top:16px}
+  .cc .cc-link{color:inherit;text-decoration:none;border-bottom:1.5px solid var(--c25);transition:color .12s}
+  .cc .cc-link:hover{color:var(--c25)}
+  .cc .cc-link::after{content:" ›";color:var(--c25);font-weight:700}
+  .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--plane);font-size:12px;line-height:1.45;padding:8px 10px;border-radius:8px;opacity:0;transition:opacity .1s;z-index:20;max-width:240px;box-shadow:0 6px 22px rgba(0,0,0,.22)}
+  .tip b{color:#fff}
+  .method{font-size:13px;color:var(--ink2)}
+  .method summary{cursor:pointer;font-weight:600;color:var(--ink);padding:6px 0}
+  .taxnote{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--c26);border-radius:12px;padding:16px 18px;margin:22px 0}
+  .taxnote h3{margin:0 0 8px;font-size:16px}
+  .taxnote p{margin:0 0 9px;font-size:14px;color:var(--ink)}
+  .taxnote p:last-child{margin-bottom:0}
+  .taxnote .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .taxnote .tx{border:1px solid var(--border);border-radius:11px;padding:12px 14px}
+  .taxnote .tx .t{font-weight:700;font-size:13.5px;margin-bottom:4px}
+  .taxnote .tx.b .t{color:var(--c26)}.taxnote .tx.d .t{color:var(--c25)}
+  .taxnote .tx p{font-size:13px;color:var(--ink2);margin:0}
+  @media(max-width:680px){.taxnote .two{grid-template-columns:1fr}}
+  /* calculator section */
+  .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 16px}
+  .stress{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+  .scell{border-radius:11px;padding:11px 10px;text-align:center;border:1px solid var(--border)}
+  .scell .b{font-size:11px;color:var(--muted);font-weight:700}
+  .scell .p{font-size:17px;font-weight:700;margin-top:3px}
+  .scell .r{font-size:11px;margin-top:1px;color:var(--ink2)}
+  .scell.up{background:rgba(12,163,12,.09);border-color:rgba(12,163,12,.28)}.scell.up .p{color:var(--good)}
+  .scell.dn{background:rgba(208,59,59,.08);border-color:rgba(208,59,59,.26)}.scell.dn .p{color:var(--crit)}
+  .zonebar{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:12px 0 8px}
+  .zonebar span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+  .zlegend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--ink2)}
+  .zlegend b{color:var(--ink)} .zlegend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+  .calcbtn{display:inline-flex;align-items:center;gap:8px;background:var(--c25);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:11px;margin-top:16px}
+  .calcbtn:hover{filter:brightness(1.06)}
+  @media(max-width:680px){.cgrid{grid-template-columns:1fr 1fr}.stress{grid-template-columns:repeat(3,1fr)}}
+  .compact td,.compact th{padding-left:8px;padding-right:8px}
+  .compact .rt{margin-left:3px}
+  .foot{color:var(--muted);font-size:12px;margin-top:30px;border-top:1px solid var(--grid);padding-top:12px}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}.sitenav a{color:var(--ink2);text-decoration:none}.sitenav a:hover{color:var(--c26)}
+  @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:1fr 1fr}.nearest{grid-template-columns:1fr}.endvals{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+<script src="../gate.js"></script>
+</head>
+<body>
+<div class="wrap">
+<a href="../novosti.html" class="back-link">← Все обзоры и подборки</a>
+<h1>Короткие флоатеры против фондов ликвидности</h1>
+<p class="lede">Десять корпоративных флоатеров с погашением в 2027 году, миллион рублей, зафиксировано <b>23 октября 2026</b>. Правила простые: до погашения не больше полутора лет, рейтинг не ниже <b>AA−</b>, при погашении покупаем новый флоатер. Сравниваем с тем, что человек купил бы вместо этого одной кнопкой — <b>с фондами ликвидности</b>. Вопрос ровно один: сколько стоит кредитный риск десяти эмитентов, если срок оставить тем же.</p>
+
+<div class="stats">
+  <div class="stat"><div class="v">1 000 000 ₽</div><div class="l">капитал</div></div>
+  <div class="stat"><div class="v">10</div><div class="l">бумаг · по 10%</div></div>
+  <div class="stat"><div class="v">0,91 г.</div><div class="l">до погашения</div></div>
+  <div class="stat"><div class="v">+1,62</div><div class="l">п.п. к КС, купон</div></div>
+  <div class="stat"><div class="v">AA− … AAA</div><div class="l">рейтинги</div></div>
+</div>
+<p class="disc">Вложено 994 544 ₽, неинвестированный остаток 5 456 ₽. Цены — закрытие 23.10.2026. <b>«До погашения» — это срок кредитной экспозиции, а не чувствительность к ставке:</b> у флоатера купон переставляется вслед за ключевой ставкой, поэтому к её уровню цена почти не привязана. Переоценивается флоатер тогда, когда рынок меняет мнение об эмитенте — и чем длиннее бумага, тем дольше вы этот риск держите.</p>
+
+<h2>Что именно проверяем</h2>
+<p class="h2sub">Здесь две разные оси, и путать их нельзя.</p>
+<div class="panel">
+<p style="margin:0 0 10px"><b>Фонды ликвидности → этот портфель.</b> Срок тот же — и там, и там короткие деньги. Меняется одна переменная: добавлен кредитный риск десяти компаний. Это главное сравнение страницы, потому что в нём честно меняется ровно одно.</p>
+<p style="margin:0"><b>Этот портфель → фонды флоатеров.</b> Кредитный риск примерно тот же, меняется срок: внутри фондов бумаги, которые живут до тридцатых годов. Это отдельный вопрос — что даёт удлинение. Поэтому AMFL и SBFR идут второй линией, а не соперниками.</p>
+</div>
+
+<h2>Что фонды делали до старта</h2>
+<p class="h2sub">Год до фиксации портфеля, всё приведено к 100 на 23.10.2025. Это история, а не обещание: прошлый результат фонда сделан прошлым путём ставки и спредов, и повторять его он не обязан.</p>
+<div class="panel">
+<div class="legend">
+<span><i style="border-top-color:#2f8f5b"></i>AMFL · фонд флоатеров</span>
+<span><i style="border-top-color:#2f6fb0"></i>SBFR · фонд флоатеров</span>
+<span><i class="dash" style="border-top-color:#c9c8c2"></i>Ключевая ставка с капитализацией</span>
+<span><i style="border-top-color:#8a8883"></i>Фонды ликвидности, среднее из четырёх</span>
+</div>
+<svg viewBox="0 0 900 300" role="img" aria-label="Динамика фондов за год">
+<line x1="44" y1="257.2" x2="804" y2="257.2" stroke="var(--grid)" stroke-width="1"/>
+<text x="36" y="261.2" text-anchor="end" font-size="10.5" fill="var(--muted)">100</text>
+<line x1="44" y1="206.0" x2="804" y2="206.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="36" y="210.0" text-anchor="end" font-size="10.5" fill="var(--muted)">104</text>
+<line x1="44" y1="154.8" x2="804" y2="154.8" stroke="var(--grid)" stroke-width="1"/>
+<text x="36" y="158.8" text-anchor="end" font-size="10.5" fill="var(--muted)">108</text>
+<line x1="44" y1="103.6" x2="804" y2="103.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="36" y="107.6" text-anchor="end" font-size="10.5" fill="var(--muted)">112</text>
+<line x1="44" y1="52.4" x2="804" y2="52.4" stroke="var(--grid)" stroke-width="1"/>
+<text x="36" y="56.4" text-anchor="end" font-size="10.5" fill="var(--muted)">116</text>
+<text x="72.7" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">ноя</text>
+<text x="187.4" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">янв</text>
+<text x="316.5" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">мар</text>
+<text x="445.5" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">май</text>
+<text x="560.2" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">июл</text>
+<text x="689.3" y="290" text-anchor="middle" font-size="10" fill="var(--muted)">сен</text>
+<path d="M44.0,257.2 L58.3,251.7 L72.7,248.7 L87.0,245.7 L101.4,240.3 L115.7,237.1 L130.0,231.6 L144.4,228.5 L158.7,225.5 L173.1,220.2 L187.4,215.9 L201.7,214.4 L216.1,208.6 L230.4,205.7 L244.8,200.2 L259.1,197.2 L273.4,194.4 L287.8,188.9 L302.1,186.1 L316.5,180.6 L330.8,177.6 L345.1,174.8 L359.5,169.4 L373.8,166.8 L388.2,164.1 L402.5,158.7 L416.8,155.8 L431.2,149.3 L445.5,147.6 L459.8,145.0 L474.2,139.5 L488.5,136.9 L502.9,134.1 L517.2,127.5 L531.5,126.1 L545.9,123.2 L560.2,117.9 L574.6,114.9 L588.9,109.6 L603.2,106.6 L617.6,103.9 L631.9,98.5 L646.3,95.8 L660.6,92.9 L674.9,87.6 L689.3,84.7 L703.6,81.7 L718.0,76.4 L732.3,73.7 L746.6,68.2 L761.0,65.2 L775.3,62.4 L789.7,56.9 L804.0,55.9" fill="none" stroke="#8a8883" stroke-width="1.8" stroke-linejoin="round"/>
+<text x="812" y="69.0" font-size="11" font-weight="700" fill="#8a8883">115.7</text>
+<path d="M44.0,257.2 L58.3,253.1 L72.7,249.0 L87.0,244.9 L101.4,240.8 L115.7,236.7 L130.0,232.6 L144.4,228.5 L158.7,224.3 L173.1,220.2 L187.4,216.2 L201.7,212.1 L216.1,208.0 L230.4,204.0 L244.8,199.9 L259.1,195.7 L273.4,191.6 L287.8,187.5 L302.1,183.5 L316.5,179.5 L330.8,175.5 L345.1,171.4 L359.5,167.4 L373.8,163.5 L388.2,159.5 L402.5,155.5 L416.8,151.5 L431.2,147.6 L445.5,143.7 L459.8,139.9 L474.2,136.0 L488.5,132.1 L502.9,128.2 L517.2,124.2 L531.5,120.3 L545.9,116.4 L560.2,112.5 L574.6,108.6 L588.9,104.7 L603.2,100.8 L617.6,96.9 L631.9,93.0 L646.3,89.1 L660.6,85.2 L674.9,81.3 L689.3,77.4 L703.6,73.5 L718.0,69.6 L732.3,65.6 L746.6,61.7 L761.0,57.7 L775.3,53.7 L789.7,49.7 L804.0,49.1" fill="none" stroke="#c9c8c2" stroke-width="1.8" stroke-dasharray="5,4" stroke-linejoin="round"/>
+<text x="812" y="56.5" font-size="11" font-weight="700" fill="#c9c8c2">116.3</text>
+<path d="M44.0,257.2 L58.3,247.7 L72.7,247.7 L87.0,238.2 L101.4,238.2 L115.7,238.2 L130.0,228.8 L144.4,228.8 L158.7,219.3 L173.1,219.3 L187.4,209.8 L201.7,209.8 L216.1,209.8 L230.4,200.3 L244.8,200.3 L259.1,190.8 L273.4,181.3 L287.8,181.3 L302.1,181.3 L316.5,171.9 L330.8,171.9 L345.1,162.4 L359.5,162.4 L373.8,152.9 L388.2,152.9 L402.5,143.4 L416.8,143.4 L431.2,133.9 L445.5,133.9 L459.8,133.9 L474.2,124.5 L488.5,124.5 L502.9,115.0 L517.2,115.0 L531.5,115.0 L545.9,105.5 L560.2,105.5 L574.6,105.5 L588.9,105.5 L603.2,96.0 L617.6,96.0 L631.9,86.5 L646.3,86.5 L660.6,77.1 L674.9,77.1 L689.3,77.1 L703.6,67.6 L718.0,67.6 L732.3,58.1 L746.6,58.1 L761.0,48.6 L775.3,48.6 L789.7,48.6 L804.0,39.1" fill="none" stroke="#2f6fb0" stroke-width="2.4" stroke-linejoin="round"/>
+<text x="812" y="44.0" font-size="11" font-weight="700" fill="#2f6fb0">117.0</text>
+<path d="M44.0,257.2 L58.3,254.0 L72.7,247.7 L87.0,244.6 L101.4,240.3 L115.7,235.1 L130.0,234.0 L144.4,231.9 L158.7,229.8 L173.1,223.5 L187.4,214.0 L201.7,215.1 L216.1,207.7 L230.4,203.5 L244.8,198.2 L259.1,192.9 L273.4,188.7 L287.8,182.4 L302.1,179.2 L316.5,176.1 L330.8,170.8 L345.1,168.7 L359.5,162.4 L373.8,156.1 L388.2,151.9 L402.5,147.6 L416.8,144.5 L431.2,140.3 L445.5,132.9 L459.8,129.7 L474.2,125.5 L488.5,120.2 L502.9,116.0 L517.2,110.8 L531.5,110.8 L545.9,104.4 L560.2,97.1 L574.6,93.9 L588.9,93.9 L603.2,87.6 L617.6,81.3 L631.9,74.9 L646.3,72.8 L660.6,68.6 L674.9,66.5 L689.3,60.2 L703.6,54.9 L718.0,50.7 L732.3,47.5 L746.6,44.4 L761.0,40.2 L775.3,33.9 L789.7,29.6 L804.0,27.5" fill="none" stroke="#2f8f5b" stroke-width="2.4" stroke-linejoin="round"/>
+<text x="812" y="31.5" font-size="11" font-weight="700" fill="#2f8f5b">117.9</text>
+<line x1="804.0" y1="14" x2="804.0" y2="270" stroke="var(--axis)" stroke-width="1" stroke-dasharray="3,3"/>
+<text x="798.0" y="24" text-anchor="end" font-size="10.5" font-weight="700" fill="var(--ink2)">старт портфеля 23.10</text>
+</svg>
+
+<p class="asof">Все четыре фонда ликвидности проиграли ключевой ставке с ежедневной капитализацией: 15,37–15,93% против 16,25%. Это и есть комиссия управляющего плюс то, что фонд не круглые сутки в сделках. Фонд ликвидности — не ключевая ставка, а ключевая ставка минус примерно полпроцента.</p>
+</div>
+
+<h2>Состав портфеля</h2>
+<p class="h2sub">Отсортировано по купонной премии. Последняя колонка — есть ли эта бумага внутри AMFL, крупнейшего фонда корпоративных флоатеров.</p>
+<div class="tblwrap"><table class="compact">
+<thead><tr><th>Бумага</th><th>Купон</th><th>Лет</th><th>Цена,&nbsp;%</th><th>Шт.</th><th>Вложено,&nbsp;₽</th><th style="text-align:left">В&nbsp;AMFL</th></tr></thead>
+<tbody><tr><td class="nm"><b>МСП Факторинг 001Р-01</b><span class="rt">AA(RU)</span><div class="sec">Другое · погашение 14.10.2027</div></td><td>КС+3,00%</td><td>0,92</td><td>101,46</td><td>98</td><td>99 750</td><td style="text-align:left"><span class="pill">нет в фонде</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-avtofinansbank-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">АО Авто Финанс Банк БО-001Р-13</a></b><span class="rt">AA(RU)</span><div class="sec">Банк · погашение 17.09.2027</div></td><td>КС+2,30%</td><td>0,84</td><td>100,60</td><td>97</td><td>99 228</td><td style="text-align:left"><span class="pill a">та же · 0,24%</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-psb-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">ПАО "ПСБ" 003P-09</a></b><span class="rt">AAA(RU)</span><div class="sec">Банк · погашение 15.10.2027</div></td><td>КС+1,50%</td><td>0,92</td><td>100,17</td><td>98</td><td>99 207</td><td style="text-align:left"><span class="pill a">та же · 0,32%</span></td></tr>
+<tr><td class="nm"><b>Ростелеком ПАО 001P-21R</b><span class="rt">AAA(RU)</span><div class="sec">IT и телеком · погашение 22.10.2027</div></td><td>КС+1,45%</td><td>0,94</td><td>100,32</td><td>98</td><td>99 517</td><td style="text-align:left"><span class="pill a">та же · 0,43%</span></td></tr>
+<tr><td class="nm"><b>Магнит ПАО БО-005Р-04</b><span class="rt">AA+(RU)</span><div class="sec">Розничная торговля (ритейл) · погашение 02.11.2027</div></td><td>КС+1,40%</td><td>0,93</td><td>100,13</td><td>99</td><td>99 880</td><td style="text-align:left"><span class="pill">тот же эмитент</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-gazprom-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">Газпром капитал БО-003Р-06</a></b><span class="rt">AAA(RU)</span><div class="sec">Топливная и химическая промышленность · погашение 30.09.2027</div></td><td>КС+1,40%</td><td>0,88</td><td>100,20</td><td>98</td><td>99 064</td><td style="text-align:left"><span class="pill">тот же эмитент</span></td></tr>
+<tr><td class="nm"><b>АЛРОСА 002Р-01</b><span class="rt">ruAAA</span><div class="sec">Тяжелая промышленность · погашение 13.12.2027</div></td><td>КС+1,35%</td><td>1,05</td><td>100,07</td><td>99</td><td>99 360</td><td style="text-align:left"><span class="pill a">та же · 0,42%</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-gazpromneft-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">Газпром нефть БО 003P-07R</a></b><span class="rt">AAA(RU)</span><div class="sec">Топливная и химическая промышленность · погашение 02.11.2027</div></td><td>RUONIA+1,30%</td><td>0,93</td><td>100,10</td><td>96</td><td>99 418</td><td style="text-align:left"><span class="pill a">та же · 0,14%</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-atomenergoprom-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">Атомэнергопром АО 001Р-03</a></b><span class="rt">ruAAA</span><div class="sec">Энергетика · погашение 08.10.2027</div></td><td>КС+1,25%</td><td>0,90</td><td>100,40</td><td>99</td><td>99 934</td><td style="text-align:left"><span class="pill">тот же эмитент</span></td></tr>
+<tr><td class="nm"><b><a href="razbor-rzd-1p2026.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">РЖД БО 001Р-27R</a></b><span class="rt">AAA(RU)</span><div class="sec">Транспорт и логистика · погашение 09.09.2027</div></td><td>КС+1,25%</td><td>0,82</td><td>100,25</td><td>98</td><td>99 185</td><td style="text-align:left"><span class="pill">тот же эмитент</span></td></tr></tbody>
+<tfoot><tr><td>Итого · 10 бумаг</td><td>КС+1,62%</td><td>0,91</td><td>—</td><td>—</td><td>994 544</td><td></td></tr></tfoot>
+</table></div>
+<p class="disc">Подчёркнутые названия ведут на полный разбор отчётности эмитента — по шести из десяти бумаг он уже есть. Купон у флоатера на будущие периоды не существует, пока его не зафиксируют по ключевой ставке. Твёрдая величина здесь только одна — надбавка к ставке, она прописана в выпуске и не меняется. Поэтому в таблице стоит «КС+1,35%», а не доходность: доходность будет такой, какой окажется ставка.</p>
+
+<h2>Пять бумаг из десяти лежат внутри фонда</h2>
+<div class="callout">
+<h3>⚖️ Это и есть суть сравнения</h3>
+<p>АЛРОСА 002Р-01, Ростелеком 001P-21R, ПСБ 003P-09, Авто Финанс Банк 001Р-13 и Газпром нефть 003P-07R — <b>те же самые выпуски</b> лежат и в этом портфеле, и в фонде AMFL. Ещё четыре бумаги — тот же эмитент, другой выпуск. Не совпадает только МСП Факторинг.</p>
+<div class="calc">В этом портфеле эти пять бумаг весят <b class="big">50%</b>. В фонде — <b class="big">1,55%</b>.</div>
+<p>Вот за что платят временем при ручном отборе: не за доступ к каким-то особенным бумагам, а за <b>концентрацию и за правила</b>. Фонд держит те же имена размазанными по ста семидесяти позициям и вместе с ними берёт то, что в правила этого портфеля не проходит: Озон, Аэрофлот, Россети Сибирь, Камаз, Медси, Промомед, ЯТЭК, <a href="razbor-avtoban-2025.html" style="color:inherit;border-bottom:1.5px solid var(--c25);text-decoration:none">Автобан-Финанс</a> — около 10% фонда ниже порога AA−.</p>
+<p>Правда и обратное: на ста семидесяти позициях этот хвост почти безопасен. ЯТЭК на 0,08% не способен сделать фонду ничего. А вот здесь каждая бумага — это 10% портфеля, и одна ошибка в отборе стоит в пять раз дороже, чем фонду стоит дефолт.</p>
+</div>
+
+<h2>Бенчмарки: что у них внутри</h2>
+<p class="h2sub">Доходность сама по себе не говорит ничего, пока не видно, из чего она сделана.</p>
+<div class="tblwrap"><table>
+<thead><tr><th>Фонд</th><th>Год</th><th>С 02.2025, год.</th><th style="text-align:left">Что внутри</th><th>Срок</th></tr></thead>
+<tbody><tr><td class="nm"><b>AMFL · АТОН</b><div class="sec">корпоративные флоатеры</div></td><td>17,94%</td><td>21,88%</td><td style="text-align:left;white-space:normal">госбумаг 3,89% · ~170 позиций · крупнейшая 2,44% · внутри имена ниже AA−</td><td>длиннее портфеля</td></tr>
+<tr><td class="nm"><b>SBFR · Первая</b><div class="sec">флоатеры + ОФЗ-ПК</div></td><td>17,04%</td><td>19,83%</td><td style="text-align:left;white-space:normal">госбумаг 51,5% · 8 из 10 крупнейших позиций — ОФЗ</td><td>длиннее портфеля</td></tr>
+<tr><td class="nm"><b>СБМM · Сбер</b><div class="sec">фонд ликвидности</div></td><td>15,93%</td><td>18,10%</td><td style="text-align:left;white-space:normal">сделки РЕПО овернайт</td><td>сутки</td></tr>
+<tr><td class="nm"><b>БКСД · БКС</b><div class="sec">фонд ликвидности</div></td><td>15,87%</td><td>18,02%</td><td style="text-align:left;white-space:normal">сделки РЕПО овернайт</td><td>сутки</td></tr>
+<tr><td class="nm"><b>LQDT · ВИМ</b><div class="sec">фонд ликвидности</div></td><td>15,74%</td><td>18,02%</td><td style="text-align:left;white-space:normal">сделки РЕПО овернайт</td><td>сутки</td></tr>
+<tr><td class="nm"><b>АКММ · Альфа</b><div class="sec">фонд ликвидности</div></td><td>15,37%</td><td>17,56%</td><td style="text-align:left;white-space:normal">сделки РЕПО овернайт</td><td>сутки</td></tr></tbody>
+</table></div>
+<p class="disc">«Год» — с 23.10.2025 по 23.10.2026. Вторая колонка — в годовых с 06.02.2025, общего старта всех шести. <b>SBFR наполовину состоит из ОФЗ,</b> у которых кредитной премии практически нет: его прошлый результат сделан в основном переоценкой длинных госбумаг, а не премией за риск. AMFL — настоящий корпоративный фонд и по составу ближе всего к этому портфелю, но заметно длиннее по сроку.</p>
+
+<h2>Календарь купонов</h2>
+<p class="h2sub">Даты твёрдые — они записаны в выпусках. Суммы — ориентир при ключевой ставке 14%, и это честная оговорка, а не перестраховка.</p>
+<div class="nearest"><div class="ev"><div class="d"><b>27</b>окт</div><div><div class="en">Ростелеком ПАО 001P-21R</div><div class="ty">купон №1 · 15,45% × 30 дн · ориентир</div></div><div class="rub a">1 244 ₽</div></div>
+<div class="ev"><div class="d"><b>01</b>ноя</div><div><div class="en">ПАО "ПСБ" 003P-09</div><div class="ty">купон №1 · 15,50% × 31 дн · ориентир</div></div><div class="rub a">1 290 ₽</div></div>
+<div class="ev"><div class="d"><b>03</b>ноя</div><div><div class="en">Газпром нефть БО 003P-07R</div><div class="ty">купон №1 · 15,30% × 91 дн · ориентир</div></div><div class="rub a">3 662 ₽</div></div>
+<div class="ev"><div class="d"><b>03</b>ноя</div><div><div class="en">РЖД БО 001Р-27R</div><div class="ty">купон №1 · 15,25% × 31 дн · ориентир</div></div><div class="rub a">1 269 ₽</div></div>
+<div class="ev"><div class="d"><b>04</b>ноя</div><div><div class="en">Газпром капитал БО-003Р-06</div><div class="ty">купон №1 · 15,40% × 30 дн · ориентир</div></div><div class="rub a">1 240 ₽</div></div>
+<div class="ev"><div class="d"><b>07</b>ноя</div><div><div class="en">Магнит ПАО БО-005Р-04</div><div class="ty">купон №1 · 15,40% × 30 дн · ориентир</div></div><div class="rub a">1 253 ₽</div></div></div>
+<details class="tbl"><summary>Все платежи по месяцам до погашения</summary>
+<div class="paytbl"><table><thead><tr><th>Месяц</th><th class="r">Платежей</th><th class="r">Ориентир, ₽</th></tr></thead><tbody><tr><td>октябрь 2026</td><td class="r">1</td><td class="r">1 244 ₽</td></tr>
+<tr><td>ноябрь 2026</td><td class="r">9</td><td class="r">13 817 ₽</td></tr>
+<tr><td>декабрь 2026</td><td class="r">9</td><td class="r">14 097 ₽</td></tr>
+<tr><td>январь 2027</td><td class="r">8</td><td class="r">10 155 ₽</td></tr>
+<tr><td>февраль 2027</td><td class="r">9</td><td class="r">13 817 ₽</td></tr>
+<tr><td>март 2027</td><td class="r">9</td><td class="r">14 097 ₽</td></tr>
+<tr><td>апрель 2027</td><td class="r">8</td><td class="r">10 155 ₽</td></tr>
+<tr><td>май 2027</td><td class="r">9</td><td class="r">13 817 ₽</td></tr>
+<tr><td>июнь 2027</td><td class="r">9</td><td class="r">14 097 ₽</td></tr>
+<tr><td>июль 2027</td><td class="r">8</td><td class="r">10 155 ₽</td></tr>
+<tr><td>август 2027</td><td class="r">10</td><td class="r">15 057 ₽</td></tr>
+<tr><td>сентябрь 2027</td><td class="r">9</td><td class="r">14 097 ₽</td></tr>
+<tr><td>октябрь 2027</td><td class="r">7</td><td class="r">7 937 ₽</td></tr>
+<tr><td>ноябрь 2027</td><td class="r">3</td><td class="r">6 164 ₽</td></tr>
+<tr><td>декабрь 2027</td><td class="r">1</td><td class="r">1 249 ₽</td></tr></tbody></table></div>
+</details>
+<div class="taxnote">
+<h3>Почему здесь нельзя обещать сумму купона</h3>
+<p>В портфеле с фиксированным купоном можно сказать: «на следующей неделе придёт 4 012 ₽». Здесь так нельзя <b>в принципе</b>. Купон флоатера равен ключевой ставке плюс надбавка, и ставку на день фиксации купона не знает никто — ни я, ни управляющий фондом, ни Банк России.</p>
+<p>Это не недостаток инструмента, а его устройство. Тот, кто берёт флоатеры, чтобы не зависеть от движения ставки, расплачивается ровно тем, что перестаёт знать свой денежный поток заранее. Доход у него описан формулой, а не числом.</p>
+<p>Поэтому все суммы в календаре посчитаны при сегодняшних 14% и будут пересчитываться при каждом изменении ставки. Всего до погашения <b>109 платежей</b>; за ближайшие двенадцать месяцев при неизменных 14% это около <b>152 542 ₽</b>.</p>
+</div>
+
+<h2>Как считается результат</h2>
+<div class="panel method">
+<p><b>Никаких прогнозов на этой странице нет.</b> Раз в неделю берётся стоимость портфеля по ценам закрытия плюс полученные купоны — и то же самое по каждому фонду, как если бы в него положили тот же миллион в тот же день. Разница между строками и есть ответ.</p>
+<p>Премию заранее ни во что не пересчитываем и будущую доходность не моделируем: у флоатера слишком много движущихся частей, и любая такая цифра устареет через неделю. Меряем факт.</p>
+<p><b>Про точность котировок.</b> У БКСД и SBFR биржевая цена идёт с одним знаком после запятой, то есть один шаг равен примерно 0,65% от цены. Неделя к неделе эти две линии будут двигаться ступеньками. Ошибка при этом не накапливается — это фиксированная полоса около ±0,3%, которая на горизонте месяцев перестаёт быть заметной.</p>
+<p><b>Правила портфеля.</b> До погашения не больше 1,5 лет. Рейтинг не ниже AA− хотя бы от одного агентства. Доли равные. При погашении бумаги на эти деньги покупается новый флоатер, подходящий под те же правила. Купоны копятся на денежном счёте и в тело не реинвестируются — иначе портфель перестанет быть сравнимым с фондом, где реинвестирование происходит само.</p>
+</div>
+
+<p class="foot">Данные: Московская биржа, Банк России (ключевая ставка), сайты управляющих компаний (составы фондов на 22.10.2026). Фиксация портфеля — 23.10.2026 по ценам закрытия. Не является индивидуальной инвестиционной рекомендацией.</p>
+<p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a> · © 2025–2026</p>
+</div>
+</body></html>
