@@ -39,6 +39,9 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 .dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.08)}
 .dot.r{background:var(--red)}.dot.y{background:var(--yellow)}.dot.g{background:var(--green)}
 .ai-badge{font-size:0.64rem;font-weight:600;letter-spacing:0.04em;color:var(--accent);background:var(--accent-light);padding:2px 8px;border-radius:20px;margin-left:2px}
+.kind{font-size:0.64rem;font-weight:600;letter-spacing:0.04em;padding:2px 8px;border-radius:20px;margin-left:2px;border:1px solid var(--border)}
+.kind.cred{color:#1B6B9A;background:#E6F1FB;border-color:rgba(27,107,154,.35)}
+.kind.div{color:#8A5A00;background:#FDF2DC;border-color:rgba(138,90,0,.30)}
 .new-badge{display:inline-block;font-family:var(--mono);font-size:0.6rem;font-weight:600;letter-spacing:0.06em;background:#FFE9D6;color:#C25A1E;padding:2px 6px;border-radius:4px;vertical-align:middle;margin-left:0.4rem}
 .footer{margin-top:2rem;font-size:0.78rem;color:var(--text3);line-height:1.7;text-align:center}
 .footer a{color:var(--text2)}
@@ -59,7 +62,7 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 <div class="container">
 <a href="index.html" class="back-link">← Все калькуляторы</a>
 <h1>Разборы ИИ-аналитика</h1>
-<p class="intro">Публичные разборы финансовой отчётности компаний: долговая нагрузка, покрытие процентов, денежный поток и светофор риска — простым языком. Читает отчётность <a href="pro/ai-analyst.html" style="color:var(--accent2)">ИИ-аналитик</a>, а автор проверяет.</p>
+<p class="intro">Публичные разборы финансовой отчётности компаний — простым языком. Читает отчётность ИИ-аналитик, а автор проверяет. <b>Здесь представлены кредитные и дивидендные разборы. В кредитных светофор отражает кредитный риск, в дивидендных — оценку устойчивости дивидендных выплат, а не риска дефолта.</b></p>
 <div class="aiflag">🤖 Материалы этого раздела подготовлены с помощью ИИ-аналитика по публичной отчётности и проверены автором. ИИ может ошибаться в прочтении цифры — сверяйтесь с первоисточником. Ничто здесь не является индивидуальной инвестиционной рекомендацией.</div>
 <div class="filterbar">
   <input id="razSearch" class="search" type="search" placeholder="Поиск по названию — Газпром, Сбербанк, Полюс…" autocomplete="off">
@@ -67,347 +70,361 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 </div>
 <p id="razNoRes" class="noRes">Ничего не найдено. Попробуйте другое название или выберите другой сектор.</p>
 
+<a class="card" href="novosti/razbor-rostelekom-1p2026.html">
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
+<h3>Ростелеком · кредитный разбор 2025 + 1П2026 <span class="new-badge" data-until="2026-11-09">NEW</span></h3>
+<p>Телеком с государственным влиянием (RTKM), рейтинг ruAAA. Выручка за 1П2026 +10,7% (до 435,7 млрд ₽), OIBDA +11,1%. Чистый долг / OIBDA 2,10× — нагрузка управляемая, но короткий долг велик, а свободный денежный поток полугодия отрицателен: ликвидность опирается на рефинансирование. Со ссылками на страницы первоисточников. Светофор — зелёно-жёлтый.</p>
+<div class="card-date">26 октября 2026</div>
+</a>
+
+<a class="card" href="novosti/razbor-rostelekom-dividendy.html">
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind div">Дивидендный</span></div>
+<h3>Ростелеком · дивидендный разбор 2023–2026 <span class="new-badge" data-until="2026-11-09">NEW</span></h3>
+<p>Второй взгляд на ту же компанию — уже глазами акционера (RTKM / RTKMP). За 2023 год платили 6,06 ₽, за 2025 — 2,71 ₽: высокое кредитное качество не защитило от сокращения дивиденда. Выручка за три года +23,3%, а прибыль владельцев материнской компании −67,0%. Разбор про то, превратится ли рост цифрового бизнеса в деньги акционера. Светофор — жёлтый.</p>
+<div class="card-date">26 октября 2026</div>
+</a>
+
 <a class="card" href="novosti/razbor-magnit-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Магнит · разбор отчётности 2025 + 1П2026 <span class="new-badge" data-until="2026-11-09">NEW</span></h3>
 <p>Второй продуктовый ритейлер страны (MGNT), 33 652 магазина. Выручка за 1П2026 +12,8% (до 1 887 млрд ₽), EBITDA +13,7%. Но финансовые расходы растут быстрее операционной прибыли: чистый убыток 9,5 млрд ₽. Чистый долг с арендой 1 138,6 млрд — 3,5× EBITDA; денежная подушка 404 млрд сформирована во многом новыми займами, а поток после капзатрат и аренды отрицательный. Светофор — жёлтый.</p>
 <div class="card-date">26 октября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-alrosa-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>АЛРОСА · разбор отчётности МСФО 1П2026 <span class="new-badge" data-until="2026-11-09">NEW</span></h3>
 <p>Мировой лидер алмазодобычи под контролем государства (ALRS), рейтинг AAA(RU)/ruAAA. Баланс очень крепкий — финансовый рычаг 0,31, капитал 397 млрд ₽. Но первое полугодие 2026 — глубокий провал алмазного цикла: выручка −33%, EBITDA −61%, чистый убыток 9,5 млрд против прибыли 40,6, свободный денежный поток −17 млрд, чистый долг за год вырос почти вдвое (ND/EBITDA с 1,2× до ~3,2×). Во II квартале появились признаки улучшения, но разворот не подтверждён. Светофор — жёлто-зелёный.</p>
 <div class="card-date">26 октября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-voksis-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Воксис (VOXYS) · разбор отчётности 2025 / 1П2026 <span class="new-badge" data-until="2026-11-06">NEW</span></h3>
 <p>Группа VOXYS (МКАО «Воксис», ruBBB+): контакт-центры, реклама и коллекторский бизнес. По всей группе EBITDA 1,4 млрд ₽ (+57%), маржа 22%, чистый долг к EBITDA 2,8× с ожиданием снижения до 2,0×, покрытие процентов 4,0×, ликвидность высокая. Нюансы — коллекторский сегмент даёт 43% EBITDA и несёт повышенный бизнес-риск, а присланная отчётность охватывает только контакт-центровую подгруппу, без коллекторского бизнеса. Светофор — жёлто-зелёный.</p>
 <div class="card-date">23 октября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-cifra-broker-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Цифра брокер · разбор отчётности 1П2026 <span class="new-badge" data-until="2026-11-06">NEW</span></h3>
 <p>Брокер, некредитная финансовая организация (ruBBB): капитал 12,2 млрд ₽ — около 23% активов, 2025 год прибыльный (813 млн). Но первое полугодие 2026 убыточно (183 млн, хотя и меньше прошлогодних 225), торговые и процентные доходы просели на 26% и 24%, комиссионные выросли на 36%. Фондирование в основном через РЕПО с банками (24,5 млрд) — обеспеченное, но короткое. Новый выпуск долларовый, для квалифицированных инвесторов. Светофор — жёлтый.</p>
 <div class="card-date">23 октября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-borec-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Борец · разбор отчётности РСБУ 2025 <span class="new-badge" data-until="2026-11-06">NEW</span></h3>
 <p>Лидер российского рынка электроцентробежных насосов для нефтедобычи (A−(RU) АКРА / A−.ru НКР, 100% у Росимущества). Бизнес сильный: доля рынка 30–34%, вертикальная интеграция, рентабельность OIBDA более 30%, совокупный долг в 2025 снизился на 16% — до 46 млрд ₽. Слабости — повышенная нагрузка (долг/OIBDA 3,6×), невысокое покрытие процентов (2,3×) и крупные погашения облигаций в 2026 году, которые предстоит рефинансировать. Госвладение не равнозначно гарантии по выпуску. Светофор — жёлтый.</p>
 <div class="card-date">23 октября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-rosseti-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Россети (ФСК) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-28">NEW</span></h3>
 <p>Государственная электросетевая монополия (AAA/ruAAA, госконтроль ~75%). Очень низкий долг (ND/EBITDA ~0,7×), капитал 2,16 трлн, прибыль 1П2026 +45% (176 млрд), аудит 2025 без оговорок. Нюансы — гигантская инвестпрограмма (~600 млрд ₽/год) держит свободный денежный поток тонким, обесценения повторяются (2024 был убыточным), крупные судебные обязательства. Выпуск с индексацией номинала на RUONIA. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">15 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-legenda-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Легенда · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Девелопер жилья бизнес- и комфорт-класса на эскроу (СПб/Москва), BBB(RU) АКРА / BBB+.ru НКР. Выручка +13%, но чистая прибыль почти обнулилась (26 млн против 952) — в основном из-за учёта компонента финансирования по договорам (МСФО 15), а не роста банковских процентов. Долг с арендой 99,5 млрд, консервативный ND/EBITDA с эскроу ~7,2×, эскроу-покрытие проектного долга снизилось с 85% до 70%, капитал тонкий (6,1 млрд), поручительство Сбербанку 23 млрд. Светофор — жёлто-красный.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-segezha-1p2026.html">
-<div class="sfrow"><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Сегежа Групп · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Лесопромышленный холдинг (пиломатериалы, бумага, фанера), входит в АФК «Система», ruB. В затяжном кризисе: выручка −15%, операционный убыток, OIBDA 0,66 млрд против начисленных процентов 10,8 млрд, денежный отток от операций 8,6 млрд, отрицательный капитал (−15 млрд). Кредиты и аренда 91 млрд плюс опционные обязательства 32 млрд с нарушенными ковенантами; аудитор — о неопределённости непрерывности деятельности. Выживаемость зависит от поддержки АФК «Система» и банков. Светофор — красный.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-mmcb-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ММЦБ (Гемабанк) · разбор отчётности РСБУ 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Нишевый медицинский бизнес — банк персонального хранения пуповинной крови и стволовых клеток (Гемабанк®), входит в группу ПАО «Артген биотех» (66,59%), BBB−(RU) АКРА. Бизнес прибыльный, но за 1П2026 результаты ухудшились: выручка +6%, чистая прибыль −38%, операционный поток −26%. Нетто-денежная позиция укреплена выпуском акций; значительная часть активов завязана на материнскую группу, а отрицательная переоценка финвложений увела совокупный финансовый результат в минус. Светофор — жёлтый.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-domrf-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ДОМ.РФ · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Государственный институт развития жилищной сферы — ипотечная секьюритизация, проектное финансирование застройщиков, арендное жильё (AAA(RU) АКРА, госдоля 89,9% после IPO). Результаты сильные: за 1П2026 чистая прибыль +46% (до 57,2 млрд), процентные доходы +33%, ROE ~24%, активы 6,83 трлн. Нюансы — достаточность капитала Н1 снизилась с 13,8% до 13,0% (запас над минимумом 1,5 п.п.), расходы на резервы +71%, концентрация на жилищном рынке. Господдержка — не госгарантия выпуска. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-avtoban-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Автобан (ИСК «АВТОБАН») · разбор отчётности МСФО 2025 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Один из крупнейших дорожно-строительных холдингов (М-12, ЦКАД, Казань–Екатеринбург, ВСМ), концессии по модели ГЧП; выпуск SPV АВТОБАН-Финанс, ruA+. За 2025 прибыль выросла (чистая +37%, до 9 млрд) при выручке −4%. Но аудит (ДРТ) — с оговорками: прибыль и контрактные активы завышены на 4,65 млрд; нарушены ковенанты, дивиденды (10 млрд) больше прибыли, свободных денег всего 1,5 млрд (спецсчета ограничены). Данные годовые 2025. Светофор — жёлтый.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-ekoniva-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ЭкоНива · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Крупнейший в России производитель сырого молока — вертикальный агрохолдинг (земля, стадо, переработка), A+(RU) АКРА / ruA Эксперт РА. Операционно бизнес держится (выручка −3%), но за полугодие денежная сторона резко ослабла: «денежная» EBITDA −75% (9,6 → 2,4 млрд), операционный поток обнулился, покрытие процентов ниже 1×, долг +17% (до 98 млрд). Ковенанты нарушены — 49 млрд длинного долга формально «до востребования», но банки дали письма-отказы и пересогласовали условия. Светофор — жёлто-красный.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-cloud-ru-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Cloud.ru (Облачные технологии) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-20">NEW</span></h3>
 <p>Облачный провайдер и ИИ-платформа (экс-SberCloud), AA+/ruAA+. По финансовому долгу — чистый кредитор: кредиты 1,86 млрд против денег и депозитов 9,1 млрд; даже с арендой ЦОД нагрузка лишь 0,35× EBITDA, рентабельность ~73%. Нюансы — замедление роста выручки в 1П2026 (~+2%), отрицательный свободный поток и непрозрачность раскрытия. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">4 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-selectel-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Селектел · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-20">NEW</span></h3>
 <p>Провайдер IT-инфраструктуры (выделенные серверы, облако, дата-центры), A+. Бизнес растёт (выручка +14%, маржа 53%), нагрузка пока умеренная (2,1× EBITDA). Но фаза тяжёлого CapEx (+70%) увела свободный поток в минус (−3,4 млрд ₽), чистый долг +44%, а «Эксперт РА» понизил рейтинг до ruA+. Светофор — жёлто-зелёный.</p>
 <div class="card-date">4 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-softline-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Софтлайн · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-20">NEW</span></h3>
 <p>IT-дистрибуция ПО и оборудования плюс растущий сегмент собственных решений, A−/ruA−. Рейтинги повышены в 2026, скорр. EBITDA +27%, но чистый долг за полгода почти удвоился (16,3 → 31,7 млрд), ND/EBITDA 2,0× → 3,5×, операционный поток глубоко отрицательный (во многом сезонность дистрибуции). Светофор — жёлтый.</p>
 <div class="card-date">4 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-gazprom-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Газпром · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-20">NEW</span></h3>
 <p>Системообразующий госконцерн — газ, нефть (Газпромнефть), энергетика (AAA/ruAAA, госконтроль ~50%). По балансу крепко: умеренная нагрузка ~1,8× EBITDA, сильное 1П2026 (EBITDA +28%, маржа 31→37%), растущий свободный поток. Нюанс структурный, не балансовый — сжатие европейского рынка (транзит через Украину прекращён) и капиталоёмкий разворот на Китай. Это кредит под замещайку Газпром капитала. Светофор — жёлто-зелёный.</p>
 <div class="card-date">29 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-rusbond-udobreniya-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Русбонд-Удобрения (юаневый) · разбор по поручителям 1П2026 <span class="new-badge" data-until="2026-10-20">NEW</span></h3>
 <p>Юаневый выпуск 001Р-01 (AA-(RU)). Сам эмитент — пустой SPV «ЕвроХима»; опора выпуска на поручителях-заводах Невинномысский Азот и НАК «Азот». Заводы операционно сильные (маржа ~30%, НАК прибылен), но покрытие процентов тонкое (~1,05×), совокупный долг большой и непрозрачной структуры (нет консолидированной МСФО), один поручитель в убытке, плюс валютный риск. Светофор — жёлтый.</p>
 <div class="card-date">29 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-novatek-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>НОВАТЭК · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Крупнейший независимый производитель газа и один из мировых игроков в СПГ (AAA/АКРА, подтверждён в сентябре 2026). Баланс из крепчайших в стране: чистая денежная позиция (кэша больше долга), капитал 2,9 трлн ₽, мощный свободный поток (353 млрд за 2025), маржа ~29%. Нюанс не в финансах, а в санкциях: Arctic LNG 2 работает ниже мощности (танкеры, перевалка, сбыт), EBITDA 2025 −15%, прибыль скачет на курсовых. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-metalloinvest-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Металлоинвест · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Крупнейший в СНГ производитель железорудного сырья (Лебединский и Михайловский ГОКи) плюс сталь ОЭМК. Кредит держат качественные низкозатратные активы и большая подушка (~255 млрд ₽ против 109 млрд короткого долга) — риск ликвидности низкий. Нюанс — цикл: рейтинг снижен до AA (AAA→AA+→AA за два года), EBITDA 1П2026 почти вдвое (36 против 68 млрд), покрытие финрасходов ~1,0×, долг за полугодие +42%, капитал обнулён распределением наверх. Светофор — жёлто-зелёный.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-sovkomflot-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Совкомфлот · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Крупнейшая судоходная компания России — танкеры и газовозы, госконтроль 82,81% (ruAAA Эксперт РА). Баланс крепкий: низкая нагрузка (чистый долг ~0,8× EBITDA), подушка ~$1,3 млрд, капитал $4,8 млрд, сильное покрытие процентов. Нюанс серьёзный и не косметический — прямые блокирующие санкции (OFAC SDN): в 2025 обесценение флота (−$550 млн), выручка −30%, убыток $648 млн; в 1П2026 сильное восстановление (выручка +66%, прибыль $284 млн), но его устойчивость зависит от санкций. Светофор — жёлто-зелёный.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-yugk-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ЮГК (Южуралзолото) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Один из крупнейших золотодобытчиков России (AA(RU) АКРА «под наблюдением», ruAA). По цифрам кредит сильный: нагрузка низкая (чистый долг ~1,1× EBITDA), маржа ~39–45%, мощный отскок 1П2026 (выручка +90%, EBITDA +148%). Но нюансы лежат вне баланса — обеспечительный арест >32 млрд ₽ по судебному делу, почти весь долг короткий (~90%), только что сменившийся собственник. Светофор — жёлтый.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-enplus-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Эн+ (En+ Group) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Вертикальный холдинг: гидрогенерация (ГЭС Сибири) плюс контроль в РУСАЛе (56,88%), отчётность в долларах (AA-(RU) АКРА, повышен в июне 2026). EBITDA восстанавливается (+52% г/г в 1П2026), энергосегмент стабилен. Но это не деливеридж: чистый долг растёт ($8,9→$12,0 млрд за 1,5 года), свободный поток отрицательный, а улучшение ND/EBITDA (3,4×) держится только на росте EBITDA. Светофор — жёлтый.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-atomenergoprom-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Атомэнергопром · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Головной холдинг гражданских активов Росатома, 100% государство (AAA). Выручка 2,82 трлн ₽, капитал 42% активов. По свежему 1П2026 профиль улучшился: прибыль вернулась в плюс (+69 млрд ₽ против убытка годом ранее), покрытие процентов нормализовалось к ~2,0×. Нюанс — операционный поток отрицательный на фоне стройки АЭС и долг ~2,2 трлн. Светофор — жёлто-зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-polyus-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Полюс · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-19">NEW</span></h3>
 <p>Крупнейший золотодобытчик России (AAA), одна из самых низких себестоимостей в мире. Нагрузка низкая (чистый долг ~1,1× EBITDA), EBITDA-маржа рекордная ~73%, покрытие процентов 7,3×. Нюансы — не платёжеспособность: прибыль 1П2026 −64%, долг растёт под инвестпрограмму (Сухой Лог), капитал тонкий после выкупа акций. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">28 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-akron-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Акрон · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-23">NEW</span></h3>
 <p>Крупный экспортёр азотных и сложных удобрений (ruAA / AA.ru). Баланс крепкий — капитал ~53% активов, нагрузка низкая (ND/EBITDA по методике эмитента ~1,43×), большой запас ликвидности. Но полугодие слабее, чем кажется по EBIT: выручка и EBITDA −9%, рост отчётного EBIT — это курсовые разницы, а не контроль издержек; поток после процентов и капзатрат отрицательный (~−9 млрд), чистый долг +8%. Обзорное заключение аудитора — с оговоркой (конечный контроль не раскрыт). Светофор — жёлтый.</p>
 <div class="card-date">9 октября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-fosagro-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ФосАгро · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Экспортёр фосфорных удобрений высшего качества (AAA). Нагрузка низкая (чистый долг 1,6–1,8× EBITDA), покрытие процентов 5–8×, EBITDA-маржа ~35%, ROE ~48%. Нюанс — не баланс, а цикл: в 1П2026 цены на удобрения просели, прибыль −75%, а короткие обязательства превышают оборотные активы (Current 0,81) при щедрых дивидендах. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-pkt-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Первый контейнерный терминал (ПКТ) · разбор отчётности РСБУ 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Контейнерный терминал Global Ports (выпуск 002Р-01, AA). Ключ к цифрам — казначейство группы: займы наверх (16,6 млрд) больше всего долга (13,9 млрд), по чистой позиции ПКТ кредитор, а не должник; чистое покрытие ~4×. Нюанс — операционный: в 1П2026 контейнерный бизнес просел резко (прибыль от продаж −78%). Светофор — жёлто-зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-deloports-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ДелоПортс · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Портовый субхолдинг группы «Дело» в Новороссийске (ruAA-, «под наблюдением»). Бизнес высокомаржинальный (EBITDA-маржа ~76%) и быстрорастущий (выручка +30%, чистая прибыль +36%), встречные проценты по займам группе держат чистую нагрузку невысокой. Нюанс серьёзный — политика выплат: за 1П2026 распределено 29 млрд ₽ дивидендов, капитал рухнул с 31,4 до 8,9 млрд (−72%), долг/капитал ~7,8×. Светофор — жёлто-зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-vympelkom-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ВымпелКом (билайн) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Федеральный оператор связи (AA, повышен в 2026). Профиль крепкий: EBITDA-маржа ~40%, нагрузка 1,45× без аренды (2,4× с арендой вышек), покрытие 2,9×, сильный операционный поток (99 млрд), положительный FCF. Нюанс — тонкий капитал (9,6% активов, прибыль уходит наверх) и просадка прибыли 1П2026 −68% под ставкой. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-vk-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>VK (Мэйл.Ру Финанс) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Крупнейший интернет-холдинг страны (AA), облигации через SPV «Мэйл.Ру Финанс». За год резко оздоровил баланс: допэмиссия 112 млрд направлена на гашение долга, нагрузка ~1,9× EBITDA, проценты втрое ниже, EBITDA растёт (+34%), операционный поток в плюсе. Нюанс — компания ещё убыточна на чистом уровне, маржа тонкая (~15%). Светофор — жёлто-зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-sberbank-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Сбербанк · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Крупнейший и системообразующий банк страны (AAA/ruAAA, госконтроль). Прибыль рекордная 1,7 трлн ₽, ROE 24%, эффективность эталонная (CIR 28%), капитал достаточный. Единственная зона внимания — рост проблемных кредитов (3,7→4,9→5,5%) при высокой ставке, но прибыль перекрывает риск с огромным запасом. Светофор — зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-gazpromneft-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Газпром нефть · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Вертикально интегрированный нефтяник высшего рейтинга (AAA/ruAAA). Крепостной баланс: чистый долг всего 1,15× EBITDA, покрытие процентов ~15×, маржа 30%. 2025 слабый (EBITDA −21% на ценах и рубле), но 1П2026 — сильное восстановление: операционная прибыль почти удвоилась. Светофор — зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-sibur-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>СИБУР Холдинг · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Крупнейшая нефтехимия страны (AAA/ruAAA). Баланс сильный: чистый долг 2,7× EBITDA, покрытие 3,5×, маржа 36%. Циклический спад 2025 (EBITDA −22%), а падение прибыли в 1П2026 — нормализация разовых курсовых, а не бизнеса. Тяжёлая инвестпрограмма (Амурский ГХК). Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-rzd-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>РЖД · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Инфраструктурная монополия, 100% государство (AAA/ruAAA). Операционно мощная: выручка 3,8 трлн ₽, EBITDA-маржа 29%. Но операционная прибыль покрывает проценты лишь в 1,1×, чистая прибыль близка к нулю, свободный поток глубоко отрицательный из-за инвестпрограммы. Профиль держится на государстве и тарифах, а не на балансе. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-gazprombank-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Газпромбанк · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Третий банк страны, корпоративного профиля, СЗКО (AA+/ruAA+). Качество портфеля — лучшее среди крупных банков: NPL 1,7%, стоимость риска 0,6%; капитал вырос (Н20.0 10,7→12,1%). Нюанс — прибыль 2025 −32% на непроцентных доходах (ROE 16,5→10,1%), но 1П2026 +34%. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-avtofinansbank-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Авто Финанс Банк · разбор отчётности МСФО/РСБУ 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Кэптивный автобанк (бывший РН Банк, уровень AA). Капитал-крепость: Н1.0 16,5% при минимуме ~11%, капитал ~17% активов. Прибыльность растёт (ROE ~12% за 2025, ~18% в 1П2026), стоимость риска низкая. Нюанс — монолайн: весь бизнес завязан на авторынок и акционера (АвтоВАЗ). Светофор — зелёно-жёлтый.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-psb-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Банк ПСБ (Промсвязьбанк) · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-14">NEW</span></h3>
 <p>Опорный банк ОПК, 100% государство, СЗКО (AAA/ruAAA на господдержке). 2025 убыточный (−19 млрд ₽) на утроении резервов, капитал тонкий, нормативы не раскрываются (оборонный банк). Но 1П2026 — сильный возврат к прибыли (202 млрд). Держит господдержка, а не собственная генерация. Светофор — жёлто-зелёный.</p>
 <div class="card-date">24 сентября 2026</div>
 </a>
 <a class="card" href="novosti/razbor-novabev-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>НоваБев Групп · разбор отчётности МСФО 2025 / 1П2026 <span class="new-badge" data-until="2026-10-13">NEW</span></h3>
 <p>Производитель и дистрибутор алкоголя (Beluga) плюс розница «ВинЛаб»: бизнес растёт (выручка +7,6%), нагрузка низкая — чистый долг 1,0× EBITDA без аренды (2,1× с арендой), рейтинг ruAA-. Но прибыль 1П2026 −38% — всё съели выросшие проценты (финзатраты +56%), а дивиденды и выкуп (~10 млрд) идут сверх заработанного, в долг. Сбор 24.09 на два выпуска: 003Р-04 фикс до 16,5% и 003Р-05 флоатер КС+250. Светофор — жёлто-зелёный.</p>
 <div class="card-date">23 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-interrao-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Интер РАО · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-12">NEW</span></h3>
 <p>Крупнейший холдинг электроэнергетики (генерация, сбыт, трейдинг, энергомаш): по кредиту крепость — на счетах 242 млрд ₽ против 87 млрд долга, чистая денежная позиция ~155 млрд, проценты покрыты EBITDA ×16, капитал 76% активов, рейтинг AAA. Нюанс не в долге, а в прибыли — заработок прошёл пик и снижается. Для держателя облигаций — зелёный без оговорок. Светофор — зелёный.</p>
 <div class="card-date">21 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-geltek-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Гельтек-Медика · разбор отчётности МСФО 2025 <span class="new-badge" data-until="2026-10-12">NEW</span></h3>
 <p>Производитель косметики и медицинских гелей: год взрывного роста — выручка удвоилась до 5 млрд ₽, валовая маржа ~80%, капитал половина активов. Нюанс не в прибыли, а в деньгах: операционный поток −1 млрд ₽, вся прибыль уходит в оборотку, долг за год вырос вчетверо (2,3× EBITDA). Дебютный выпуск БО-01 (купон 22%), ruBBB. Светофор — жёлто-зелёный.</p>
 <div class="card-date">21 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-park-skazka-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Парк Сказка · разбор отчётности 2025 <span class="new-badge" data-until="2026-10-12">NEW</span></h3>
 <p>Семейный парк развлечений «Сказка» в Москве: слабый год — выручка упала на треть, прибыль обвалилась в 7 раз, проценты по долгу съедают почти всю операционную прибыль. Капитал тонкий (10% активов), денег на счетах почти нет, нагрузка 4,2× EBITDA, поручительство за родственный «Парк Владивосток» больше собственного капитала. Своих денег не хватает — светофор жёлто-красный.</p>
 <div class="card-date">21 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-nornikel-2025.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Норникель · разбор отчётности МСФО 2025 <span class="new-badge" data-until="2026-10-09">NEW</span></h3>
 <p>Крупнейший производитель никеля и палладия (GMKN): баланс крепкий — чистый долг всего 1,6× EBITDA и снижается, покрытие процентов 3,2×, капитал 43% активов. Прибыль +36%, EBITDA-маржа 39%. Сильный экспортный профиль; главный риск не в долге, а в цикле цен на металлы. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">19 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-rusal-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>РУСАЛ · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-08">NEW</span></h3>
 <p>Крупный производитель алюминия (RUAL): бизнес восстанавливается — выручка +11%, EBITDA +64%, прибыль вернулась в плюс. Но нагрузка высокая (чистый долг 5,8× EBITDA), покрытие процентов тонкое. Подушка — доля в «Норникеле» (26,4%, рыночно ~7,7 млрд $ ≈ весь чистый долг). Санкционная оговорка о непрерывности — но это не Мечел: капитал положительный. Светофор — жёлто-красный.</p>
 <div class="card-date">18 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-uralkuz-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Уральская кузница · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-08">NEW</span></h3>
 <p>Формально крепость — капитал 87% активов, почти нет долга. Но это витрина: 86% активов — займы группе «Мечел», а поручительства за группу (72 млрд ₽) больше всего капитала. Прибыль — проценты от Мечела, а не металлургия. Реальный риск равен риску Мечела, а не собственным красивым цифрам. Светофор — жёлто-красный.</p>
 <div class="card-date">18 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-mechel-2025.html">
-<div class="sfrow"><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Мечел · разбор отчётности МСФО 2025 / 6м2026 <span class="new-badge" data-until="2026-10-08">NEW</span></h3>
 <p>Дефолтная зона: аудитор пишет о неопределённости непрерывности. Капитал глубоко отрицательный (−222 млрд ₽), EBITDA почти обнулилась, чистый долг 279 млрд — это 36 годовых EBITDA, а проценты кратно больше заработка. Есть операционный кэш и реальные активы, но своими силами долг не обслуживается — выживание зависит от реструктуризации с банками. Светофор — красный.</p>
 <div class="card-date">18 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-mgkl-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>МГКЛ (Мосгорломбард) · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-07">NEW</span></h3>
 <p>Ломбард, ресейл и оптовая торговля золотом (MGKL): чистая прибыль +33%, нагрузка по EBITDA умеренная (1,9×) — но своих денег не хватает. Материальный капитал отрицательный (−0,74 млрд): весь капитал сидит в гудвиле и НМА. Чистый долг удвоился за полугодие (2,6 → 5,5 млрд), рейтинг ruB понижен и отозван. Не дефолт, но ВДО-профиль держится на рефинансировании. Светофор — жёлто-красный.</p>
 <div class="card-date">17 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-inarktika-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>ИНАРКТИКА · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-07">NEW</span></h3>
 <p>Крупнейший производитель аквакультуры (лосось и форель, AQUA): выручка за полугодие +38%, скорр. EBITDA +41%, капитал 58% активов. Но чистый долг вырос до 2,5× EBITDA (было 1,0× в 2024) — за полгода набрали 6,2 млрд кредитов, и это причина негативного прогноза АКРА. Убыток за период — неденежная переоценка биомассы, а не операционный провал. Светофор — жёлто-зелёный.</p>
 <div class="card-date">17 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-pozitiv-1p2026.html">
-<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot g"></span><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Группа Позитив · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-10-06">NEW</span></h3>
 <p>Разработчик решений для кибербезопасности (POSI): выручка за полугодие +41%, чистый долг всего 0,84× EBITDA, покрытие процентов около 5×, текущая ликвидность 1,43, капитал 41% активов, рейтинг AA-(RU) с позитивным прогнозом. Убыток за полугодие — сезонная норма: лицензии признаются в основном в четвёртом квартале. Светофор — зелёно-жёлтый.</p>
 <div class="card-date">16 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-severstal-6m2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot g"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Северсталь · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-09-30">NEW</span></h3>
 <p>Металлург на дне цикла: баланс крепкий — чистый долг всего 0,87× EBITDA, капитал 60% активов, покрытие процентов 3,9×, рейтинг AAA. Но выручка −13,5%, чистая прибыль −89%, операционный и свободный поток глубоко в минусе, чистый долг за полгода вырос вчетверо. Циклическая слабость при сильном балансе, не долговой риск. Светофор — жёлто-зелёный.</p>
 <div class="card-date">15 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-medscan-6m2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Медскан · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-09-25">NEW</span></h3>
 <p>Сеть клиник растёт и стала эффективнее: выручка +13,5%, EBITDA-маржа выросла до 15,4%, убыток сузился вдвое. Но долг с арендой 3,89×, покрытие процентов впритык (1,35×), а короткая ликвидность 0,62 — разрыв закрывается рефинансированием. За спиной Росатом. Светофор — жёлто-красный.</p>
 <div class="card-date">11 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-apri-1p2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="dot r"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>АПРИ · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-09-25">NEW</span></h3>
 <p>Застройщик на эскроу: выручка +55%, разворот из убытка в прибыль — но эскроу наполнено лишь на 14%, поэтому 33,5 млрд ₽ проектного долга ложатся на компанию. Скорректированное плечо 4,22×, покрытие процентов впритык (1,21×), живых денег почти нет. Светофор — жёлто-красный.</p>
 <div class="card-date">11 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-novye-tehnologii-2026.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Новые технологии · разбор отчётности МСФО 6м2026 <span class="new-badge" data-until="2026-09-22">NEW</span></h3>
 <p>Производитель насосов для нефтедобычи, топ-3 в стране: выручка за полгода +17%, но прибыль −27% — себестоимость обогнала выручку, плюс разовое списание оборудования. Долг терпимый (1,8× EBITDA), но ликвидность узкая (0,73), а аудитор поставил оговорку к оценке активов. Светофор — жёлтый.</p>
 <div class="card-date">8 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-polyplast-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Полипласт · разбор отчётности МСФО 2025 <span class="new-badge" data-until="2026-09-21">NEW</span></h3>
 <p>Быстрый рост на агрессивном долге: выручка +70%, но инвестиции вдвое выше операционного потока, проценты почти удвоились, денежная подушка сжалась с 11 до 4,5 млрд ₽, а аудитор нашёл занижение краткосрочного долга. Светофор — жёлтый.</p>
 <div class="card-date">7 сентября 2026</div>
 </a>
 
 <a class="card" href="novosti/razbor-gazprom-2025.html">
-<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span></div>
+<div class="sfrow"><span class="dot y"></span><span class="ai-badge">🤖 ИИ + автор</span><span class="kind cred">Кредитный</span></div>
 <h3>Газпром · разбор отчётности МСФО 2025 <span class="new-badge" data-until="2026-09-21">NEW</span></h3>
 <p>Стабильная чистая прибыль при сокращении основного бизнеса: выручка −9%, операционная прибыль −10%, итог вытянули финансовые и курсовые статьи. Денежная подушка −36%, инвестиции и проценты съедают почти весь поток. Светофор — жёлтый.</p>
 <div class="card-date">7 сентября 2026</div>
@@ -421,16 +438,16 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.35rem
 <script>
 (function(){
   var RULES=[
-    ['Финансы', /Сбербанк|Газпромбанк|Авто Финанс Банк|Банк ПСБ|Промсвязьбанк|МГКЛ|Мосгорломбард|ДОМ\.РФ/],
-    ['Нефтегаз', /Газпром нефть|Газпром|НОВАТЭК|Новые технологии/],
-    ['Металлы и добыча', /Норникель|Металлоинвест|РУСАЛ|Уральская кузница|Мечел|Северсталь|Полюс|ЮГК|Южуралзолото/],
+    ['Финансы', /Сбербанк|Газпромбанк|Авто Финанс Банк|Банк ПСБ|Промсвязьбанк|МГКЛ|Мосгорломбард|ДОМ\.РФ|ВЭБ|ГТЛК|МСП |Совкомбанк|Мосбиржа|Московская биржа|РЕСО|Балтийский лизинг|Цифра брокер|брокер/],
+    ['Нефтегаз', /Газпром нефть|Газпром|НОВАТЭК|Новые технологии|ЛУКОЙЛ|Татнефть|Транснефть|Славнефть|Борец|нефтесервис/],
+    ['Металлы и добыча', /Норникель|Металлоинвест|РУСАЛ|Уральская кузница|Мечел|Северсталь|Полюс|ЮГК|Южуралзолото|АЛРОСА|Алроса|ЕвразХолдинг|Евраз/],
     ['Химия и удобрения', /ФосАгро|Акрон|СИБУР|Русбонд|Полипласт/],
-    ['Энергетика', /Эн\+|En\+|Атомэнергопром|Интер РАО|Россети|ФСК/],
-    ['Транспорт', /Совкомфлот|контейнерный|ПКТ|ДелоПортс|РЖД|Автобан|АВТОБАН/],
-    ['Технологии и связь', /ВымпелКом|билайн|\bVK\b|Позитив|Воксис|Cloud\.ru|Облачные|Селектел|Софтлайн/],
+    ['Энергетика', /Эн\+|En\+|Атомэнергопром|Интер РАО|Россети|ФСК|РусГидро|Ленэнерго|Т Плюс/],
+    ['Транспорт', /Совкомфлот|контейнерный|ПКТ|ДелоПортс|РЖД|Автобан|АВТОБАН|ТрансКонтейнер|КАМАЗ|Камаз|Аэрофлот|Новотранс/],
+    ['Технологии и связь', /ВымпелКом|билайн|\bVK\b|Позитив|Воксис|Cloud\.ru|Облачные|Селектел|Софтлайн|Ростелеком|МТС|МегаФон|Хэдхантер|HeadHunter|Яндекс|Озон|Ozon/],
     ['Девелопмент', /Легенда|АПРИ|Глоракс/],
     ['Лесопром', /Сегежа/],
-    ['Потребительский и медицина', /НоваБев|Парк Сказка|ИНАРКТИКА|Гельтек|Медскан|ЭкоНива|ММЦБ|Гемабанк/]
+    ['Потребительский и медицина', /НоваБев|Парк Сказка|ИНАРКТИКА|Гельтек|Медскан|ЭкоНива|ММЦБ|Гемабанк|Магнит|Икс 5|X5|Мать и дитя|Медси|Черкизово|Промомед/]
   ];
   var ORDER=['Нефтегаз','Металлы и добыча','Химия и удобрения','Энергетика','Транспорт','Финансы','Технологии и связь','Девелопмент','Лесопром','Потребительский и медицина'];
   var cards=[].slice.call(document.querySelectorAll('a.card'));
