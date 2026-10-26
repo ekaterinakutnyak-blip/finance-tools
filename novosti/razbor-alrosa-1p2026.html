@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Алроса · разбор 1П2026</title>
+<meta name="description" content="Разбор отчётности АК «АЛРОСА» (ПАО) по МСФО за 1П2026 простым языком: выручка −33%, EBITDA −61%, чистый убыток 9,5 млрд, свободный денежный поток −17 млрд, чистый долг за год вырос почти вдвое (ND/EBITDA ~3,2×). Баланс при этом очень крепкий — рычаг 0,31, капитал 397 млрд, рейтинг AAA(RU)/ruAAA с ОСК ruAA+ и господдержкой. Светофор 🟡🟢. Не рекомендация.">
+<meta name="keywords" content="разбор отчётности АЛРОСА, ALRS, алмазы, алмазодобыча, МСФО 1П2026, долговая нагрузка, ND/EBITDA, свободный денежный поток, запасы, госконтроль, ОСК, светофор риска, ИИ-аналитик, AAA, флоатер">
+<link rel="canonical" href="https://investtools.pro/novosti/razbor-alrosa-1p2026.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/razbor-alrosa-1p2026.html">
+<meta property="og:title" content="Разбор отчётности АЛРОСА 🟡🟢 — ИИ-аналитик">
+<meta property="og:description" content="Провал алмазного цикла: выручка −33%, EBITDA −61%, убыток 9,5 млрд, FCF −17 млрд, чистый долг за год почти вдвое. Но рычаг 0,31 и госконтроль. МСФО 1П2026 простым языком.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<style>
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#b9b8b1;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}
+  *{box-sizing:border-box} body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 18px 56px}
+  .top{color:var(--ink2);font-size:13.5px;margin:0 0 22px} .top b{color:var(--ink)}
+  h1{font-size:27px;line-height:1.15;margin:0 0 16px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .badge{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:16px;border:1px solid var(--border);border-radius:999px;padding:.3em .85em;margin:0 0 12px}
+  .lead b{color:var(--ink)} .owner{color:var(--ink2);font-size:13px;margin:12px 0 0}
+  .voice{color:var(--muted);font-style:italic;font-size:12.5px;margin:16px 0 2px}
+  h2{font-size:15px;margin:26px 0 8px} p{margin:.55em 0}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:12px system-ui;fill:var(--muted)} .vlbl{font:600 12px system-ui;fill:var(--ink)}
+  .legend{display:flex;gap:20px;justify-content:center;font-size:13px;color:var(--ink2);margin-top:6px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .tile .l{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .tile .v{font-size:26px;font-weight:700;color:var(--c26);margin-top:6px;letter-spacing:-.5px}
+  .tile .v.w{color:var(--warn)} .tile .v.c{color:var(--crit)}
+  .tile .n{font-size:12px;color:var(--ink2);margin-top:3px}
+  .score{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 0;border-top:1px solid var(--hair)}
+  .score:first-of-type{border-top:0} .score .name{font-weight:700;font-size:15px} .score .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .score .r{text-align:right;white-space:nowrap} .score .val{font:700 20px ui-monospace,"SF Mono",Menlo,monospace}
+  .score .rmeta{color:var(--ink2);font-size:12.5px;margin-top:1px}
+  .pill{display:inline-block;font-size:12px;margin-top:5px} .pill .d{display:inline-block;width:9px;height:9px;border-radius:999px;margin-right:5px}
+  .note{color:var(--ink2);font-size:12.5px;margin-top:14px}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hair)}
+  .row:first-child{border-top:0} .row .k{font-size:14px} .row .k .s{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+  .row .val{font:600 15px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  ul{margin:.4em 0;padding-left:1.2em} li{margin:.28em 0;color:var(--ink2);font-size:14px}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .gh{color:var(--good)} .wh{color:var(--warn)} .ch{color:var(--crit)}
+  .sitenav{color:var(--muted);font-size:12px;margin-top:10px}
+  .sitenav a{color:var(--ink2);text-decoration:none}
+  .sitenav a:hover{color:var(--c26)}
+  .score .r{max-width:60%}
+  .score .rmeta{white-space:normal}
+  .row .val{white-space:normal;max-width:58%}
+  @media(max-width:680px){.tiles{grid-template-columns:1fr}h1{font-size:23px}
+    .score{flex-direction:column;gap:6px}.score .r{text-align:left;max-width:100%}
+    .row{flex-direction:column;gap:4px}.row .val{text-align:left;max-width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="top"><b>ИИ-аналитик отчётности.</b> Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его за вас, посчитает типовые кредитные коэффициенты, используемые рейтинговыми агентствами, и объяснит человеческим языком: насколько бизнес устойчив и где риск. Методология Екатерины Кутняк.</p>
+<h1>АК «АЛРОСА» (ПАО) — алмазодобыча (государственный контроль)</h1>
+<div class="card lead"><div class="badge">🟡🟢 крепко, но с существенными отраслевыми рисками</div>
+<p>АК «АЛРОСА» — крупнейший в мире производитель алмазов, контролируется государством (Российская Федерация, Республика Саха (Якутия) и улусы — совокупно более половины капитала). Рейтинг AAA(RU) АКРА / ruAAA Эксперт РА (Эксперт РА подтвердил 02.04.2026, АКРА — 19.05.2026). По балансу компания очень крепкая — финансовый рычаг всего 0,31, капитал 397 млрд ₽. Но 1П2026 — глубокий циклический провал мирового алмазного рынка: выручка упала на 33% (до 90 млрд), EBITDA — на 61% (до 14 млрд), получен чистый убыток 9,5 млрд против прибыли 40,6 млрд годом ранее. Денежный поток почти обнулился, свободный поток ушёл в минус (−17 млрд), запасы выросли до 262 млрд, а чистый долг за год вырос на 84%, почти вдвое — с 61 млрд (30.06.2025) до 112 млрд (30.06.2026); на конец 2025 он составлял 88,4 млрд (1,5×). Нагрузка выросла не только из-за падения EBITDA — сократилась и денежная подушка, и вырос сам чистый долг; ND/EBITDA поднялся с 1,2× до ~3,2×. Во II квартале появились первые признаки улучшения (EBITDA 11,8 млрд против 2,6 в I кв., квартальный убыток сократился), но устойчивость разворота ещё предстоит подтвердить. Отсюда зелёно-жёлтый светофор: баланс, самостоятельная оценка и господдержка прочны, но конъюнктура уже дала убыток, отрицательный поток и рост долга.</p>
+<p class="owner"><b>Владелец:</b> АК «АЛРОСА» (ПАО). Контроль государства (РФ + Республика Саха (Якутия) + улусы, совокупно более половины капитала). Рейтинг AAA(RU) АКРА / ruAAA Эксперт РА (Эксперт РА 02.04.2026, АКРА 19.05.2026). Отчётность — сокращённая консолидированная МСФО за 1П2026 (неаудированная). Суммы — млрд ₽. Это сырьевая циклическая компания: смотрим выручку и EBITDA по циклу, запасы, долговую нагрузку и денежный поток, а также господдержку. У компании сильная самостоятельная оценка (ОСК ruAA+ у Эксперт РА), господдержка добавляет одну ступень до высшего рейтинга ruAAA.</p>
+<p class="voice">РАЗБОР ИИ · голос Екатерины</p></div>
+<p><b>Определил тип компании: АЛМАЗОДОБЫЧА (сырьевая циклическая компания, государственный контроль).</b> Читаем как циклического сырьевого экспортёра: выручка и EBITDA сильно колеблются вместе с мировым алмазным рынком, поэтому метрики одного полугодия на спаде не описывают долгосрочное кредитное качество — но и не доказывают, что худшее позади. Ключевое — крепость баланса (низкий рычаг, запас ликвидности), запасы (на спаде алмазы не продаются и копятся — это связанный оборотный капитал; при улучшении спроса их реализация может поддержать поток, но сроки и цены не гарантированы), и государственный статус (контроль РФ и Якутии). На спаде типичны убыток, рост чистого долга и отрицательный свободный поток; важно, выдерживает ли это баланс и подтверждается ли восстановление.</p>
+<h2>1. Что это за компания</h2><p>АК «АЛРОСА» — мировой лидер алмазодобычи, контролируется государством (РФ, Республика Саха (Якутия) и улусы — совокупно более половины капитала). Рейтинг высший — AAA(RU)/ruAAA. Это системообразующий экспортёр и крупнейший налогоплательщик Якутии. Бизнес глубоко циклический: зависит от мирового спроса на алмазы и ювелирную продукцию.</p>
+<h2>2. Глубокий провал рынка в 1П2026</h2><p>Первое полугодие 2026 — глубокий спад. Выручка от продаж упала на 33% (до 90,3 млрд ₽ против 134,3 млрд), EBITDA — на 61% (до 14,3 млрд против 37,1), получен чистый убыток 9,5 млрд ₽ против прибыли 40,6 млрд годом ранее. Причина — слабый мировой спрос на алмазы и давление на цены; это фаза отраслевого цикла, а не разовая проблема компании. При этом внутри полугодия динамика улучшилась: во II квартале EBITDA выросла до 11,8 млрд против 2,6 млрд в I-м, квартальный убыток существенно сократился. Это признаки улучшения, но ещё не доказательство устойчивого разворота.</p>
+<h2>3. Запасы растут — связанный оборотный капитал</h2><p>Характерная черта спада: когда алмазы не продаются, они копятся на складе. Запасы выросли до 261,6 млрд ₽ (с 250,8 млрд). Значительная сумма средств связана в запасах — это давит на денежный поток сейчас. Их реализация может поддержать поток при улучшении спроса, но сроки продажи и цены не гарантированы. Важно: накопление запасов связывает деньги, но бухгалтерский убыток и вложения в запасы — разные вещи, и всю строку «Запасы» без расшифровки нельзя автоматически считать только непроданными алмазами.</p>
+<h2>4. Денежный поток и свободный поток в минусе</h2><p>Операционный денежный поток за 1П2026 почти обнулился — 1,9 млрд ₽ (против 24,9 млрд): прибыль упала, а деньги ушли в запасы. После капзатрат (18,7 млрд) свободный денежный поток отрицательный — около −17 млрд ₽ (против +2,6 млрд). Это характерно для отраслевого спада, но означает, что компания финансирует себя за счёт накопленной подушки и долга.</p>
+<h2>5. Чистый долг вырос за год почти вдвое</h2><p>Общий долг — 177,5 млрд ₽ (почти без изменений). Но чистый долг за год вырос на 84%, почти вдвое — с 61 млрд (30.06.2025, ND/EBITDA 1,2×) до 112 млрд (30.06.2026); на конец 2025 года он составлял 88,4 млрд (1,5×). На депрессивной EBITDA LTM (35 млрд) ND/EBITDA ~3,2×. Это рост не только из-за падения EBITDA: денежная подушка с депозитами сократилась на 43% (со 115,4 млрд на 30.06.2025 до 65,4 млрд на 30.06.2026), а сам чистый долг вырос — обе части ухудшают положение. Общий долг при этом почти не менялся. Финансовый рычаг (доля заёмного капитала) — всего 0,31, капитал 397 млрд; запас прочности по балансу большой.</p>
+<h2>6. Покрытие процентов на спаде</h2><p>Финансовые расходы за 1П2026 — 16,5 млрд ₽ (выросли с 12,8), уплаченные проценты — 8,1 млрд. Отношение EBITDA (14,3 млрд) к совокупным финансовым расходам — около 0,9×, но это не классическое покрытие процентов: финансовые расходы включают не только проценты. По уплаченным процентам (8,1 млрд) отношение EBITDA составляет около 1,8× — для стандартного ICR нужны именно начисленные процентные расходы, их расшифровка требует уточнения. В любом случае на спаде покрытие заметно сжалось и остаётся на мониторинге.</p>
+<h2>7. Облигационный контур и господдержка</h2><p>В 2025–2026 компания активно размещала флоатеры (002Р-01 на 20 млрд, 002Р-02 на 30 млрд, в сентябре — 002Р-03 на 20 млрд, купон «ключевая ставка + 1,35%»), гасила еврооблигации. Кредитное качество опирается на сильную самостоятельную оценку (ОСК ruAA+ у Эксперт РА), государственный контроль и статус мирового лидера; господдержка добавляет ступень до высшего рейтинга. Вероятность господдержки высокая (системообразующий экспортёр, бюджетообразующий для Якутии), но это не юридическая госгарантия конкретного выпуска.</p>
+<h2>8. Общая устойчивость</h2><p>АЛРОСА сохраняет высокое кредитное качество — сильные рыночные позиции, крупный собственный капитал (397 млрд, рычаг 0,31), самостоятельная оценка ОСК ruAA+ и фактор господдержки. Но слабая конъюнктура 1П2026 уже привела к убытку (−9,5 млрд), отрицательному свободному потоку (−17 млрд) и росту долговой нагрузки (чистый долг за год +84%, ND/EBITDA ~3,2×). Во II квартале появились признаки улучшения (EBITDA 11,8 против 2,6 млрд), но устойчивость восстановления ещё предстоит подтвердить. Большие запасы могут стать источником поступлений при улучшении спроса, но не заменяют денежную ликвидность. Светофор 🟡🟢 — крепко, но с существенными отраслевыми рисками; на мониторинге — разворот алмазного рынка, запасы, денежный поток и покрытие процентов.</p>
+<div class="card" style="margin-top:24px">
+<p><span class="gh">✅ Сильное:</span> государственный контроль (РФ + Якутия + улусы, более половины капитала) и статус мирового лидера алмазодобычи; сильная самостоятельная оценка (ОСК ruAA+ Эксперт РА), господдержка добавляет ступень до ruAAA; очень крепкий баланс — финансовый рычаг всего 0,31, капитал 397 млрд ₽; большие запасы (262 млрд) — связанный оборотный капитал, способный поддержать поток при улучшении спроса; рейтинги подтверждены (Эксперт РА 02.04.2026, АКРА 19.05.2026); высокая вероятность господдержки (системообразующий экспортёр); во II квартале — первые признаки улучшения (EBITDA 11,8 против 2,6 млрд).</p>
+<p><span class="wh">⚠️ Нюансы:</span> глубокий циклический провал 1П2026 — выручка −33%, EBITDA −61%, чистый убыток 9,5 млрд (было +40,6); операционный поток почти обнулился, свободный денежный поток отрицательный (−17 млрд); чистый долг за год +84%, почти вдвое (61 млрд на 30.06.2025 → 112 млрд на 30.06.2026; на конец 2025 — 88,4 млрд / 1,5×), ND/EBITDA с 1,2× до ~3,2× — не только из-за падения EBITDA, но и из-за сокращения денег и роста самого долга; отношение EBITDA к финрасходам сжалось до ~0,9× (по уплаченным процентам ~1,8×); запасы растут — давление на оборотный капитал; устойчивость восстановления ещё не подтверждена и зависит от мирового алмазного рынка.</p>
+<p>🧭 <b>Общий вывод.</b> Крепко, но с существенными отраслевыми рисками: АЛРОСА сохраняет высокое кредитное качество благодаря сильным рыночным позициям, крупному собственному капиталу (рычаг 0,31), самостоятельной оценке ОСК ruAA+ и фактору господдержки. Однако слабая конъюнктура уже привела к убытку, отрицательному свободному потоку и росту долговой нагрузки (ND/EBITDA ~3,2×, чистый долг за год +84%). Во II квартале появились признаки улучшения, но устойчивость восстановления ещё предстоит подтвердить. Большие запасы могут стать источником поступлений при улучшении спроса, однако не заменяют денежную ликвидность. Вероятность дефолта низкая, вероятность господдержки высокая. На мониторинге — разворот рынка алмазов, запасы, денежный поток и покрытие процентов.</p></div>
+<div class="card"><p class="sect">Ключевые показатели</p>
+<svg viewBox="0 0 900 372" role="img" aria-label="АК «АЛРОСА» (ПАО) — алмазодобыча (государственный контроль)">
+<line x1="64" y1="300.0" x2="884" y2="300.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="304.0" text-anchor="end" class="axlbl">0</text>
+<line x1="64" y1="211.1" x2="884" y2="211.1" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="215.1" text-anchor="end" class="axlbl">50</text>
+<line x1="64" y1="122.2" x2="884" y2="122.2" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="126.2" text-anchor="end" class="axlbl">100</text>
+<line x1="64" y1="33.3" x2="884" y2="33.3" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="37.3" text-anchor="end" class="axlbl">150</text>
+<line x1="64" y1="300.0" x2="884" y2="300.0" stroke="var(--axis)" stroke-width="1.5"/>
+<rect x="163.7" y="61.7" width="34" height="238.3" rx="3" fill="var(--c25)"/>
+<text x="180.7" y="56.7" text-anchor="middle" class="vlbl">134</text>
+<rect x="203.7" y="140.0" width="34" height="160.0" rx="3" fill="var(--c26)"/>
+<text x="220.7" y="135.0" text-anchor="middle" class="vlbl">90</text>
+<text x="200.7" y="320" text-anchor="middle" class="axlbl">Выручка</text>
+<rect x="437.0" y="234.2" width="34" height="65.8" rx="3" fill="var(--c25)"/>
+<text x="454.0" y="229.2" text-anchor="middle" class="vlbl">37</text>
+<rect x="477.0" y="275.1" width="34" height="24.9" rx="3" fill="var(--c26)"/>
+<text x="494.0" y="270.1" text-anchor="middle" class="vlbl">14</text>
+<text x="474.0" y="320" text-anchor="middle" class="axlbl">EBITDA</text>
+<rect x="710.3" y="191.5" width="34" height="108.5" rx="3" fill="var(--c25)"/>
+<text x="727.3" y="186.5" text-anchor="middle" class="vlbl">61</text>
+<rect x="750.3" y="100.9" width="34" height="199.1" rx="3" fill="var(--c26)"/>
+<text x="767.3" y="95.9" text-anchor="middle" class="vlbl">112</text>
+<text x="747.3" y="320" text-anchor="middle" class="axlbl">Чистый</text>
+<text x="747.3" y="334" text-anchor="middle" class="axlbl">долг</text>
+</svg>
+<div class="legend"><span><span class="dot" style="background:var(--c25)"></span>1П2025</span><span><span class="dot" style="background:var(--c26)"></span>1П2026</span></div>
+<p class="note" style="text-align:center">Млрд ₽, год к году (1П2025 → 1П2026). Выручка −33%, EBITDA −61%; чистый долг +84%, почти вдвое — с 61 (30.06.25) до 112 (30.06.26), на конец 2025 было 88. Чистая прибыль ушла в убыток (−9,5 млрд против +40,6).</p></div>
+<div class="card"><p class="sect">Коэффициенты из отчёта</p><div class="tiles">
+<div class="tile"><div class="l">Чистая прибыль 1П2026</div><div class="v c">убыток</div><div class="n">−9,5 млрд (было +40,6)</div></div>
+<div class="tile"><div class="l">EBITDA 1П2026</div><div class="v c">−61%</div><div class="n">14,3 млрд; II кв. 11,8 vs I кв. 2,6</div></div>
+<div class="tile"><div class="l">ND/EBITDA (LTM)</div><div class="v w">~3,2×</div><div class="n">было 1,2× (30.06.25); не только EBITDA</div></div>
+</div></div>
+<div class="card"><p class="sect">Скоринговые модели / индикаторы</p><p class="note" style="margin:0 0 6px">Скрининг — «посмотреть внимательнее», а не приговор и не индивидуальный PD.</p>
+<div class="score"><div><div class="name">Качественные кредитные индикаторы</div><div class="meta">факторный скрининг (без расчёта Z-модели)</div></div><div class="r"><div class="val">—</div><div class="rmeta">госконтроль, ОСК ruAA+, крепкий баланс плюсуют; убыток, отрицательный поток и рост долга — существенный отраслевой риск</div><div class="pill"><span class="d" style="background:var(--good)"></span>в целом надёжно</div></div></div>
+<div class="score"><div><div class="name">Баланс / рычаг</div><div class="meta">финансовый рычаг 0,31, капитал 397 млрд</div></div><div class="r"><div class="val">—</div><div class="rmeta">очень крепкий баланс, большой запас прочности</div><div class="pill"><span class="d" style="background:var(--good)"></span>надёжно</div></div></div>
+<div class="score"><div><div class="name">Операционный цикл / поток</div><div class="meta">EBITDA −61%, FCF −17 млрд, убыток</div></div><div class="r"><div class="val">—</div><div class="rmeta">слабая конъюнктура; EBITDA/финрасходы ~0,9× (по уплач. %≈1,8×)</div><div class="pill"><span class="d" style="background:var(--warn)"></span>отраслевой риск</div></div></div>
+<p class="note">Факторный скрининг (без расчёта Z-модели): за кредит — государственный контроль, статус мирового лидера, рейтинг AAA/ruAAA с самостоятельной оценкой ОСК ruAA+, очень низкий финансовый рычаг (0,31) и крупный капитал; против — глубокий циклический провал (выручка −33%, EBITDA −61%, чистый убыток), отрицательный свободный поток и рост чистого долга (ND/EBITDA ~3,2×). Слабые результаты реальны; во II квартале появились признаки улучшения, но устойчивость разворота ещё не подтверждена. Вероятность дефолта низкая, вероятность господдержки высокая. Ориентир — 🟡🟢.</p></div>
+<div class="card"><p class="sect">Что ИИ взял из отчёта — сверьте с первоисточником</p><div>
+<div class="row"><div class="k">Выручка 1П2026 / 1П2025<span class="s">−33%</span></div><div class="val">90 312 / 134 257 млн ₽</div></div>
+<div class="row"><div class="k">EBITDA 1П2026 / 1П2025<span class="s">−61%</span></div><div class="val">14 349 / 37 095 млн ₽</div></div>
+<div class="row"><div class="k">EBITDA LTM<span class="s">депрессивная</span></div><div class="val">35 077 млн ₽ (было 51 631)</div></div>
+<div class="row"><div class="k">Чистый убыток / прибыль 1П2026 / 1П2025<span class="s">в минус</span></div><div class="val">−9 542 / +40 598 млн ₽</div></div>
+<div class="row"><div class="k">Операционный денежный поток 1П2026 / 1П2025<span class="s">почти ноль</span></div><div class="val">1 881 / 24 896 млн ₽</div></div>
+<div class="row"><div class="k">Свободный денежный поток 1П2026 / 1П2025<span class="s">отрицательный</span></div><div class="val">−16 865 / +2 614 млн ₽</div></div>
+<div class="row"><div class="k">Общий долг / чистый долг (30.06.26)<span class="s">чистый долг за год +84%</span></div><div class="val">177 502 / 112 116 млн ₽ (30.06.25: 60 973; кон.2025: 88 400)</div></div>
+<div class="row"><div class="k">ND / EBITDA (LTM)<span class="s">не только падение EBITDA</span></div><div class="val">~3,2× (30.06.25: 1,2×; кон.2025: 1,5×)</div></div>
+<div class="row"><div class="k">Денежные средства + депозиты<span class="s">−43% за год</span></div><div class="val">65 386 млн ₽ (30.06.25: 115 371)</div></div>
+<div class="row"><div class="k">Запасы<span class="s">растут (без расшифровки состава)</span></div><div class="val">261 643 млн ₽ (было 250 840)</div></div>
+<div class="row"><div class="k">Финансовый рычаг / капитал<span class="s">очень низкий</span></div><div class="val">0,31 / 397 257 млн ₽</div></div>
+<div class="row"><div class="k">Контроль<span class="s">госконтроль</span></div><div class="val">РФ + Якутия + улусы (&gt;50%)</div></div>
+<div class="row"><div class="k">ОСК (самостоятельная оценка)<span class="s">Эксперт РА</span></div><div class="val">ruAA+ (+1 ступень господдержки до ruAAA)</div></div>
+<div class="row"><div class="k">Рейтинг<span class="s">подтверждён</span></div><div class="val">AAA(RU) АКРА (19.05.26) / ruAAA Эксперт РА (02.04.26)</div></div>
+</div></div>
+<h2 style="margin-top:26px">Ключевые коэффициенты</h2><div class="card" style="margin-top:6px">
+<div class="row"><div class="k">Выручка 1П2026</div><div class="val">−33% (до 90 млрд)</div></div>
+<div class="row"><div class="k">EBITDA 1П2026</div><div class="val">−61% (до 14 млрд)</div></div>
+<div class="row"><div class="k">Чистая прибыль 1П2026</div><div class="val">убыток −9,5 млрд (было +40,6)</div></div>
+<div class="row"><div class="k">ND/EBITDA (LTM)</div><div class="val">~3,2× (было 1,2× на 30.06.25)</div></div>
+<div class="row"><div class="k">Свободный денежный поток 1П2026</div><div class="val">−17 млрд (отрицательный)</div></div>
+<div class="row"><div class="k">Финансовый рычаг</div><div class="val">0,31 (очень низкий)</div></div>
+<div class="row"><div class="k">Запасы</div><div class="val">262 млрд (растут — связанный капитал)</div></div>
+<div class="row"><div class="k">Рейтинг / ОСК</div><div class="val">AAA(RU) / ruAAA (ОСК ruAA+)</div></div>
+</div>
+<h2 style="margin-top:26px">Чего не хватило / на что смотреть</h2><ul>
+<li>Отчётность — сокращённая консолидированная МСФО за 1П2026 (неаудированная). Метрики одного полугодия на спаде алмазного цикла не описывают долгосрочное кредитное качество — АЛРОСА глубоко циклическая, и убыток, рост чистого долга и отрицательный свободный поток во многом симптомы фазы цикла; при этом отчётность не доказывает, что худшее уже позади.</li>
+<li>Рост ND/EBITDA с 1,2× (30.06.2025) до ~3,2× (30.06.2026; на конец 2025 — 1,5× при ND 88,4 млрд) — это год к году, не полугодие. И это не только эффект знаменателя (EBITDA −61%): денежная подушка сократилась на 43% (со 115,4 до 65,4 млрд), а сам чистый долг вырос — обе части ухудшают положение. Общий долг при этом почти не менялся (177 млрд), финансовый рычаг остаётся очень низким (0,31).</li>
+<li>Запасы (262 млрд) — значительная сумма средств, связанная в запасах: при улучшении спроса их реализация может поддержать денежный поток, но сроки и цены не гарантированы. Бухгалтерский убыток и вложения в запасы — разные вещи; всю строку «Запасы» без расшифровки нельзя считать только непроданными алмазами.</li>
+<li>Покрытие процентов: 0,9× в разборе — это EBITDA / совокупные финансовые расходы (16,5 млрд), а не классический ICR; по уплаченным процентам (8,1 млрд) отношение ~1,8×. Для стандартного покрытия нужны начисленные процентные расходы — их расшифровка требует уточнения.</li>
+<li>Кредитное качество опирается на самостоятельную оценку (ОСК ruAA+ у Эксперт РА), госконтроль (РФ + Якутия) и крепкий баланс; господдержка добавляет ступень до ruAAA. Корректные формулировки — «вероятность дефолта низкая», «вероятность господдержки высокая», а не «дефолт невозможен». На мониторинге — разворот мирового алмазного рынка, динамика запасов, денежный поток и покрытие процентов.</li>
+</ul>
+<p class="foot">Данные: сокращённая консолидированная МСФО АК «АЛРОСА» (ПАО) за 1П2026 (неаудированная). Рейтинг AAA(RU) АКРА (19.05.2026) / ruAAA Эксперт РА (02.04.2026), ОСК ruAA+. Госконтроль (РФ + Якутия + улусы). Суммы — млн/млрд ₽. Это разбор отчётности, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p>
+
+  <p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a> · <a href="../razbory-ii-analitika.html">Разборы ИИ</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+<script src="/nav.js" defer></script>
+</body>
+</html>
