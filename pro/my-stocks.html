@@ -513,7 +513,11 @@ function brokerStatus(res){
    это либо остатки бумаг, либо сделки. */
 function parseGrids(grids, kind, date){
   const held={}, buys=[], seen={}, skipped=[];
-  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||/Код актива/i.test(x));
+  // «Наименование ЦБ» и «Код ЦБ» — так называется шапка таблицы сделок у Сбера.
+  // Без них раздел сделок не распознавался, и все позиции закрывались ценой
+  // на дату отчёта вместо настоящей цены покупки.
+  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||
+                             /Код актива/i.test(x)||/Наименование ЦБ/i.test(x)||/Код ЦБ/i.test(x));
   const hasQty = h=>h.some(x=>/Кол-?во|Колич|Остаток/i.test(x));
 
   /* Справочник «ISIN -> вид бумаги», если он лежит в отчёте отдельной таблицей:
@@ -979,6 +983,9 @@ async function loadFxRates(){
     const v=parseFloat(String(inp.value||'').replace(',','.'));
     if(isFinite(v)&&v>0) map[inp.getAttribute('data-fxmanual')]=v;
   });
+  // Присваиваем здесь, а не у вызывающего: раньше на пути загрузки отчёта
+  // курсы оставались пустыми и валютные выпуски молча выпадали из расчёта.
+  FX = map;
   return map;
 }
 

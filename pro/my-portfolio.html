@@ -495,6 +495,8 @@ function brokerStatus(res){
         ', строк '+res.rows.length+' на '+money(sum)+' ₽.';
   const bum=n=>(n%10===1&&n%100!==11)?' бумаге':' бумагам';
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
+  if(res.withNkd)    h+='<br>В отчёте цена сделки указана без НКД, поэтому по '+res.withNkd+bum(res.withNkd)+
+        ' накопленный купон досчитан по графику Московской биржи на дату расчётов.';
   if(res.fromExchange) h+='<br>В этом отчёте нет цен, поэтому по '+res.fromExchange+bum(res.fromExchange)+
         ' цена взята с Московской биржи на сегодня — и дата покупки у них сегодняшняя.';
   if(res.skipped&&res.skipped.length) h+='<br>Пропущено не-облигаций: '+res.skipped.length+' — акции, фонды и расписки считает <a href="my-stocks.html" style="color:var(--accent);font-weight:600">«Мой портфель акций»</a>, загрузите в него тот же отчёт.';
@@ -509,7 +511,11 @@ function brokerStatus(res){
    это либо остатки бумаг, либо сделки. */
 function parseGrids(grids, kind, date){
   const held={}, buys=[], seen={}, skipped=[];
-  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||/Код актива/i.test(x));
+  // «Наименование ЦБ» и «Код ЦБ» — так называется шапка таблицы сделок у Сбера.
+  // Без них раздел сделок не распознавался, и все позиции закрывались ценой
+  // на дату отчёта вместо настоящей цены покупки.
+  const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||
+                             /Код актива/i.test(x)||/Наименование ЦБ/i.test(x)||/Код ЦБ/i.test(x));
   const hasQty = h=>h.some(x=>/Кол-?во|Колич|Остаток/i.test(x));
 
   /* Справочник «ISIN -> вид бумаги», если он лежит в отчёте отдельной таблицей:
@@ -577,7 +583,9 @@ function parseGrids(grids, kind, date){
         const dateI=idx(/Дата и время/i)>=0?idx(/Дата и время/i):idx(/Дата/i,/расч|постав|погаш|оферт|факт/i),
               kindI=idx(/Вид сделки|Вид операции|Тип сделки|Тип операции/i),
               qtyI =idx(/Кол-?во|Колич/i),
-              rateI=idx(/Курс к рублю/i);
+              rateI=idx(/Курс к рублю/i),
+              // НКД начисляется на дату расчётов, а не на дату заключения сделки
+              setI =idx(/Дата расч/i);
         // сумма: сначала рублёвая, потом с НКД, потом какая есть
         const sumC=[idx(/Сумма сделки.*(RUR|RUB|руб)/i), idx(/Сумма сделки.*НКД/i),
                     idx(/Сумма сделки/i), idx(/Сумма/i,/комисс|налог|нкд|валют/i)].filter(c=>c>=0);
@@ -599,8 +607,15 @@ function parseGrids(grids, kind, date){
           if(seen[key]) return;
           seen[key]=1;
           const com=comI.reduce((a,c)=>a+(numRu(row[c])||0),0);
+          // Если выбранный столбец суммы сам включает НКД (так у ВТБ), второй
+          // раз его прибавлять нельзя. Если нет (так у Сбера) — досчитаем из
+          // биржевого графика купонов, см. addAccrued.
+          const sumHasNkd=/НКД/i.test(h[sumI]||'');
+          const sv=setI>=0?row[setI]:'';
           buys.push({isin:isin, qty:qty, unit:(sum+com)/qty,
-                     date:(excelDate(dv)||cellDate(dv)||excelDate(numRu(dv))||date)});
+                     date:(excelDate(dv)||cellDate(dv)||excelDate(numRu(dv))||date),
+                     settle:(excelDate(sv)||cellDate(sv)||excelDate(numRu(sv))||''),
+                     needNkd:!sumHasNkd});
         });
         return;
       }
@@ -806,8 +821,13 @@ document.getElementById('fileIn').onchange=function(e){
       if(need) st.textContent='В этом отчёте нет цен — спрашиваю котировки у Московской биржи по '+need+' бумагам…';
       await fillPrices(raw);
       if(!Object.keys(raw.held).length) return false;
+      if((raw.buys||[]).some(b=>b.needNkd)){
+        st.textContent='Считаю НКД на даты расчётов по графику купонов…';
+        await addAccrued(raw);
+      }
       const res=buildLots(raw.held, raw.buys, raw.date);
       res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
+      res.withNkd=raw.withNkd||0;
       if(!res.rows.length) return false;
       inBody.innerHTML='';
       res.rows.forEach(addRow);
@@ -962,7 +982,85 @@ async function loadFxRates(){
     const v=parseFloat(String(inp.value||'').replace(',','.'));
     if(isFinite(v)&&v>0) map[inp.getAttribute('data-fxmanual')]=v;
   });
+  // Присваиваем здесь, а не у вызывающего: раньше на пути загрузки отчёта
+  // курсы оставались пустыми и валютные выпуски молча выпадали из расчёта.
+  FX = map;
   return map;
+}
+
+
+/* ============================================================
+   НКД НА ДАТУ РАСЧЁТОВ.
+   В разделе сделок цена обычно чистая: у Сбера столбец «Сумма» идёт без
+   НКД, а сам НКД стоит отдельной колонкой. Вместо того чтобы вычитывать
+   его из отчёта у каждого брокера по-своему, считаем из биржевого графика
+   купонов — купон × дней от начала периода / длину периода. Начисление
+   идёт на дату расчётов: по ОФЗ 26245 купон 59,84 за период с 07.10,
+   расчёты 22.10 — 59,84 × 15 / 182 = 4,93, ровно как в отчёте.
+   ============================================================ */
+const BONDIZ={};
+
+async function bondization(isin){
+  if(BONDIZ[isin]!==undefined) return BONDIZ[isin];
+  let res=null;
+  const tryCode=async code=>{
+    if(!code) return null;
+    try{
+      const r=await fetch('https://iss.moex.com/iss/securities/'+encodeURIComponent(code)+
+                          '/bondization.json?iss.meta=off&limit=unlimited');
+      if(!r.ok) return null;
+      const j=await r.json();
+      return (j.coupons && j.coupons.data && j.coupons.data.length) ? j : null;
+    }catch(e){ return null; }
+  };
+  res=await tryCode(isin);
+  if(!res){                                   // у ОФЗ биржевой код не совпадает с ISIN
+    const f=await resolveSecid(isin);
+    if(f.secid && f.secid!==isin) res=await tryCode(f.secid);
+  }
+  BONDIZ[isin]=res;
+  return res;
+}
+
+/* НКД на одну бумагу в рублях на указанную дату. Не облигация или нет
+   графика — ноль, и это не ошибка: по акции НКД не бывает. */
+async function accruedAt(isin, iso){
+  if(!iso) return 0;
+  const j=await bondization(isin);
+  if(!j) return 0;
+  const C=j.coupons.columns, ix=n=>C.indexOf(n);
+  const si=ix('startdate'), ci=ix('coupondate'), vi=ix('value'), ui=ix('faceunit');
+  if(si<0||ci<0||vi<0) return 0;
+  const t=new Date(iso+'T00:00:00').getTime();
+  for(const row of j.coupons.data){
+    const sd=row[si], cd=row[ci], v=parseFloat(row[vi]);
+    if(!sd||!cd||!isFinite(v)) continue;
+    const a=new Date(sd+'T00:00:00').getTime(), b=new Date(cd+'T00:00:00').getTime();
+    if(!(b>a)) continue;
+    if(t>=a && t<b){
+      const u=String(row[ui]==null?'':row[ui]).toUpperCase();
+      const k=(!u||u==='SUR'||u==='RUB')?1:(FX[u]||0);
+      if(!k) return 0;
+      return v*k*(t-a)/(b-a);
+    }
+  }
+  return 0;
+}
+
+/* Досчитывает НКД к ценам покупок, где отчёт дал чистую сумму. */
+async function addAccrued(raw){
+  const need=(raw.buys||[]).filter(b=>b.needNkd && (b.settle||b.date));
+  if(!need.length) return 0;
+  try{ await loadFxRates(); }catch(e){}
+  let n=0;
+  for(const b of need){
+    try{
+      const nkd=await accruedAt(b.isin, b.settle||b.date);
+      if(nkd>0){ b.unit+=nkd; n++; }
+    }catch(e){}
+  }
+  raw.withNkd=n;
+  return n;
 }
 
 /* Выплаты по бумаге после даты покупки: купоны и погашения части номинала.
