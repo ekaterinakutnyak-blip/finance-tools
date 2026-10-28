@@ -114,6 +114,10 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="note">Грязная цена — это сколько рублей списали за одну бумагу, вместе с НКД. Котировки и накопленный купон подтягиваются с Московской биржи. По валютным выпускам цена покупки тоже в рублях — ровно та сумма, что ушла со счёта; пересчитывать её по курсу не нужно.<br>
 Чтобы не вбивать руками: скачайте шаблон, заполните его в Excel и загрузите обратно. Это обычный файл Excel — ничего пересохранять в другой формат не нужно.<br>Той же кнопкой загружается <b>брокерский отчёт</b> — страница сама найдёт в нём ваш портфель. Понимает отчёты ВТБ, Сбербанка, БКС, Газпромбанка, Финама и Т-Банка: Excel (.xlsx, .xls) и HTML (.html, .htm). <b>PDF не подходит</b> — при заказе отчёта выбирайте другой формат. Цены покупки в отчётах нет, поэтому страница возьмёт рыночную цену на дату отчёта и о замене честно напишет. Акции и фонды из того же отчёта считает <a href="my-stocks.html" style="color:var(--accent);font-weight:600;text-decoration:none">«Мой портфель акций»</a>.</div>
 <div class="status" id="calcStatus"></div>
+<!-- Итог разбора отчёта живёт отдельно: поле выше очищается при каждом
+     расчёте, и вместе с ним пропадали брокер и все оговорки. -->
+<div id="importInfo" class="note" style="display:none;border-left:3px solid var(--accent);
+     padding:.6rem .8rem;background:var(--surface);border-radius:var(--radius);margin-top:.5rem"></div>
 
 <!-- ================= РЕЗУЛЬТАТ ================= -->
 <div id="resultWrap" style="display:none">
@@ -353,6 +357,8 @@ document.getElementById('btnClear').onclick=function(){
   document.getElementById('resultWrap').style.display='none';
   document.getElementById('yieldOut').innerHTML='';
   document.getElementById('calcStatus').textContent='';
+  const info=document.getElementById('importInfo');
+  if(info){ info.style.display='none'; info.innerHTML=''; }
   try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
 };
 
@@ -876,6 +882,8 @@ document.getElementById('fileIn').onchange=function(e){
   const f=e.target.files && e.target.files[0];
   if(!f) return;
   const st=document.getElementById('calcStatus');
+  const info0=document.getElementById('importInfo');
+  if(info0){ info0.style.display='none'; info0.innerHTML=''; }
   const rd=new FileReader();
   rd.onerror=function(){ st.textContent='Не удалось прочитать файл.'; };
   rd.onload=async function(){
@@ -918,7 +926,10 @@ document.getElementById('fileIn').onchange=function(e){
       inBody.innerHTML='';
       res.rows.forEach(addRow);
       saveDraft();
-      st.innerHTML=brokerStatus(res);
+      st.textContent='';
+      const info=document.getElementById('importInfo');
+      info.innerHTML=brokerStatus(res);
+      info.style.display='';
       return true;
     };
 
