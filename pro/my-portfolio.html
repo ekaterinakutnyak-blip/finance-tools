@@ -105,6 +105,9 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="row" style="margin-top:.5rem">
   <button id="btnTpl" class="ghost">↓ Скачать шаблон</button>
   <button id="btnUp" class="ghost">↑ Загрузить файл</button>
+  <select id="brokerSel" style="width:auto;min-width:190px" title="Обычно определяется сам по содержимому файла">
+    <option value="">Брокер: определить сам</option>
+  </select>
   <button id="btnExp" class="ghost">↓ Выгрузить мой портфель</button>
   <input type="file" id="fileIn" accept=".xlsx,.xls,.csv,.html,.htm,.pdf" style="display:none">
 </div>
@@ -404,6 +407,50 @@ document.getElementById('btnExp').onclick=function(){
 
 
 /* ============================================================
+   КТО ПРИСЛАЛ ОТЧЁТ.
+   Разные брокеры называют одни и те же вещи по-разному, и общие правила
+   разбора вынуждены угадывать. Здесь файл опознаётся по приметам внутри,
+   и дальше можно уточнять разбор под конкретного брокера, не трогая others.
+   Пока профиль несёт только опознание и структурную проверку.
+   ============================================================ */
+const BROKERS=[
+  { id:'sber', label:'Сбербанк',
+    // в сносках отчёта всегда есть «ПАО Сбербанк», а в таблицах — свои колонки
+    sign:/ПАО\s+Сбербанк|СберБанк\s+Онлайн/i,
+    cols:/Наименование ЦБ|Валюта рыночной цены|Плановый исходящий остаток/i,
+    // приметы, которых нет ни у кого другого: без них файл не сберовский
+    expect:/Валюта рыночной цены|Плановый исходящий остаток|Наименование ЦБ/i },
+  { id:'vtb',   label:'ВТБ',          sign:/Банк ВТБ|ВТБ \(ПАО\)|ВТБ Мои Инвестиции/i, cols:null, expect:null },
+  { id:'bks',   label:'БКС',          sign:/Компания БКС|БКС Мир инвестиций/i,          cols:null, expect:null },
+  { id:'gpb',   label:'Газпромбанк',  sign:/Газпромбанк|ГПБ \(АО\)/i,                   cols:null, expect:null },
+  { id:'finam', label:'Финам',        sign:/Финам|ФИНАМ/i,                              cols:null, expect:null },
+  { id:'tbank', label:'Т-Банк',       sign:/Т-Банк|Тинькофф|Tinkoff/i,                  cols:null, expect:null }
+];
+
+/* Профиль по тексту файла. Сначала те, у кого совпали и подпись, и колонки —
+   это надёжнее, чем одно упоминание названия: «Сбербанк» встречается и как
+   название бумаги в чужом отчёте. */
+function detectBroker(txt){
+  const t=String(txt||'');
+  const strong=BROKERS.filter(b=>b.sign.test(t) && b.cols && b.cols.test(t));
+  if(strong.length===1) return strong[0];
+  const weak=BROKERS.filter(b=>b.sign.test(t));
+  return weak.length===1?weak[0]:null;
+}
+
+function brokerById(id){ return BROKERS.filter(b=>b.id===id)[0]||null; }
+
+/* Выбранный в списке брокер — он главнее найденного: человек знает, что
+   загружает. Возвращаем и то и другое, чтобы сказать о расхождении. */
+function brokerFor(txt){
+  const picked=brokerById((document.getElementById('brokerSel')||{}).value||'');
+  const found=detectBroker(txt);
+  return {use:picked||found, picked:picked, found:found,
+          mismatch:!!(picked && found && picked.id!==found.id),
+          broken:!!(picked && picked.expect && !picked.expect.test(String(txt||'')))};
+}
+
+/* ============================================================
    БРОКЕРСКИЙ ОТЧЁТ В HTML.
    Берём раздел с портфелем на конец периода: бумага, количество,
    номинал, рыночная цена и НКД. Цены покупки в таких отчётах нет,
@@ -491,12 +538,28 @@ function cellDate(x){
 /* Один текст статуса на оба формата отчёта */
 function brokerStatus(res){
   const sum=res.rows.reduce((a,x)=>a+x.price*x.qty,0);
-  let h='Загружен брокерский отчёт на '+ddmmyyyy(res.date)+': облигаций '+res.bonds+
-        ', строк '+res.rows.length+' на '+money(sum)+' ₽.';
+  const b=res.broker||{};
+  let who='';
+  if(b.mismatch) who=' <b>Вы выбрали '+b.picked.label+', а по содержимому это похоже на '+b.found.label+
+                      '</b> — читаю так, как выбрали вы. Если ошиблись, поменяйте в списке и загрузите снова.';
+  else if(b.broken) who=' <b>В файле нет того, что бывает в отчёте '+b.picked.label+'</b> — возможно, выбран не тот брокер.';
+  else if(b.use)   who=' Брокер: <b>'+b.use.label+'</b>.';
+  else             who=' Брокер не опознан, читаю общими правилами.';
+  let h='Загружен брокерский отчёт на '+ddmmyyyy(res.date)+'.'+who+
+        '<br>Бумаг '+res.bonds+', строк '+res.rows.length+' на '+money(sum)+' ₽.';
   const bum=n=>(n%10===1&&n%100!==11)?' бумаге':' бумагам';
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
   if(res.withNkd)    h+='<br>В отчёте цена сделки указана без НКД, поэтому по '+res.withNkd+bum(res.withNkd)+
         ' накопленный купон досчитан по графику Московской биржи на дату расчётов.';
+  if(res.converted)  h+='<br>По '+res.converted+bum(res.converted)+
+        ' цена в отчёте указана в валюте выпуска — она переведена в рубли по биржевому курсу на дату отчёта.';
+  if(res.buysConverted) h+='<br>Сделки по '+res.buysConverted+bum(res.buysConverted)+
+        ' тоже были в валюте: каждая переведена по курсу на свою дату расчётов, а не по сегодняшнему.';
+  if(res.noCur&&res.noCur.length) h+='<br>Биржевого курса по '+res.noCur.join(', ')+
+        ' нет — цена этих бумаг взята котировкой с биржи. Если понадобится, курс можно вписать руками '+
+        'в блоке результата.';
+  if(res.buysNoCur&&res.buysNoCur.length) h+='<br>По сделкам в '+res.buysNoCur.join(', ')+
+        ' курса на дату расчётов не нашлось — эти покупки не использованы, бумаги закрыты ценой на дату отчёта.';
   if(res.fromExchange) h+='<br>В этом отчёте нет цен, поэтому по '+res.fromExchange+bum(res.fromExchange)+
         ' цена взята с Московской биржи на сегодня — и дата покупки у них сегодняшняя.';
   if(res.skipped&&res.skipped.length) h+='<br>Пропущено не-облигаций: '+res.skipped.length+' — акции, фонды и расписки считает <a href="my-stocks.html" style="color:var(--accent);font-weight:600">«Мой портфель акций»</a>, загрузите в него тот же отчёт.';
@@ -585,7 +648,8 @@ function parseGrids(grids, kind, date){
               qtyI =idx(/Кол-?во|Колич/i),
               rateI=idx(/Курс к рублю/i),
               // НКД начисляется на дату расчётов, а не на дату заключения сделки
-              setI =idx(/Дата расч/i);
+              setI =idx(/Дата расч/i),
+              curTI=idx(/^Валюта/i);
         // сумма: сначала рублёвая, потом с НКД, потом какая есть
         const sumC=[idx(/Сумма сделки.*(RUR|RUB|руб)/i), idx(/Сумма сделки.*НКД/i),
                     idx(/Сумма сделки/i), idx(/Сумма/i,/комисс|налог|нкд|валют/i)].filter(c=>c>=0);
@@ -602,6 +666,10 @@ function parseGrids(grids, kind, date){
           if(!(qty>0)||!(sum>0)) return;
           const rate=rateI>=0?numRu(row[rateI]):NaN;             // у Финама цена в валюте цены
           if(rate>0) sum*=rate;
+          // Сделка в валюте: сумма в отчёте в ней же. Курс на дату расчётов
+          // возьмём с биржи отдельным шагом — см. convertBuys.
+          const tc=(!(rate>0) && curTI>=0)?String(row[curTI]||'').trim().toUpperCase():'';
+          const buyCur=(tc && !/^(RUB|RUR|SUR|РУБ)/.test(tc))?tc:'';
           const dv=dateI>=0?row[dateI]:'';
           const key=isin+'|'+String(dv)+'|'+qty+'|'+sum;
           if(seen[key]) return;
@@ -615,7 +683,7 @@ function parseGrids(grids, kind, date){
           buys.push({isin:isin, qty:qty, unit:(sum+com)/qty,
                      date:(excelDate(dv)||cellDate(dv)||excelDate(numRu(dv))||date),
                      settle:(excelDate(sv)||cellDate(sv)||excelDate(numRu(sv))||''),
-                     needNkd:!sumHasNkd});
+                     needNkd:!sumHasNkd, cur:buyCur});
         });
         return;
       }
@@ -650,7 +718,10 @@ function parseGrids(grids, kind, date){
             nkdI  =pick(/^НКД|Сумма НКД/i),
             sumI  =pick(/Сумма, в т.ч. НКД|Сумма в т.ч. НКД/i),
             typeI =idx(/Тип актива|Вид ЦБ/i),
-            nameI =idx(/Ценная бумага|Наименование|Инструмент/i);
+            nameI =idx(/Ценная бумага|Наименование|Инструмент/i),
+            // «Валюта рыночной цены»: если это не рубль, то номинал, цена,
+            // стоимость и НКД в этой строке тоже не в рублях
+            curI  =idx(/^Валюта/i);
       // оценка позиции в рублях — у ГПБ «Оценка в RUR», у Финама «Оценка позиции (руб)»
       let evalI=pick(/Оценка.*(RUR|RUB|руб)/i,NOTSUM);
       if(evalI<0) evalI=pick(/Оценка|Рыночная стоимость/i,/без НКД|валюте номинала|ПФИ|плановы|требован|денежн|обязательств/i);
@@ -689,7 +760,11 @@ function parseGrids(grids, kind, date){
           if(!hasPriceCol) held[isin]={qty:qty, price:0};
           return;
         }
+        const rc=curI>=0?String(row[curI]||'').trim().toUpperCase():'';
+        const foreign=rc && !/^(RUB|RUR|SUR|РУБ)/.test(rc);
         held[isin]={qty:qty, price:Math.round(price*100)/100};
+        // Пересчёт отложен: курсы ещё не загружены, их тянут после разбора файла
+        if(foreign) held[isin].cur=rc;
       });
     });
   });
@@ -735,7 +810,9 @@ function reportDate(all){
 function parseBrokerXlsx(wb){
   const sheets=wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}));
   const all=sheets.map(a=>a.map(r=>r.join(' ')).join(' ')).join(' ').replace(/\s+/g,' ');
-  return parseGrids(sheets, {}, reportDate(all));
+  const res=parseGrids(sheets, {}, reportDate(all));
+  if(res) res.broker=brokerFor(all);
+  return res;
 }
 
 /* Ячейка HTML-отчёта. У отчётов, собранных в Excel, в ячейке лежит
@@ -781,6 +858,7 @@ function parseBrokerHtml(text){
 
   const res=parseGrids(tables.map(gridFromTable), {}, date);
   if(!res) return null;
+  res.broker=brokerFor(all);
   return res;
 }
 
@@ -791,6 +869,15 @@ function decodeText(buf){
   if(bad>5){ try{ s=new TextDecoder('windows-1251').decode(buf); }catch(e){} }
   return s;
 }
+
+(function(){
+  const sel=document.getElementById('brokerSel');
+  if(!sel) return;
+  BROKERS.forEach(b=>{
+    const o=document.createElement('option'); o.value=b.id; o.textContent='Брокер: '+b.label;
+    sel.appendChild(o);
+  });
+})();
 
 document.getElementById('btnUp').onclick=()=>document.getElementById('fileIn').click();
 
@@ -819,6 +906,11 @@ document.getElementById('fileIn').onchange=function(e){
       if(!raw || !Object.keys(raw.held||{}).length) return false;
       const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0)).length;
       if(need) st.textContent='В этом отчёте нет цен — спрашиваю котировки у Московской биржи по '+need+' бумагам…';
+      if((raw.buys||[]).some(b=>b.cur)){
+        st.textContent='Беру курсы валют на даты сделок…';
+        await convertBuys(raw);
+      }
+      await convertHeld(raw);
       await fillPrices(raw);
       if(!Object.keys(raw.held).length) return false;
       if((raw.buys||[]).some(b=>b.needNkd)){
@@ -826,8 +918,11 @@ document.getElementById('fileIn').onchange=function(e){
         await addAccrued(raw);
       }
       const res=buildLots(raw.held, raw.buys, raw.date);
+      res.broker=raw.broker||null;
       res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
       res.withNkd=raw.withNkd||0;
+      res.converted=raw.converted||0; res.noCur=raw.noCur||[];
+      res.buysConverted=raw.buysConverted||0; res.buysNoCur=raw.buysNoCur||[];
       if(!res.rows.length) return false;
       inBody.innerHTML='';
       res.rows.forEach(addRow);
@@ -963,6 +1058,40 @@ const FX_TICKERS={USD:'USDRUBF',EUR:'EURRUBF',CNY:'CNYRUBF'};
 function isRub(u){ const s=String(u||'SUR').toUpperCase(); return s==='SUR'||s==='RUB'; }
 function curSym(u){ return u==='USD'?'$':u==='EUR'?'€':u==='CNY'?'¥':u; }
 
+/* Курс валюты на конкретную дату по истории вечного фьючерса.
+   Биржа отдаёт дневные свечи с 2023 года. Если в этот день торгов не было
+   (выходной, праздник), берём последний торговый день перед ним — окно
+   на десять дней назад это закрывает. Результат кэшируется. */
+const FX_DAY={};
+
+async function fxOnDate(cur, iso){
+  const c=String(cur||'').toUpperCase();
+  if(!c || c==='RUB' || c==='SUR' || c==='RUR') return 1;
+  if(!iso) return 0;
+  const key=c+'|'+iso;
+  if(FX_DAY[key]!==undefined) return FX_DAY[key];
+  const tick=FX_TICKERS[c];
+  if(!tick){ FX_DAY[key]=0; return 0; }
+  const back=new Date(new Date(iso+'T00:00:00').getTime()-10*86400000).toISOString().slice(0,10);
+  let rate=0;
+  try{
+    const r=await fetch('https://iss.moex.com/iss/history/engines/futures/markets/forts/boards/RFUD/securities/'+
+                        tick+'.json?iss.meta=off&from='+back+'&till='+iso);
+    if(r.ok){
+      const j=await r.json(), h=j.history;
+      if(h && h.data && h.data.length){
+        const ic=h.columns.indexOf('CLOSE'), is=h.columns.indexOf('SETTLEPRICE');
+        for(let i=h.data.length-1;i>=0 && !rate;i--){
+          const d=h.data[i];
+          rate=num(d[is])||num(d[ic])||0;             // расчётная цена, иначе закрытие
+        }
+      }
+    }
+  }catch(e){}
+  FX_DAY[key]=rate;
+  return rate;
+}
+
 async function loadFxRates(){
   const map={RUB:1,SUR:1};
   for(const cur of Object.keys(FX_TICKERS)){
@@ -988,6 +1117,35 @@ async function loadFxRates(){
   return map;
 }
 
+
+/* Пересчёт валютных строк остатков в рубли. Вызывается после загрузки
+   курсов: во время разбора файла их ещё нет. Нет курса по валюте — строку
+   убираем, а не показываем с неверной ценой. */
+async function convertHeld(raw){
+  const need=Object.keys(raw.held).filter(k=>raw.held[k].cur);
+  if(!need.length) return 0;
+  let n=0; const noCur=[];
+  for(const isin of need){
+    const h=raw.held[isin];
+    // цена в отчёте — на дату отчёта, значит и курс нужен на неё же
+    let k=await fxOnDate(h.cur, raw.date);
+    if(!k){ try{ await loadFxRates(); }catch(e){} k=FX[h.cur]||0; }
+    if(!k){
+      // курса нет совсем: бумагу не выбрасываем, а помечаем цену неизвестной —
+      // её подставит котировка с биржи, а по валюте появится ручной ввод курса
+      noCur.push(h.cur);
+      h.price=0; delete h.cur;
+      continue;
+    }
+    h.price=Math.round(h.price*k*100)/100;
+    h.fxCur=h.cur; h.fxRate=k;
+    delete h.cur;
+    n++;
+  }
+  raw.converted=n;
+  raw.noCur=[...new Set(noCur)];
+  return n;
+}
 
 /* ============================================================
    НКД НА ДАТУ РАСЧЁТОВ.
@@ -1039,12 +1197,34 @@ async function accruedAt(isin, iso){
     if(!(b>a)) continue;
     if(t>=a && t<b){
       const u=String(row[ui]==null?'':row[ui]).toUpperCase();
-      const k=(!u||u==='SUR'||u==='RUB')?1:(FX[u]||0);
+      // купон валютного выпуска тоже переводим по курсу на ту же дату
+      let k=(!u||u==='SUR'||u==='RUB')?1:await fxOnDate(u, iso);
+      if(!k) k=(!u||u==='SUR'||u==='RUB')?1:(FX[u]||0);
       if(!k) return 0;
       return v*k*(t-a)/(b-a);
     }
   }
   return 0;
+}
+
+/* Покупки в валюте: курс берём на дату расчётов сделки, а не сегодняшний.
+   Сделка могла быть год назад, и сегодняшний курс дал бы неверную сумму
+   вложенного. Нет курса — покупка не используется, позиция закроется ценой
+   на дату отчёта, но сама бумага из портфеля не исчезает. */
+async function convertBuys(raw){
+  const need=(raw.buys||[]).filter(b=>b.cur);
+  if(!need.length) return 0;
+  let n=0; const noCur=[];
+  for(const b of need){
+    const k=await fxOnDate(b.cur, b.settle||b.date);
+    if(!k){ noCur.push(b.cur); b.skip=true; continue; }
+    b.unit*=k; b.fxCur=b.cur; b.fxRate=k; b.cur='';
+    n++;
+  }
+  if(noCur.length) raw.buys=raw.buys.filter(b=>!b.skip);
+  raw.buysConverted=n;
+  raw.buysNoCur=[...new Set(noCur)];
+  return n;
 }
 
 /* Досчитывает НКД к ценам покупок, где отчёт дал чистую сумму. */
