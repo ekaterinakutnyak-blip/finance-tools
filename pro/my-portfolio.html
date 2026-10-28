@@ -613,8 +613,14 @@ function parseGrids(grids, kind, date){
       let grp=[];
       if(hd.gi>=0){ let cur=''; for(let c=0;c<width;c++){ if(H[hd.gi][c]) cur=H[hd.gi][c]; grp[c]=cur; } }
       const inEnd=c=>grp.length?/конец|исходящ/i.test(grp[c]||''):false;
+      /* Группа «Изменение за период» — это прирост, а не стоимость позиции.
+         У Сбера рядом со столбцами конца периода идут такие же по названию
+         «Количество» и «Рыночная стоимость», но с приростом внутри. Облигации
+         от этого защищены номиналом и ценой в процентах, но если у выпуска
+         нет номинала в отчёте, прирост встал бы ценой покупки. */
+      const badGrp=c=>/изменени|плановы/i.test(grp[c]||'');
       const pick=(re,not)=>{
-        const all=[]; h.forEach((x,c)=>{ if(re.test(x)&&!(not&&not.test(x))) all.push(c); });
+        const all=[]; h.forEach((x,c)=>{ if(re.test(x)&&!(not&&not.test(x))&&!badGrp(c)) all.push(c); });
         if(!all.length) return -1;
         const e=all.filter(inEnd);
         return e.length?e[0]:all[all.length-1];
