@@ -105,6 +105,9 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="row" style="margin-top:.5rem">
   <button id="btnTpl" class="ghost">↓ Скачать шаблон</button>
   <button id="btnUp" class="ghost">↑ Загрузить файл</button>
+  <select id="brokerSel" style="width:auto;min-width:190px" title="Обычно определяется сам по содержимому файла">
+    <option value="">Брокер: определить сам</option>
+  </select>
   <button id="btnExp" class="ghost">↓ Выгрузить мой портфель</button>
   <input type="file" id="fileIn" accept=".xlsx,.xls,.csv,.html,.htm,.pdf" style="display:none">
 </div>
@@ -193,6 +196,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="brokers.js"></script>
 <script>
 /* ============================================================
    ХРАНЕНИЕ. Полка отдельная — 'stockpos', чтобы её не перезаписали
@@ -495,8 +499,9 @@ function cellDate(x){
 /* Один текст статуса на оба формата отчёта */
 function brokerStatus(res){
   const sum=res.rows.reduce((a,x)=>a+x.price*x.qty,0);
-  let h='Загружен брокерский отчёт на '+ddmmyyyy(res.date)+': бумаг '+res.bonds+
-        ', строк '+res.rows.length+' на '+money(sum)+' ₽.';
+  const who=(typeof brokerNote==='function')?brokerNote(res.broker):'';
+  let h='Загружен брокерский отчёт на '+ddmmyyyy(res.date)+'.'+who+
+        '<br>Бумаг '+res.bonds+', строк '+res.rows.length+' на '+money(sum)+' ₽.';
   const bum=n=>(n%10===1&&n%100!==11)?' бумаге':' бумагам';
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
   if(res.fromExchange) h+='<br>В этом отчёте нет цен, поэтому по '+res.fromExchange+bum(res.fromExchange)+
@@ -511,13 +516,17 @@ function brokerStatus(res){
    строка — массив ячеек. Excel и HTML приводятся к этому виду, дальше
    разбор общий: ищем шапки, между шапками — разделы, и каждый раздел
    это либо остатки бумаг, либо сделки. */
-function parseGrids(grids, kind, date){
+function parseGrids(grids, kind, date, rules){
   const held={}, buys=[], seen={}, skipped=[];
+  // правила опознанного брокера; нет брокера — разбор общий, как раньше
+  const RULES=rules||null;
   // «Наименование ЦБ» и «Код ЦБ» — так называется шапка таблицы сделок у Сбера.
   // Без них раздел сделок не распознавался, и все позиции закрывались ценой
   // на дату отчёта вместо настоящей цены покупки.
+  const tradeId=(RULES&&RULES.trades&&RULES.trades.id)||null;
   const hasId  = h=>h.some(x=>/ISIN/i.test(x)||/Наименование ценной бумаги/i.test(x)||
-                             /Код актива/i.test(x)||/Наименование ЦБ/i.test(x)||/Код ЦБ/i.test(x));
+                             /Код актива/i.test(x)||/Наименование ЦБ/i.test(x)||/Код ЦБ/i.test(x)||
+                             (tradeId&&tradeId.test(x)));
   const hasQty = h=>h.some(x=>/Кол-?во|Колич|Остаток/i.test(x));
 
   /* Справочник «ISIN -> вид бумаги», если он лежит в отчёте отдельной таблицей:
@@ -554,6 +563,14 @@ function parseGrids(grids, kind, date){
       const body=aoa.slice(hd.b,end);
       if(!body.length) return;
       const idx=(re,not)=>h.findIndex(x=>re.test(x) && !(not&&not.test(x)));
+      // Регулярка колонки из профиля брокера, если он опознан
+      const pre=(part,name)=>(typeof ruleRe==='function')?ruleRe(RULES,part,name):null;
+      // Колонка в разделе сделок: там групп «начало/конец» не бывает
+      const tslot=(name,defRe,defNot)=>{
+        const r=pre('trades',name);
+        if(r){ const c=idx(r); if(c>=0) return c; }   // правило промахнулось — ищем как обычно
+        return defRe?idx(defRe,defNot):-1;
+      };
 
       /* Название раздела — в строках над шапкой. Незавершённые сделки,
          РЕПО и займы бумаг в портфель не входят. */
@@ -582,15 +599,22 @@ function parseGrids(grids, kind, date){
 
       // --- сделки (разделов с ними бывает два, одинаковые строки отсеиваем)
       if(isTrades){
-        const dateI=idx(/Дата и время/i)>=0?idx(/Дата и время/i):idx(/Дата/i,/расч|постав|погаш|оферт|факт/i),
-              kindI=idx(/Вид сделки|Вид операции|Тип сделки|Тип операции/i),
-              qtyI =idx(/Кол-?во|Колич/i),
+        const dateI=(function(){ const r=pre('trades','date');
+                if(r){ const c=idx(r); if(c>=0) return c; }
+                return idx(/Дата и время/i)>=0?idx(/Дата и время/i):idx(/Дата/i,/расч|постав|погаш|оферт|факт/i); })(),
+              kindI=tslot('kind', /Вид сделки|Вид операции|Тип сделки|Тип операции/i),
+              qtyI =tslot('qty',  /Кол-?во|Колич/i),
               rateI=idx(/Курс к рублю/i);
         // сумма: сначала рублёвая, потом с НКД, потом какая есть
-        const sumC=[idx(/Сумма сделки.*(RUR|RUB|руб)/i), idx(/Сумма сделки.*НКД/i),
-                    idx(/Сумма сделки/i), idx(/Сумма/i,/комисс|налог|нкд|валют/i)].filter(c=>c>=0);
-        const sumI=sumC.length?sumC[0]:-1;
-        const comI=[]; h.forEach((x,c)=>{ if(/Комисси/i.test(x)) comI.push(c); });
+        let sumI=-1;
+        { const r=pre('trades','sum'); if(r) sumI=idx(r); }
+        if(sumI<0){
+          const sumC=[idx(/Сумма сделки.*(RUR|RUB|руб)/i), idx(/Сумма сделки.*НКД/i),
+                      idx(/Сумма сделки/i), idx(/Сумма/i,/комисс|налог|нкд|валют/i)].filter(c=>c>=0);
+          sumI=sumC.length?sumC[0]:-1;
+        }
+        const comRe=(RULES&&RULES.trades&&RULES.trades.com)||/Комисси/i;
+        const comI=[]; h.forEach((x,c)=>{ if(comRe.test(x)) comI.push(c); });
         if(qtyI<0||sumI<0) return;
         body.forEach(row=>{
           const isin=isinOf(row[isinI]);
@@ -628,27 +652,48 @@ function parseGrids(grids, kind, date){
          ЛУКОЙЛ с приростом 24 ₽ на 6 бумаг встал в портфель по 4 ₽ за штуку.
          Бумаги, подешевевшие за период, от этого защищены случайно — прирост
          у них отрицательный и проверка «цена больше нуля» его отбрасывает. */
-      const badGrp=c=>/изменени|плановы/i.test(grp[c]||'');
+      const badGrp=c=>((RULES&&RULES.badGroups)||/изменени|плановы/i).test(grp[c]||'');
       const pick=(re,not)=>{
         const all=[]; h.forEach((x,c)=>{ if(re.test(x)&&!(not&&not.test(x))&&!badGrp(c)) all.push(c); });
         if(!all.length) return -1;
         const e=all.filter(inEnd);
         return e.length?e[0]:all[all.length-1];
       };
+      /* Колонка остатков: сначала правило профиля — но ищем им через pick,
+         чтобы сработал выбор группы «конец периода». Промахнулось правило —
+         ищем общим шаблоном, как раньше. */
+      const hslot=(name,defRe,defNot)=>{
+        const r=pre('held',name);
+        if(r){ const c=pick(r,null); if(c>=0) return c; }
+        return defRe?pick(defRe,defNot):-1;
+      };
+      const hslotIdx=(name,defRe,defNot)=>{
+        const r=pre('held',name);
+        if(r){ const c=idx(r); if(c>=0) return c; }
+        return defRe?idx(defRe,defNot):-1;
+      };
       const NOTSUM=/ПФИ|плановы|требован|денежн|обязательств/i;
       // «Оценка остатка в валюте номинала» тоже содержит слово «номинал» —
       // без этого исключения вместо номинала берётся сумма позиции.
-      const qtyI = idx(/Исходящий остаток/i,/Плановый/i)>=0 ? idx(/Исходящий остаток/i,/Плановый/i)
-                                                            : pick(/Кол-?во|Колич/i,/Плановы/i);
-      const priceI=pick(/Цена|Котировка/i,/валют|оценка/i),
-            faceI =pick(/Номинал/i,/валют|оценка|стоимост|сумма/i),
-            nkdI  =pick(/^НКД|Сумма НКД/i),
-            sumI  =pick(/Сумма, в т.ч. НКД|Сумма в т.ч. НКД/i),
-            typeI =idx(/Тип актива|Вид ЦБ/i),
-            nameI =idx(/Ценная бумага|Наименование|Инструмент/i);
+      const qtyI = (function(){
+        const r=pre('held','qty');
+        if(r){ const c=pick(r,null); if(c>=0) return c; }
+        return idx(/Исходящий остаток/i,/Плановый/i)>=0
+             ? idx(/Исходящий остаток/i,/Плановый/i) : pick(/Кол-?во|Колич/i,/Плановы/i);
+      })();
+      const priceI=hslot('price', /Цена|Котировка/i, /валют|оценка/i),
+            faceI =hslot('face',  /Номинал/i, /валют|оценка|стоимост|сумма/i),
+            nkdI  =hslot('nkd',   /^НКД|Сумма НКД/i),
+            sumI  =hslot('sum',   /Сумма, в т.ч. НКД|Сумма в т.ч. НКД/i),
+            typeI =hslotIdx('type', /Тип актива|Вид ЦБ/i),
+            nameI =hslotIdx('name', /Ценная бумага|Наименование|Инструмент/i);
       // оценка позиции в рублях — у ГПБ «Оценка в RUR», у Финама «Оценка позиции (руб)»
-      let evalI=pick(/Оценка.*(RUR|RUB|руб)/i,NOTSUM);
-      if(evalI<0) evalI=pick(/Оценка|Рыночная стоимость/i,/валюте номинала|ПФИ|плановы|требован|денежн|обязательств/i);
+      let evalI=-1;
+      { const r=pre('held','value'); if(r) evalI=pick(r,null); }
+      if(evalI<0){
+        evalI=pick(/Оценка.*(RUR|RUB|руб)/i,NOTSUM);
+        if(evalI<0) evalI=pick(/Оценка|Рыночная стоимость/i,/валюте номинала|ПФИ|плановы|требован|денежн|обязательств/i);
+      }
       if(qtyI<0) return;
 
       body.forEach(row=>{
@@ -738,7 +783,10 @@ function reportDate(all){
 function parseBrokerXlsx(wb){
   const sheets=wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}));
   const all=sheets.map(a=>a.map(r=>r.join(' ')).join(' ')).join(' ').replace(/\s+/g,' ');
-  return parseGrids(sheets, {}, reportDate(all));
+  const b=(typeof brokerFor==='function')?brokerFor(all):null;
+  const res=parseGrids(sheets, {}, reportDate(all), b&&b.use?b.use.rules:null);
+  if(res) res.broker=b;
+  return res;
 }
 
 /* Ячейка HTML-отчёта. У отчётов, собранных в Excel, в ячейке лежит
@@ -782,8 +830,10 @@ function parseBrokerHtml(text){
   const date=reportDate(all);
   const tables=Array.prototype.slice.call(doc.querySelectorAll('table'));
 
-  const res=parseGrids(tables.map(gridFromTable), {}, date);
+  const b=(typeof brokerFor==='function')?brokerFor(all):null;
+  const res=parseGrids(tables.map(gridFromTable), {}, date, b&&b.use?b.use.rules:null);
   if(!res) return null;
+  res.broker=b;
   return res;
 }
 
@@ -794,6 +844,8 @@ function decodeText(buf){
   if(bad>5){ try{ s=new TextDecoder('windows-1251').decode(buf); }catch(e){} }
   return s;
 }
+
+if(typeof fillBrokerSelect==='function') fillBrokerSelect();
 
 document.getElementById('btnUp').onclick=()=>document.getElementById('fileIn').click();
 
@@ -825,6 +877,7 @@ document.getElementById('fileIn').onchange=function(e){
       await fillPrices(raw);
       if(!Object.keys(raw.held).length) return false;
       const res=buildLots(raw.held, raw.buys, raw.date);
+      res.broker=raw.broker||null;
       res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
       if(!res.rows.length) return false;
       inBody.innerHTML='';
