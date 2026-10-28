@@ -702,13 +702,22 @@ function parseGrids(grids, kind, date, rules){
       }
       if(qtyI<0) return;
 
+      // Строка-заголовок вида бумаги: «АКЦИЯ», «ОБЛИГАЦИЯ». Так размечает
+      // остатки ВТБ, и это указание брокера, а не догадка по номиналу.
+      const sectRe=pre('held','sectionType');
+      let sect='';
       body.forEach(row=>{
+        if(sectRe){
+          const only=row.filter(x=>String(x==null?'':x).trim()!=='');
+          if(only.length===1 && sectRe.test(String(only[0]).trim())){ sect=String(only[0]).trim(); return; }
+        }
         const isin=isinOf(row[isinI]);
         if(!isin) return;
         // отбор акций, расписок и паёв: по справочнику бумаг, по типу актива,
         // по отсутствию номинала, а если ничего этого нет — по названию бумаги.
         // Логика обратная «Моему портфелю облигаций»: там всё это отсеивалось.
-        if(kind[isin]){ if(BOND.test(kind[isin]) || !EQ.test(kind[isin])){ skipped.push(isin); return; } }
+        if(sect){ if(!/акци|пай|расписк/i.test(sect)){ skipped.push(isin); return; } }
+        else if(kind[isin]){ if(BOND.test(kind[isin]) || !EQ.test(kind[isin])){ skipped.push(isin); return; } }
         else if(typeI>=0){
           const tv=String(row[typeI]||'');
           if(BOND.test(tv) || !EQ.test(tv)){ skipped.push(isin); return; }
