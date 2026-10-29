@@ -727,23 +727,38 @@ function parseGrids(grids, kind, date, rules){
         if(evalI<0) evalI=pick(/Оценка|Рыночная стоимость/i,/без НКД|валюте номинала|ПФИ|плановы|требован|денежн|обязательств/i);
       }
       if(qtyI<0) return;
+      /* Колонка номера госрегистрации. Нужна там, где в колонке бумаги стоит
+         не ISIN, а внутренний код брокера: по номеру выпуска бумагу потом
+         опознает биржа. Правило задаётся только в профиле — общего шаблона
+         здесь нет нарочно, чтобы в чужих отчётах ничего не поехало. */
+      const regI=hslotIdx('reg', null);
 
       // Строка-заголовок вида бумаги: «АКЦИЯ», «ОБЛИГАЦИЯ». Так размечает
       // остатки ВТБ, и это указание брокера, а не догадка по номиналу.
       const sectRe=pre('held','sectionType');
+      // Что в колонке «тип актива» считать облигацией. У БКС это «Обл.»,
+      // слова «облигация» там нет. Нет правила — общий шаблон, как раньше.
+      const BONDT=pre('held','bondType')||/обл/i;
       let sect='';
       body.forEach(row=>{
         if(sectRe){
           const only=row.filter(x=>String(x==null?'':x).trim()!=='');
           if(only.length===1 && sectRe.test(String(only[0]).trim())){ sect=String(only[0]).trim(); return; }
         }
-        const isin=isinOf(row[isinI]);
+        let isin=isinOf(row[isinI]);
+        // ISIN в колонке бумаги не нашёлся — пробуем номер госрегистрации.
+        // Настоящий ISIN подставим после разбора, спросив биржу.
+        let regOf='';
+        if(!isin && regI>=0){
+          const rv=String(row[regI]==null?'':row[regI]).trim();
+          if(rv && rv.length<=32 && /\d/.test(rv) && !isinOf(rv)){ regOf=rv; isin='REG:'+rv; }
+        }
         if(!isin) return;
         // отсев акций: сначала раздел отчёта, если брокер его разметил,
         // потом справочник бумаг, тип актива, номинал, и только затем название
         if(sect){ if(!/облигац|еврооблигац/i.test(sect)){ skipped.push(isin); return; } }
         else if(kind[isin]){ if(!/обл|бонд/i.test(kind[isin])){ skipped.push(isin); return; } }
-        else if(typeI>=0){ if(!/обл/i.test(String(row[typeI]||''))){ skipped.push(isin); return; } }
+        else if(typeI>=0){ if(!BONDT.test(String(row[typeI]||''))){ skipped.push(isin); return; } }
         else if(faceI>=0){ if(!(numRu(row[faceI])>0)){ skipped.push(isin); return; } }
         else {
           const nm=nameI>=0?String(row[nameI]||''):'';
@@ -773,6 +788,7 @@ function parseGrids(grids, kind, date, rules){
         const rc=curI>=0?String(row[curI]||'').trim().toUpperCase():'';
         const foreign=rc && !/^(RUB|RUR|SUR|РУБ)/.test(rc);
         held[isin]={qty:qty, price:Math.round(price*100)/100};
+        if(regOf) held[isin].reg=regOf;
         // Пересчёт отложен: курсы ещё не загружены, их тянут после разбора файла
         if(foreign) held[isin].cur=rc;
       });
@@ -787,6 +803,44 @@ function parseGrids(grids, kind, date, rules){
 /* Если у брокера в остатках нет цен (Тинькофф), берём их с Московской биржи.
    Цена получается на сегодня, а не на дату отчёта, — и дата покупки у таких
    строк ставится сегодняшняя, чтобы прибыль не считалась задним числом. */
+/* Номер госрегистрации → ISIN. Биржа умеет искать по нему, и заодно отдаёт
+   код бумаги и признак «торгуется». Когда на один номер приходится несколько
+   записей — старое обозначение и новое, — берём торгуемую: у Совкомфлота это
+   FLOT, а не SKFL, у НоваБев BELU, а не SYNG.
+
+   Что не нашлось, из портфеля уходит: держать строку, про которую мы не знаем
+   даже, что это за бумага, бессмысленно. Такие номера страница называет. */
+async function resolveRegs(raw){
+  const keys=Object.keys(raw.held).filter(k=>k.indexOf('REG:')===0);
+  if(!keys.length) return 0;
+  let n=0; const lost=[];
+  for(const k of keys){
+    const reg=raw.held[k].reg||k.slice(4);
+    let isin='';
+    try{
+      const r=await fetch('https://iss.moex.com/iss/securities.json?iss.meta=off&limit=10&q='+
+                          encodeURIComponent(reg));
+      if(r.ok){
+        const j=await r.json(), s=j.securities;
+        if(s && s.data && s.data.length){
+          const ci=nm=>s.columns.indexOf(nm);
+          const live=s.data.filter(x=>Number(x[ci('is_traded')])===1);
+          const row=(live.length?live:s.data)[0];
+          const v=String(row[ci('isin')]==null?'':row[ci('isin')]).trim().toUpperCase();
+          if(/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(v)) isin=v;
+        }
+      }
+    }catch(e){}
+    if(isin && !raw.held[isin]){
+      const h=raw.held[k]; delete h.reg;
+      raw.held[isin]=h; n++;
+    }else if(!isin){ lost.push(reg); }
+    delete raw.held[k];
+  }
+  raw.byReg=n; raw.regLost=lost;
+  return n;
+}
+
 async function fillPrices(raw){
   const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0));
   if(!need.length) return 0;
@@ -912,6 +966,11 @@ document.getElementById('fileIn').onchange=function(e){
     }
     const show=async function(raw){
       if(!raw || !Object.keys(raw.held||{}).length) return false;
+      if(Object.keys(raw.held).some(k=>k.indexOf('REG:')===0)){
+        st.textContent='Опознаю бумаги по номерам выпуска на Московской бирже…';
+        await resolveRegs(raw);
+        if(!Object.keys(raw.held).length) return false;
+      }
       const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0)).length;
       if(need) st.textContent='В этом отчёте нет цен — спрашиваю котировки у Московской биржи по '+need+' бумагам…';
       if((raw.buys||[]).some(b=>b.cur)){
@@ -1469,7 +1528,21 @@ document.getElementById('btnCalc').onclick=async function(){
       const invested=r.price*r.qty, now=dirty1*r.qty;
       out.push({...r, q, unit, curId, fx, fxNkd, dirty1, p, got, invested, now,
                 d:now+got-invested, dp:invested?((now+got)/invested-1)*100:0});
-    }catch(e){ bad.push(r.isin+' — '+e.message); }
+    }catch(e){
+      /* Бумаги нет на Московской бирже — так бывает с выпусками, которые
+         торгуются только на СПБ Бирже или вне биржи. Раньше позиция просто
+         исчезала из таблицы. Теперь остаётся и оценивается по цене входа:
+         результат по ней нулевой, потому что второй цены у нас нет, но деньги
+         видны. Строка помечена, и под таблицей сказано, почему она такая. */
+      if(/не найдена на бирже/i.test(e.message) && r.price>0){
+        const invested=r.price*r.qty;
+        out.push({...r, q:{name:r.isin, clean:r.price, nkd:0, unit:'SUR', curId:'SUR', code:r.isin},
+                  unit:'SUR', curId:'SUR', fx:1, fxNkd:1, dirty1:r.price,
+                  p:{cpn:0, amt:0, items:[]}, got:0, invested:invested, now:invested,
+                  d:0, dp:0, noQuote:true});
+        bad.push(r.isin+' — на Московской бирже не торгуется, оставлена в портфеле по цене входа');
+      }else bad.push(r.isin+' — '+e.message);
+    }
   }
   this.disabled=false;
   if(!out.length){
@@ -1492,7 +1565,7 @@ function render(out, bad, noFx, skipped){
     const nowSub=fxb
       ? 'тело '+money(x.q.clean)+' '+sym+' · курс '+money(x.fx)+' ₽<br>НКД '+money(x.q.nkd)+' '+nkdSym+
         ' · грязная '+money(x.dirty1)+' ₽'
-      : 'по '+money(x.dirty1);
+      : (x.noQuote?'цены с биржи нет':'по '+money(x.dirty1));
     body.insertAdjacentHTML('beforeend',
       '<tr><td>'+x.q.name+tag+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
@@ -1517,7 +1590,10 @@ function render(out, bad, noFx, skipped){
     '<td class="mono">100%</td></tr>';
 
   let w='';
-  if(bad.length) w+='<div class="warn">Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.</div>';
+  if(bad.length) w+='<div class="warn">'+(out.some(x=>x.noQuote)
+        ?'Биржа не знает эти бумаги: '+bad.join('; ')+'. Если ISIN написан верно — '+
+         'бумага торгуется не на Московской бирже, и текущей цены для неё взять негде.'
+        :'Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.')+'</div>';
   document.getElementById('resWarn').innerHTML=w;
 
   // Курсы, по которым пересчитаны валютные бумаги
