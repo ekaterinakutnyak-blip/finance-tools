@@ -515,6 +515,11 @@ function brokerStatus(res){
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
   if(res.withNkd)    h+='<br>В отчёте цена сделки указана без НКД, поэтому по '+res.withNkd+bum(res.withNkd)+
         ' накопленный купон досчитан по графику Московской биржи на дату расчётов.';
+  if(res.nkdFixed) h+='<br>По '+res.nkdFixed+bum(res.nkdFixed)+
+        ' НКД в отчёте не совпал с графиком купонов — взят НКД на дату отчёта с биржи '+
+        '(разница '+money(res.nkdMoved)+' ₽). Купоны в расчёте тоже биржевые, и обе половины '+
+        'теперь из одного источника: иначе брокер успевает сбросить НКД в новый период, '+
+        'а купон по графику выпадает уже после даты отчёта, и прибыль выходит завышенной.';
   if(res.converted)  h+='<br>По '+res.converted+bum(res.converted)+
         ' цена в отчёте указана в валюте выпуска — она переведена в рубли по биржевому курсу на дату отчёта.';
   if(res.buysConverted) h+='<br>Сделки по '+res.buysConverted+bum(res.buysConverted)+
@@ -777,13 +782,21 @@ function parseGrids(grids, kind, date, rules){
         const qty=numRu(row[qtyI]);
         if(!(qty>0)) return;                                    // закрытая позиция
         let price=0;
+        /* Чистую цену держим отдельно от НКД. Купоны мы берём с биржи, значит
+           и НКД должен приходить оттуда же, иначе половины расчёта расходятся:
+           брокер успевает сбросить НКД в новый период до даты отчёта, а купон
+           по графику выпадает уже после неё. Подстановка — в fixAccrued. */
+        let clean=0;
         const face=faceI>=0?numRu(row[faceI]):NaN, pct=priceI>=0?numRu(row[priceI]):NaN;
         if(face>0 && pct>0){                                    // ВТБ, Сбер: номинал и цена в процентах
-          price=face*pct/100 + (numRu(row[nkdI])||0)/qty;
+          clean=face*pct/100;
+          price=clean + (numRu(row[nkdI])||0)/qty;
         }else if(sumI>=0 && numRu(row[sumI])>0){                // БКС: готовая сумма с НКД
           price=numRu(row[sumI])/qty;
+          // НКД в отчёте указан на всю позицию — вычитаем, остаётся чистая цена
+          if(nkdI>=0) clean=(numRu(row[sumI])-(numRu(row[nkdI])||0))/qty;
         }else if(evalI>=0 && numRu(row[evalI])>0){              // ГПБ, Финам: оценка позиции в рублях
-          price=numRu(row[evalI])/qty;
+          price=numRu(row[evalI])/qty;                          // НКД отдельно не дан — не разделяем
         }
         if(!(price>0)){
           // Тинькофф в разделе остатков даёт только количество. Цены в отчёте нет
@@ -796,6 +809,7 @@ function parseGrids(grids, kind, date, rules){
         const rc=curI>=0?String(row[curI]||'').trim().toUpperCase():'';
         const foreign=rc && !/^(RUB|RUR|SUR|РУБ)/.test(rc);
         held[isin]={qty:qty, price:Math.round(price*100)/100};
+        if(clean>0) held[isin].clean=Math.round(clean*10000)/10000;
         if(regOf) held[isin].reg=regOf;
         if(issI>=0){
           const em=String(row[issI]==null?'':row[issI]).trim();
@@ -991,6 +1005,12 @@ document.getElementById('fileIn').onchange=function(e){
         await convertBuys(raw);
       }
       await convertHeld(raw);
+      // НКД подставляем после пересчёта валюты: чистая цена к этому моменту
+      // уже в рублях, и НКД с биржи складывается с ней в одних единицах
+      if(Object.keys(raw.held).some(k=>raw.held[k].clean>0)){
+        st.textContent='Беру НКД на дату отчёта по графику купонов…';
+        await fixAccrued(raw);
+      }
       await fillPrices(raw);
       if(!Object.keys(raw.held).length) return false;
       if((raw.buys||[]).some(b=>b.needNkd)){
@@ -1002,6 +1022,7 @@ document.getElementById('fileIn').onchange=function(e){
       res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
       res.withNkd=raw.withNkd||0;
       res.converted=raw.converted||0; res.noCur=raw.noCur||[];
+      res.nkdFixed=raw.nkdFixed||0; res.nkdMoved=raw.nkdMoved||0;
       res.buysConverted=raw.buysConverted||0; res.buysNoCur=raw.buysNoCur||[];
       if(!res.rows.length) return false;
       inBody.innerHTML='';
@@ -1228,6 +1249,7 @@ async function convertHeld(raw){
       continue;
     }
     h.price=Math.round(h.price*k*100)/100;
+    if(h.clean>0) h.clean=Math.round(h.clean*k*10000)/10000;
     h.fxCur=h.cur; h.fxRate=k;
     delete h.cur;
     n++;
@@ -1314,6 +1336,40 @@ async function convertBuys(raw){
   if(noCur.length) raw.buys=raw.buys.filter(b=>!b.skip);
   raw.buysConverted=n;
   raw.buysNoCur=[...new Set(noCur)];
+  return n;
+}
+
+/* НКД на дату отчёта — с биржи, а не из отчёта.
+
+   Купоны в расчёте прибыли мы берём по графику биржи. Значит и НКД в цене
+   входа должен приходить оттуда же: иначе две половины одного расчёта идут из
+   разных источников и расходятся. Так и вышло на отчёте БКС от 24.10.2026 —
+   по пяти выпускам брокер уже сбросил НКД в новый купонный период, хотя купон
+   по графику выпадал после даты отчёта. ЛУКОЙЛ ЗО-31: НКД в отчёте 8,11 ₽ за
+   бумагу вместо 1 433 ₽ по графику, а купон 26.10 пришёл полный, 1 449 ₽.
+   Прибыль по бумаге выходила +3,01% вместо примерно +0,87%.
+
+   Трогаем только те бумаги, где отчёт дал чистую цену и НКД раздельно.
+   Биржа по выпуску молчит — оставляем как было. */
+async function fixAccrued(raw){
+  const keys=Object.keys(raw.held).filter(k=>raw.held[k].clean>0);
+  if(!keys.length) return 0;
+  let n=0, moved=0;
+  for(const isin of keys){
+    const h=raw.held[isin];
+    const clean=h.clean;
+    delete h.clean;
+    let a=0;
+    try{ a=await accruedAt(isin, raw.date); }catch(e){}
+    if(!(a>0)) continue;                      // нет графика — цена остаётся из отчёта
+    const was=h.price, now=Math.round((clean+a)*100)/100;
+    if(Math.abs(now-was)<0.01) continue;      // отчёт и биржа сошлись — не трогаем
+    h.price=now;
+    moved+=Math.abs(now-was)*h.qty;
+    n++;
+  }
+  raw.nkdFixed=n;
+  raw.nkdMoved=Math.round(moved*100)/100;
   return n;
 }
 
