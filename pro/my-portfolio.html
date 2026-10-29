@@ -454,6 +454,11 @@ function spanMap(cells){
    склеиваем в одну строку по средневзвешенной цене.
    ============================================================ */
 function normH(x){ return String(x==null?'':x).replace(/\s+/g,' ').trim(); }
+/* Названия бумаг из самого отчёта. Нужны для тех, которых нет на Московской
+   бирже: имя страница обычно берёт из котировки, а взять его неоткуда. Ключ —
+   ISIN, значение — эмитент и номер выпуска, как написано в отчёте. */
+const REPNAME={};
+
 function isinOf(x){
   const m=String(x==null?'':x).toUpperCase().match(/\b[A-Z]{2}[A-Z0-9]{9}[0-9]\b/);
   return m?m[0]:'';
@@ -732,6 +737,9 @@ function parseGrids(grids, kind, date, rules){
          опознает биржа. Правило задаётся только в профиле — общего шаблона
          здесь нет нарочно, чтобы в чужих отчётах ничего не поехало. */
       const regI=hslotIdx('reg', null);
+      // Колонка эмитента — только из профиля. Нужна, чтобы у бумаги без
+      // котировки было имя, а не один ISIN в таблице.
+      const issI=hslotIdx('issuer', null);
 
       // Строка-заголовок вида бумаги: «АКЦИЯ», «ОБЛИГАЦИЯ». Так размечает
       // остатки ВТБ, и это указание брокера, а не догадка по номиналу.
@@ -789,6 +797,11 @@ function parseGrids(grids, kind, date, rules){
         const foreign=rc && !/^(RUB|RUR|SUR|РУБ)/.test(rc);
         held[isin]={qty:qty, price:Math.round(price*100)/100};
         if(regOf) held[isin].reg=regOf;
+        if(issI>=0){
+          const em=String(row[issI]==null?'':row[issI]).trim();
+          const vyp=regI>=0?String(row[regI]==null?'':row[regI]).trim():'';
+          if(em) REPNAME[isin]=em+(vyp && vyp!==isin?' · '+vyp:'');
+        }
         // Пересчёт отложен: курсы ещё не загружены, их тянут после разбора файла
         if(foreign) held[isin].cur=rc;
       });
@@ -994,6 +1007,13 @@ document.getElementById('fileIn').onchange=function(e){
       inBody.innerHTML='';
       res.rows.forEach(addRow);
       saveDraft();
+      /* Прошлый расчёт убираем. Иначе на экране остаётся таблица по другому
+         портфелю, и человек читает её как результат нового отчёта. */
+      LAST=null;
+      document.getElementById('resBody').innerHTML='';
+      document.getElementById('resFoot').innerHTML='';
+      document.getElementById('resWarn').innerHTML='';
+      document.getElementById('resultWrap').style.display='none';
       st.textContent='';
       const info=document.getElementById('importInfo');
       info.innerHTML=brokerStatus(res);
@@ -1536,7 +1556,8 @@ document.getElementById('btnCalc').onclick=async function(){
          видны. Строка помечена, и под таблицей сказано, почему она такая. */
       if(/не найдена на бирже/i.test(e.message) && r.price>0){
         const invested=r.price*r.qty;
-        out.push({...r, q:{name:r.isin, clean:r.price, nkd:0, unit:'SUR', curId:'SUR', code:r.isin},
+        out.push({...r, q:{name:REPNAME[r.isin]||r.isin, clean:r.price, nkd:0,
+                           unit:'SUR', curId:'SUR', code:r.isin},
                   unit:'SUR', curId:'SUR', fx:1, fxNkd:1, dirty1:r.price,
                   p:{cpn:0, amt:0, items:[]}, got:0, invested:invested, now:invested,
                   d:0, dp:0, noQuote:true});
