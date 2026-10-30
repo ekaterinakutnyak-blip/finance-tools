@@ -515,6 +515,18 @@ function brokerStatus(res){
         '<br>Бумаг '+res.bonds+', строк '+res.rows.length+' на '+money(sum)+' ₽.';
   const bum=n=>(n%10===1&&n%100!==11)?' бумаге':' бумагам';
   if(res.fromTrades) h+='<br>По '+res.fromTrades+bum(res.fromTrades)+' нашлись настоящие покупки — взяты их даты и цены, вместе с комиссией брокера.';
+  if(res.noVal&&res.noVal.length){
+    const n=res.noVal.length;
+    const чем=res.noVal.every(x=>x.why==='отчёт')
+          ? 'брокер показал количество, но не стоимость'
+          : (res.noVal.every(x=>x.why==='биржа')
+               ? 'Московская биржа не даёт котировку'
+               : 'цену взять негде: по части брокер не дал стоимости, по части нет котировки с биржи');
+    h+='<br>По '+n+bum(n)+' '+чем+': '+
+       res.noVal.map(x=>(x.name?x.name:x.isin)+' '+x.qty+' шт').join(', ')+
+       '. В расчёт '+(n===1?'она':'они')+' не вошл'+(n===1?'а':'и')+
+       ', но количество в отчёте есть — цену можно вписать руками строкой ниже.';
+  }
   if(res.fromExchange) h+='<br>В этом отчёте нет цен, поэтому по '+res.fromExchange+bum(res.fromExchange)+
         ' цена взята с Московской биржи на сегодня — и дата покупки у них сегодняшняя.';
   if(res.skipped&&res.skipped.length) h+='<br>Пропущено не-акций: '+res.skipped.length+' — облигации страница не считает, для них есть «Мой портфель облигаций».';
@@ -528,7 +540,7 @@ function brokerStatus(res){
    разбор общий: ищем шапки, между шапками — разделы, и каждый раздел
    это либо остатки бумаг, либо сделки. */
 function parseGrids(grids, kind, date, rules){
-  const held={}, buys=[], seen={}, skipped=[];
+  const held={}, buys=[], seen={}, skipped=[], noVal=[];
   // правила опознанного брокера; нет брокера — разбор общий, как раньше
   const RULES=rules||null;
   // «Наименование ЦБ» и «Код ЦБ» — так называется шапка таблицы сделок у Сбера.
@@ -740,6 +752,11 @@ function parseGrids(grids, kind, date, rules){
           if(rv && rv.length<=32 && /\d/.test(rv) && !isinOf(rv)){ regOf=rv; isin='REG:'+rv; }
         }
         if(!isin) return;
+        // имя бумаги из отчёта: нужно и для тех, кого не удалось оценить
+        if(nameI>=0 && !REPNAME[isin]){
+          const nm0=String(row[nameI]==null?'':row[nameI]).trim();
+          if(nm0 && !isinOf(nm0)) REPNAME[isin]=nm0;
+        }
         // отбор акций, расписок и паёв: по справочнику бумаг, по типу актива,
         // по отсутствию номинала, а если ничего этого нет — по названию бумаги.
         // Логика обратная «Моему портфелю облигаций»: там всё это отсеивалось.
@@ -777,6 +794,10 @@ function parseGrids(grids, kind, date, rules){
           // строку нулём, цену подставим котировкой уже после разбора файла.
           const hasPriceCol = (faceI>=0&&priceI>=0) || sumI>=0 || evalI>=0;
           if(!hasPriceCol) held[isin]={qty:qty, price:0};
+          // Колонка оценки в отчёте есть, а значение пустое или нулевое:
+          // так брокер показывает бумаги, которые сам не оценивает. Молча
+          // выбрасывать нельзя — называем их в итоге разбора.
+          else noVal.push({isin:isin, name:REPNAME[isin]||'', qty:qty, why:'отчёт'});
           return;
         }
         held[isin]={qty:qty, price:Math.round(price*100)/100};
@@ -792,7 +813,7 @@ function parseGrids(grids, kind, date, rules){
 
   if(!Object.keys(held).length) return null;
   const uniq={}; skipped.forEach(x=>{ if(!held[x]) uniq[x]=1; });
-  return {held:held, buys:buys, date:date, skipped:Object.keys(uniq)};
+  return {held:held, buys:buys, date:date, skipped:Object.keys(uniq), noVal:noVal};
 }
 
 /* Если у брокера в остатках нет цен (Тинькофф), берём их с Московской биржи.
@@ -838,6 +859,7 @@ async function resolveRegs(raw){
 
 async function fillPrices(raw){
   const need=Object.keys(raw.held).filter(k=>!(raw.held[k].price>0));
+  const lost=[];
   if(!need.length) return 0;
   const today=new Date().toISOString().slice(0,10);
   let ok=0;
@@ -849,10 +871,13 @@ async function fillPrices(raw){
       const fxNkd = isRub(q.curId)?1:(FX[q.curId]||0);
       const dirty = q.clean*fx + q.nkd*fxNkd;
       if(dirty>0){ raw.held[isin].price=Math.round(dirty*100)/100; raw.held[isin].date=today; ok++; }
-      else delete raw.held[isin];
-    }catch(err){ delete raw.held[isin]; }
+      else { lost.push({isin:isin, name:REPNAME[isin]||'', qty:raw.held[isin].qty, why:'биржа'}); delete raw.held[isin]; }
+    }catch(err){ lost.push({isin:isin, name:REPNAME[isin]||'', qty:raw.held[isin]?raw.held[isin].qty:0, why:'биржа'}); delete raw.held[isin]; }
   }
   raw.fromExchange=ok;
+  /* Бумаги, которым цену не дала ни отчётность, ни биржа. В расчёт их взять
+     нельзя, но назвать обязательно: иначе позиция пропадает незаметно. */
+  raw.noVal=(raw.noVal||[]).concat(lost);
   return ok;
 }
 
@@ -972,6 +997,7 @@ document.getElementById('fileIn').onchange=function(e){
       const res=buildLots(raw.held, raw.buys, raw.date);
       res.broker=raw.broker||null;
       res.skipped=raw.skipped; res.fromExchange=raw.fromExchange||0;
+      res.noVal=raw.noVal||[];
       if(!res.rows.length) return false;
       inBody.innerHTML='';
       res.rows.forEach(addRow);
