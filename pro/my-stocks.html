@@ -1154,6 +1154,7 @@ async function quote(isin){
   const cur=String(sec.CURRENCYID||'SUR').toUpperCase();
   return {
     code: code,
+    board: String(sec.BOARDID||''),                    // доска: нужна для истории торгов
     name: sec.SECNAME || sec.SHORTNAME || isin,
     unit: cur,                                         // валюта торгов: в ней цена
     curId: cur,
@@ -1161,7 +1162,8 @@ async function quote(isin){
     pxFrom: pxFrom,                                    // откуда взялась цена
     trades: num(md.NUMTRADES)||0,                      // сделок за день
     valtoday: num(md.VALTODAY)||0,                     // оборот за день
-    prevdate: String(sec.PREVDATE||''),                // дата предыдущей сессии
+    prevdate: String(sec.PREVDATE||''),                // дата предыдущей сессии РЫНКА,
+                                                       // а НЕ последней сделки по бумаге
     clean: px,                                         // цена одной бумаги в валюте торгов
     nkd: 0,
     lot: num(sec.LOTSIZE)||1,
@@ -1451,6 +1453,18 @@ document.getElementById('btnCalc').onclick=async function(){
     st.textContent='Не удалось посчитать ни одной бумаги. '+bad.concat(skipped).join('; ');
     render([], bad, noFx, skipped); return;
   }
+  /* Возраст цены — только по бумагам, по которым сегодня не торговали.
+     Сколько в портфеле неликвида, столько и обращений. */
+  const noTrade=out.filter(x=>x.q && !x.noQuote && x.q.trades===0 &&
+                              x.q.pxFrom==='предыдущий торговый день');
+  let dn=0;
+  for(const x of noTrade){
+    dn++;
+    st.textContent='Проверяю, когда по бумагам были сделки: '+dn+' из '+noTrade.length+'…';
+    x.pxDate=await lastTradeDate(x.q.code||x.isin, x.q.board, MARKET);
+    x.pxDays=daysAgo(x.pxDate);
+  }
+
   /* Дата отчёта: по ней подписана колонка результата. Курса на эту дату здесь
      не считаем — истории фьючерса на странице акций нет, а валютных бумаг в
      портфеле акций почти не бывает. */
@@ -1467,6 +1481,71 @@ document.getElementById('btnCalc').onclick=async function(){
 /* Расхождение двух оценок одной бумаги. Порог общий: цена может уйти и на
    десять процентов, и на двадцать, а вот полуторный разрыв между оценкой
    брокера и биржей означает ошибку, а не рынок. */
+/* ---- Возраст цены ----
+   Мосбиржа в карточке бумаги даты последней сделки не даёт. PREVDATE — это
+   дата предыдущей торговой СЕССИИ РЫНКА, а не дата последней сделки по этой
+   бумаге: проверено на ГПБ-Т2-04Д, где сделок нет, а PREVDATE показывает
+   вчерашний день. Поэтому спрашиваем историю торгов, и только по бумагам,
+   по которым сегодня не торговали.
+
+   Окно 90 дней — около шестидесяти сессий, влезает в один ответ без
+   пагинации. Точнее знать не нужно: если сделок не было три месяца, цена
+   не «сейчас», и подробности уже ничего не меняют.
+
+   Возвращает: дату последней сделки · '' (за 90 дней сделок не было) ·
+   null (историю получить не удалось). Третий случай тоже называется
+   человеку — молчать о незнании хуже, чем о плохой новости. */
+const STALE_DAYS=30;
+const MARKET='shares';
+const PXAGE={};
+async function lastTradeDate(code, board, market){
+  const key=market+'|'+board+'|'+code;
+  if(PXAGE[key]!==undefined) return PXAGE[key];
+  let res=null;
+  try{
+    const from=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
+    const r=await fetch('https://iss.moex.com/iss/history/engines/stock/markets/'+market+
+      '/boards/'+encodeURIComponent(board)+'/securities/'+encodeURIComponent(code)+
+      '.json?iss.meta=off&iss.only=history&from='+from);
+    if(r.ok){
+      const rows=toObj((await r.json()).history);
+      let best='';
+      // не полагаемся на порядок строк: берём самую позднюю дату со сделками
+      for(const h of rows){
+        if(num(h.NUMTRADES)>0){ const d=String(h.TRADEDATE||''); if(d>best) best=d; }
+      }
+      res=best;
+    }
+  }catch(e){}
+  PXAGE[key]=res;
+  return res;
+}
+function daysAgo(iso){
+  if(!iso) return null;
+  const t=new Date(iso+'T00:00:00').getTime();
+  return isFinite(t)?Math.round((Date.now()-t)/864e5):null;
+}
+/* Человеческая подпись к возрасту цены. */
+function ageText(x){
+  if(x.pxDate===undefined) return '';
+  if(x.pxDate===null) return 'дату последней сделки узнать не удалось';
+  if(x.pxDate==='')   return 'сделок не было больше трёх месяцев';
+  const d=x.pxDays;
+  return 'последняя сделка '+ddmmyyyy(x.pxDate)+(d!=null?', '+d+' '+dayN(d)+' назад':'');
+}
+function dayN(n){ const a=n%100,b=n%10;
+  if(a>=11&&a<=14) return 'дней';
+  if(b===1) return 'день'; if(b>=2&&b<=4) return 'дня'; return 'дней'; }
+function bumN(n){ const a=n%100,b=n%10;
+  if(a>=11&&a<=14) return 'бумаг';
+  if(b===1) return 'бумага'; if(b>=2&&b<=4) return 'бумаги'; return 'бумаг'; }
+/* Цена старая? Три месяца без сделок и неудачная проверка — тоже «да»:
+   в обоих случаях у нас нет основания называть эту цену сегодняшней. */
+function isStale(x){
+  if(x.pxDate===undefined) return false;
+  if(x.pxDate===null || x.pxDate==='') return true;
+  return (x.pxDays!=null && x.pxDays>STALE_DAYS);
+}
 const GAP_LIMIT=0.25;
 function gapTimes(g){
   const k=1+g;
@@ -1475,8 +1554,11 @@ function gapTimes(g){
 function render(out, bad, noFx, skipped, meta){
   meta=meta||{};
   const totInv=out.reduce((s,x)=>s+x.invested,0), totNow=out.reduce((s,x)=>s+x.now,0);
-  // бумаги, по которым биржа и брокер расходятся сильнее порога
-  const flag=out.filter(x=>Math.abs(x.gap||0)>GAP_LIMIT);
+  /* Бумага под вопросом по любой из двух причин: цена расходится с оценкой
+     брокера сильнее порога ИЛИ цене больше месяца. Вторая причина раньше была
+     невидима: давняя цена могла случайно оказаться близкой к оценке брокера,
+     и страница молчала, хотя считала по старому числу. */
+  const flag=out.filter(x=>Math.abs(x.gap||0)>GAP_LIMIT || isStale(x));
   const body=document.getElementById('resBody'); body.innerHTML='';
   out.forEach(x=>{
     const cls=x.d>=0?'pos':'neg';
@@ -1486,8 +1568,10 @@ function render(out, bad, noFx, skipped, meta){
       ? 'по '+money(x.q.clean)+' '+sym+' · курс '+money(x.fx)+' ₽<br>в рублях '+money(x.dirty1)
       : (x.noQuote?'цены с биржи нет':'по '+money(x.dirty1));
     // пометка прямо в строке: число рядом с ценой, а не только под таблицей
-    const warnSub=(Math.abs(x.gap||0)>GAP_LIMIT)
-      ? '<br><span class="neg">биржа '+gapTimes(x.gap)+' оценки брокера</span>' : '';
+    const wm=[];
+    if(Math.abs(x.gap||0)>GAP_LIMIT) wm.push('биржа '+gapTimes(x.gap)+' оценки брокера');
+    if(isStale(x)) wm.push(x.pxDate?('цена не сегодняшняя: '+ageText(x)):ageText(x));
+    const warnSub=wm.length?'<br><span class="neg">'+wm.join('<br>')+'</span>':'';
     body.insertAdjacentHTML('beforeend',
       '<tr><td>'+x.q.name+tag+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
@@ -1548,27 +1632,35 @@ function render(out, bad, noFx, skipped, meta){
           fNow=flag.reduce((s,x)=>s+x.now,0),
           fGot=flag.reduce((s,x)=>s+x.p.cpn+x.p.amt,0);
     const rInv=totInv-fInv, rNow=totNow-fNow, rGot=totGot-fGot;
-    chk+='<div class="warn"><b>Проверка: '+flag.length+
-      (flag.length===1?' бумага оценена':' бумаги оценены')+
-      ' биржей совсем не так, как брокером.</b><br>'+
+    chk+='<div class="warn"><b>Цена под вопросом: '+flag.length+' '+
+      bumN(flag.length)+' из '+out.length+'.</b><br>'+
       flag.map(function(x){
         // обе цены в рублях: иначе рядом стоят доллары и рубли как сравнимые числа
         const px=money(x.dirty1)+' ₽'+(!isRub(x.unit)
           ? ' (тело '+money(x.q.clean)+' '+curSym(x.unit)+' по курсу '+money(x.fx)+' ₽)' : '');
         const d=[];
-        if(x.q.pxFrom)   d.push('Источник цены — '+x.q.pxFrom);
+        if(x.q.pxFrom)       d.push('Источник цены — '+x.q.pxFrom);
         if(x.q.trades!=null) d.push('сделок за день '+x.q.trades);
-        if(x.q.prevdate) d.push('предыдущая сессия '+ddmmyyyy(x.q.prevdate));
+        const age=ageText(x);
+        if(age) d.push(age);
+        const cmp=Math.abs(x.gap||0)>GAP_LIMIT
+          ? ' — '+gapTimes(x.gap) : '';
         return '• '+x.q.name+' ('+x.isin+'): в отчёте '+money(x.price)+' ₽ за бумагу, '+
-               'на бирже '+px+' — '+gapTimes(x.gap)+(d.length?'. '+d.join(', '):'')+'.';
+               'на бирже '+px+cmp+(d.length?'. '+d.join(', '):'')+'.';
       }).join('<br>')+
       '<br>Доля этих бумаг — '+(totNow?(fNow/totNow*100).toFixed(1).replace('.',','):'0')+
       '% портфеля. Без них результат был бы '+rubStr(rNow+rGot-rInv)+' ('+
       pctStr(rInv?((rNow+rGot)/rInv-1)*100:0)+').'+
-      '<br>Само расхождение не значит, что биржа врёт: цена могла и правда уйти. '+
-      'Но если сделок за день нет, а цена взята за предыдущий торговый день, '+
-      'то это старая цена, и считать по ней прибыль нельзя — особенно по бумаге '+
-      'с большой долей. Впишите цену руками строкой ниже и пересчитайте.</div>';
+      (flag.some(isStale)
+        ? '<br>Цена, по которой последняя сделка была месяц назад и раньше, — это не '+
+          '«сейчас». Биржа тянет последнюю известную цену вперёд, и в карточке бумаги '+
+          'она выглядит как сегодняшняя. Считать по ней прибыль нельзя, особенно по '+
+          'бумаге с большой долей.' : '')+
+      (flag.some(x=>Math.abs(x.gap||0)>GAP_LIMIT && !isStale(x))
+        ? '<br>Расхождение само по себе не значит, что биржа врёт: цена могла и правда '+
+          'уйти с даты отчёта. Но разрыв в полтора раза и больше — это обычно не рынок, '+
+          'а другой номинал, другая доска или другой курс.' : '')+
+      '<br>Цену можно вписать руками строкой ниже и пересчитать.</div>';
   }
 
   /* ---- Что на самом деле меряет колонка результата ---- */
