@@ -639,7 +639,7 @@ function parseGrids(grids, kind, date, rules){
               rateI=idx(/Курс к рублю/i),
               // НКД начисляется на дату расчётов, а не на дату заключения сделки
               setI =tslot('settle', /Дата расч/i),
-              curTI=tslot('cur',    /^Валюта/i);
+              curTI=((RULES&&RULES.trades&&RULES.trades.cur==='нет')?-1:tslot('cur', /^Валюта/i));
         // сумма: сначала рублёвая, потом с НКД, потом какая есть
         let sumI=-1;
         { const r=pre('trades','sum'); if(r) sumI=idx(r); }
@@ -739,7 +739,10 @@ function parseGrids(grids, kind, date, rules){
             nameI =hslotIdx('name', /Ценная бумага|Наименование|Инструмент/i),
             // «Валюта рыночной цены»: если это не рубль, то номинал, цена,
             // стоимость и НКД в этой строке тоже не в рублях
-            curI  =hslotIdx('cur', /^Валюта/i);
+            // cur:'нет' в профиле — у брокера рублёвая сумма уже готова, и
+            // колонка «Валюта» описывает валюту выпуска, а не валюту суммы.
+            // Отсутствие правила по-прежнему означает «ищи общим шаблоном».
+            curI  =((RULES&&RULES.held&&RULES.held.cur==='нет')?-1:hslotIdx('cur', /^Валюта/i));
       // оценка позиции в рублях — у ГПБ «Оценка в RUR», у Финама «Оценка позиции (руб)»
       let evalI=-1;
       { const r=pre('held','value'); if(r) evalI=pick(r,null); }
@@ -793,6 +796,11 @@ function parseGrids(grids, kind, date, rules){
           const nm=nameI>=0?String(row[nameI]||''):'';
           // в JS \b не работает с русскими буквами, границу слова пишем руками
           const BOND=/(^|[^а-яёА-ЯЁ])обл([^а-яёА-ЯЁ]|$)|облигац|ОФЗ|бонд/i;
+          /* Явная пометка акции перебивает всё: «АОИ» и «АПИ» — акция
+             обыкновенная и привилегированная именная, так называет бумаги ГПБ.
+             Симметрично тому же шаблону на странице акций. */
+          const EQNAME=/(^|[^А-ЯЁа-яёA-Za-z])(АОИ|АПИ)([^А-ЯЁа-яёA-Za-z]|$)|привилегир/i;
+          if(EQNAME.test(nm)){ skipped.push(isin); return; }
           if(!BOND.test(nm) && !/^\s*\d{4,6}\s*$/.test(nm)){ skipped.push(isin); return; }
         }
         const qty=numRu(row[qtyI]);
