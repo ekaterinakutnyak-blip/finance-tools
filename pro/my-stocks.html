@@ -127,10 +127,10 @@ tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 <div class="tblwrap">
 <table id="resTable">
 <thead><tr>
-  <th>Бумага</th><th>Кол-во</th><th>Куплено</th>
-  <th>Вложено<span class="sub2">цена покупки</span></th>
+  <th>Бумага</th><th>Кол-во</th><th id="thBought">Куплено</th>
+  <th id="thInvested">Вложено<span class="sub2">цена покупки</span></th>
   <th>Сейчас<span class="sub2">цена сейчас</span></th>
-  <th>Результат<span class="sub2">в % к вложенному</span></th>
+  <th id="thResult">Результат<span class="sub2">в % к вложенному</span></th>
   <th>Доля</th>
 </tr></thead>
 <tbody id="resBody"></tbody>
@@ -266,6 +266,9 @@ function addRow(v){
     '<td><input class="price" type="number" min="0" step="0.01" value="'+(v.price!=null?v.price:'')+'"></td>'+
     '<td><button class="del" title="Убрать">×</button></td>';
   tr.querySelector('.del').onclick=()=>tr.remove();
+  /* Откуда взялась цена входа. Храним на самой строке, а не в отдельной
+     таблице: так признак переживает и сохранение портфеля, и перезагрузку. */
+  if(v.src) tr.dataset.src=v.src;
   inBody.appendChild(tr);
 }
 function addFlow(v){
@@ -282,7 +285,8 @@ function readRows(){
     isin:(tr.querySelector('.isin').value||'').trim().toUpperCase(),
     qty:parseFloat(tr.querySelector('.qty').value),
     date:tr.querySelector('.date').value,
-    price:parseFloat(tr.querySelector('.price').value)
+    price:parseFloat(tr.querySelector('.price').value),
+    src:tr.dataset.src||''
   })).filter(r=>r.isin && r.qty>0 && r.price>0);
 }
 function readFlows(){
@@ -307,7 +311,8 @@ function rawRows(){
     isin:tr.querySelector('.isin').value,
     qty:tr.querySelector('.qty').value,
     date:tr.querySelector('.date').value,
-    price:tr.querySelector('.price').value
+    price:tr.querySelector('.price').value,
+    src:tr.dataset.src||''
   }));
 }
 function rawFlows(){
@@ -483,10 +488,15 @@ function buildLots(held, buys, date){
     for(const b of mine){
       if(need<=0) break;
       const take=Math.min(need, b.qty);
-      lots.push({isin:isin, qty:take, date:b.date, price:b.unit});
+      // настоящая покупка из отчёта: цена входа — то, что человек заплатил
+      lots.push({isin:isin, qty:take, date:b.date, price:b.unit, src:'сделка'});
       need-=take; got+=take;
     }
-    if(need>0){ lots.push({isin:isin, qty:need, date:held[isin].date||date, price:held[isin].price}); rebased++; }
+    /* Покупки в отчёте нет: за цену входа идёт оценка брокера на дату
+       отчёта. Это не покупка, и дальше по строке нельзя говорить
+       «прибыль» — только «изменение с этой даты». */
+    if(need>0){ lots.push({isin:isin, qty:need, date:held[isin].date||date,
+                           price:held[isin].price, src:'отчёт'}); rebased++; }
     if(got>0) fromTrades++;
   });
 
@@ -494,12 +504,14 @@ function buildLots(held, buys, date){
   const merged={};
   lots.forEach(l=>{
     const k=l.isin+'|'+l.date;
-    if(!merged[k]) merged[k]={isin:l.isin, date:l.date, qty:0, cost:0};
+    if(!merged[k]) merged[k]={isin:l.isin, date:l.date, qty:0, cost:0, src:l.src};
+    else if(merged[k].src!==l.src) merged[k].src='смешанная';
     merged[k].qty+=l.qty; merged[k].cost+=l.qty*l.price;
   });
   const rows=Object.keys(merged).map(k=>{
     const m=merged[k];
-    return {isin:m.isin, qty:m.qty, date:m.date, price:Math.round(m.cost/m.qty*100)/100};
+    return {isin:m.isin, qty:m.qty, date:m.date, price:Math.round(m.cost/m.qty*100)/100,
+            src:m.src};
   }).sort((a,b)=>a.isin.localeCompare(b.isin)||a.date.localeCompare(b.date));
 
   return {rows:rows, date:date, fromTrades:fromTrades, rebased:rebased, bonds:Object.keys(held).length};
@@ -1127,8 +1139,17 @@ async function quote(isin){
   if(!sec) sec=secs[0];
   const md=mds.find(m=>m.BOARDID===sec.BOARDID)||{};
   // У акции цена сразу за бумагу: процентов от номинала на рынке акций нет.
-  const px = num(md.LAST) || num(md.LCLOSEPRICE) || num(md.MARKETPRICE) ||
-             num(sec.PREVPRICE) || num(sec.PREVLEGALCLOSEPRICE);
+  /* Откуда взялась цена — такая же часть ответа, как сама цена.
+     LAST — цена последней сделки, LCLOSEPRICE и MARKETPRICE — расчётные цены
+     сессии, PREVPRICE и PREVLEGALCLOSEPRICE — цены предыдущего торгового дня.
+     Если дошло до них, сегодня по бумаге не торговали вовсе. */
+  const PXSRC=[['сделка', num(md.LAST)],
+               ['расчётная цена сессии', num(md.LCLOSEPRICE)],
+               ['расчётная цена сессии', num(md.MARKETPRICE)],
+               ['предыдущий торговый день', num(sec.PREVPRICE)],
+               ['предыдущий торговый день', num(sec.PREVLEGALCLOSEPRICE)]];
+  let px=0, pxFrom='';
+  for(const ps of PXSRC){ if(ps[1]>0){ px=ps[1]; pxFrom=ps[0]; break; } }
   if(!px) throw new Error('нет цены');
   const cur=String(sec.CURRENCYID||'SUR').toUpperCase();
   return {
@@ -1137,6 +1158,10 @@ async function quote(isin){
     unit: cur,                                         // валюта торгов: в ней цена
     curId: cur,
     px: px,
+    pxFrom: pxFrom,                                    // откуда взялась цена
+    trades: num(md.NUMTRADES)||0,                      // сделок за день
+    valtoday: num(md.VALTODAY)||0,                     // оборот за день
+    prevdate: String(sec.PREVDATE||''),                // дата предыдущей сессии
     clean: px,                                         // цена одной бумаги в валюте торгов
     nkd: 0,
     lot: num(sec.LOTSIZE)||1,
@@ -1396,10 +1421,13 @@ document.getElementById('btnCalc').onclick=async function(){
       // Вложено — рубли, которые реально списали: курс тут не нужен.
       const dirty1 = q.clean*fx;                        // цена одной бумаги в рублях
       const invested=r.price*r.qty, now=dirty1*r.qty;
+      /* Сверка двух независимых оценок одной бумаги — то же правило, что в
+         портфеле облигаций. Цена входа из отчёта против цены с биржи. */
+      const gap=(r.src==='отчёт' && r.price>0 && dirty1>0) ? dirty1/r.price-1 : 0;
       // Выплат не считаем: дивидендов биржа бесплатно не отдаёт. Поля оставлены
       // нулями, чтобы расчёт доходности и вывод не расходились с портфелем облигаций.
       const p={cpn:0, amt:0, items:[]}, got=0;
-      out.push({...r, q, unit, curId, fx, fxNkd:fx, dirty1, p, got, invested, now,
+      out.push({...r, q, unit, curId, fx, fxNkd:fx, dirty1, p, got, invested, now, gap,
                 d:now-invested, dp:invested?(now/invested-1)*100:0});
     }catch(e){
       /* Бумаги нет на Московской бирже — так бывает с выпусками, которые
@@ -1423,13 +1451,32 @@ document.getElementById('btnCalc').onclick=async function(){
     st.textContent='Не удалось посчитать ни одной бумаги. '+bad.concat(skipped).join('; ');
     render([], bad, noFx, skipped); return;
   }
+  /* Дата отчёта: по ней подписана колонка результата. Курса на эту дату здесь
+     не считаем — истории фьючерса на странице акций нет, а валютных бумаг в
+     портфеле акций почти не бывает. */
+  const repDate=(function(){
+    const c={}; out.forEach(x=>{ if(x.src==='отчёт'&&x.date) c[x.date]=(c[x.date]||0)+1; });
+    let best='', n=0; Object.keys(c).forEach(k=>{ if(c[k]>n){ n=c[k]; best=k; } });
+    return best;
+  })();
   st.textContent='';
   LAST=out;
-  render(out, bad, noFx, skipped);
+  render(out, bad, noFx, skipped, {repDate:repDate});
 };
 
-function render(out, bad, noFx, skipped){
+/* Расхождение двух оценок одной бумаги. Порог общий: цена может уйти и на
+   десять процентов, и на двадцать, а вот полуторный разрыв между оценкой
+   брокера и биржей означает ошибку, а не рынок. */
+const GAP_LIMIT=0.25;
+function gapTimes(g){
+  const k=1+g;
+  return 'в '+(k>=1?k:1/k).toFixed(2).replace('.',',')+' раза '+(k>=1?'дороже':'дешевле');
+}
+function render(out, bad, noFx, skipped, meta){
+  meta=meta||{};
   const totInv=out.reduce((s,x)=>s+x.invested,0), totNow=out.reduce((s,x)=>s+x.now,0);
+  // бумаги, по которым биржа и брокер расходятся сильнее порога
+  const flag=out.filter(x=>Math.abs(x.gap||0)>GAP_LIMIT);
   const body=document.getElementById('resBody'); body.innerHTML='';
   out.forEach(x=>{
     const cls=x.d>=0?'pos':'neg';
@@ -1438,12 +1485,15 @@ function render(out, bad, noFx, skipped){
     const nowSub=fxb
       ? 'по '+money(x.q.clean)+' '+sym+' · курс '+money(x.fx)+' ₽<br>в рублях '+money(x.dirty1)
       : (x.noQuote?'цены с биржи нет':'по '+money(x.dirty1));
+    // пометка прямо в строке: число рядом с ценой, а не только под таблицей
+    const warnSub=(Math.abs(x.gap||0)>GAP_LIMIT)
+      ? '<br><span class="neg">биржа '+gapTimes(x.gap)+' оценки брокера</span>' : '';
     body.insertAdjacentHTML('beforeend',
       '<tr><td>'+x.q.name+tag+'<br><span class="mono" style="font-size:.74rem;color:var(--text3)">'+x.isin+'</span></td>'+
       '<td class="mono">'+x.qty+'</td>'+
       '<td class="mono">'+(x.date?x.date.split('-').reverse().join('.'):'—')+'</td>'+
       '<td class="mono">'+money(x.invested)+'<span class="sub2">по '+money(x.price)+'</span></td>'+
-      '<td class="mono">'+money(x.now)+'<span class="sub2">'+nowSub+'</span></td>'+
+      '<td class="mono">'+money(x.now)+'<span class="sub2">'+nowSub+warnSub+'</span></td>'+
       '<td class="mono '+cls+'">'+rubStr(x.d)+'<span class="sub2 '+cls+'">'+pctStr(x.dp)+'</span></td>'+
       '<td class="mono">'+(totNow?(x.now/totNow*100).toFixed(1).replace('.',','):'0')+'%</td></tr>');
   });
@@ -1462,7 +1512,84 @@ function render(out, bad, noFx, skipped){
         ?'Биржа не знает эти бумаги: '+bad.join('; ')+'. Если ISIN написан верно — '+
          'бумага торгуется не на Московской бирже, и текущей цены для неё взять негде.'
         :'Не удалось загрузить: '+bad.join('; ')+'. Проверьте ISIN.')+'</div>';
-  document.getElementById('resWarn').innerHTML=w;
+
+  /* ---- Заголовки колонок говорят то, что колонки считают ----
+     Где цены покупки в отчёте нет, «вложено» — оценка брокера на дату отчёта,
+     а «результат» — изменение с этой даты. Называть это прибылью нельзя:
+     человек принимает решения по этому числу. */
+  const nRep=out.filter(x=>x.src==='отчёт').length;
+  const thB=document.getElementById('thBought'),
+        thI=document.getElementById('thInvested'),
+        thR=document.getElementById('thResult');
+  if(thB&&thI&&thR){
+    if(nRep>0 && nRep===out.length){
+      thB.innerHTML='На дату<span class="sub2">отчёта</span>';
+      thI.innerHTML='Оценка брокера<span class="sub2">за бумагу</span>';
+      thR.innerHTML='Изменение<span class="sub2">с даты отчёта, не прибыль</span>';
+    }else if(nRep>0){
+      thB.innerHTML='Куплено';
+      thI.innerHTML='Вложено<span class="sub2">покупка или оценка брокера</span>';
+      thR.innerHTML='Результат<span class="sub2">по части бумаг — изменение с даты отчёта</span>';
+    }else{
+      thB.innerHTML='Куплено';
+      thI.innerHTML='Вложено<span class="sub2">цена покупки</span>';
+      thR.innerHTML='Результат<span class="sub2">в % к вложенному</span>';
+    }
+  }
+
+  /* ---- Сверка двух оценок ----
+     Общий детектор: тем же правилом ловится давняя цена, не тот номинал,
+     не та доска, не тот курс и любая будущая ошибка разбора отчёта.
+     Страница не подменяет биржевую цену сама — она называет расхождение
+     и показывает итог без спорных бумаг. Решает человек. */
+  let chk='';
+  if(flag.length){
+    const fInv=flag.reduce((s,x)=>s+x.invested,0),
+          fNow=flag.reduce((s,x)=>s+x.now,0),
+          fGot=flag.reduce((s,x)=>s+x.p.cpn+x.p.amt,0);
+    const rInv=totInv-fInv, rNow=totNow-fNow, rGot=totGot-fGot;
+    chk+='<div class="warn"><b>Проверка: '+flag.length+
+      (flag.length===1?' бумага оценена':' бумаги оценены')+
+      ' биржей совсем не так, как брокером.</b><br>'+
+      flag.map(function(x){
+        // обе цены в рублях: иначе рядом стоят доллары и рубли как сравнимые числа
+        const px=money(x.dirty1)+' ₽'+(!isRub(x.unit)
+          ? ' (тело '+money(x.q.clean)+' '+curSym(x.unit)+' по курсу '+money(x.fx)+' ₽)' : '');
+        const d=[];
+        if(x.q.pxFrom)   d.push('Источник цены — '+x.q.pxFrom);
+        if(x.q.trades!=null) d.push('сделок за день '+x.q.trades);
+        if(x.q.prevdate) d.push('предыдущая сессия '+ddmmyyyy(x.q.prevdate));
+        return '• '+x.q.name+' ('+x.isin+'): в отчёте '+money(x.price)+' ₽ за бумагу, '+
+               'на бирже '+px+' — '+gapTimes(x.gap)+(d.length?'. '+d.join(', '):'')+'.';
+      }).join('<br>')+
+      '<br>Доля этих бумаг — '+(totNow?(fNow/totNow*100).toFixed(1).replace('.',','):'0')+
+      '% портфеля. Без них результат был бы '+rubStr(rNow+rGot-rInv)+' ('+
+      pctStr(rInv?((rNow+rGot)/rInv-1)*100:0)+').'+
+      '<br>Само расхождение не значит, что биржа врёт: цена могла и правда уйти. '+
+      'Но если сделок за день нет, а цена взята за предыдущий торговый день, '+
+      'то это старая цена, и считать по ней прибыль нельзя — особенно по бумаге '+
+      'с большой долей. Впишите цену руками строкой ниже и пересчитайте.</div>';
+  }
+
+  /* ---- Что на самом деле меряет колонка результата ---- */
+  if(nRep>0){
+    const dt=meta.repDate?ddmmyyyy(meta.repDate):'дату отчёта';
+    chk+='<div class="note"><b>Цен покупки в отчёте нет'+
+      (nRep<out.length?(' по '+nRep+' строкам из '+out.length):'')+'</b>: '+
+      'за цену входа взята оценка брокера на '+dt+'. Значит колонка результата '+
+      'меряет изменение с этой даты, а не прибыль с покупки — в неё входит и '+
+      'движение курса, и накопленный за это время купон.';
+    const ft=meta.fxThen||{}, ks=Object.keys(ft);
+    if(ks.length){
+      chk+='<br>Курс на '+dt+' против текущего: '+
+        ks.map(u=>u+' '+money(ft[u])+' → '+money(FX[u])+' ₽ ('+
+                  pctStr((FX[u]/ft[u]-1)*100)+')').join(' · ')+
+        '. По валютным бумагам столько дал один курс, без всякого движения цены.';
+    }
+    chk+='</div>';
+  }
+
+  document.getElementById('resWarn').innerHTML=w+chk;
 
   // Курсы, по которым пересчитаны валютные бумаги
   const used=[...new Set(out.filter(x=>!isRub(x.unit)).map(x=>x.unit))];
