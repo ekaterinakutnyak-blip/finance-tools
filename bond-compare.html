@@ -374,19 +374,22 @@ function inflationForTerm(years){
   return wm.reduce((a,v)=>a+v,0)/wm.length;
 }
 // Приведённая к сегодня стоимость ВСЕХ выплат бумаги (купоны + номинал), дисконтированных на инфляцию.
-function realPresentValue(b,inflPct){
+function realPresentValue(b,inflPct,horizonDate){
   const today=new Date();today.setHours(0,0,0,0);
   const infl=inflPct/100;
-  const matDate=new Date(b.matDate);
+  // Горизонт = дата оферты, если она есть, иначе погашение.
+  // Дисконтировать номинал к погашению, когда деньги возвращаются на оферте, нельзя:
+  // у бумаги с офертой это добавляет лишние годы и занижает реальную стоимость.
+  const horizon=horizonDate?new Date(horizonDate):new Date(b.matDate);
   let nominalSum=0, realSum=0;
   b.coupons.forEach(c=>{
     const d=new Date(c.date);
-    if(d<=today||isNaN(c.value)||c.value<=0)return;
+    if(d<=today||d>horizon||isNaN(c.value)||c.value<=0)return;
     const yrs=(d-today)/(365.25*86400000);
     nominalSum+=c.value;
     realSum+=c.value/Math.pow(1+infl,yrs);
   });
-  const yrsM=(matDate-today)/(365.25*86400000);
+  const yrsM=(horizon-today)/(365.25*86400000);
   if(yrsM>0){
     nominalSum+=b.faceValue;
     realSum+=b.faceValue/Math.pow(1+infl,yrsM);
@@ -511,7 +514,7 @@ async function run(){
         const userInfl=parseFloat((document.getElementById('inflRate').value||'').replace(',','.'));
         const autoInfl=inflationForTerm(r.daysToHorizon/365);
         const inflUsed=(!isNaN(userInfl)&&userInfl>0)?userInfl:autoInfl;
-        const pv=realPresentValue(b,inflUsed);
+        const pv=realPresentValue(b,inflUsed,r.horizonDate);
         r.inflUsed=inflUsed;
         r.inflAuto=autoInfl;
         r.realPV1=pv.realSum;
