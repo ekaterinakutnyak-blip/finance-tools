@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru"><head>
+<script async src="https://mc.yandex.ru/metrika/tag.js?id=109013741"></script><script type="text/javascript">
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
+ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Проверяем официальную инфляцию: семь обычных товаров за пять лет</title>
+<meta name="description" content="Хлеб +69%, молоко +64%, яйца +10%, гречка −20% за пять лет. Пересчитываем прирост в проценты годовых и сравниваем с официальной инфляцией. Плюс доллар: вырос втрое, но за 25 лет и отстав от цен в 2,7 раза.">
+<meta name="keywords" content="официальная инфляция, реальная инфляция, инфляция Росстат проверка, рост цен за 5 лет, личная инфляция, курс доллара и инфляция, покупательная способность рубля, проценты годовых">
+<link rel="canonical" href="https://investtools.pro/novosti/proverka-oficialnoy-inflyacii.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://investtools.pro/novosti/proverka-oficialnoy-inflyacii.html">
+<meta property="og:title" content="«Я не верю в официальную инфляцию»">
+<meta property="og:description" content="Семь обычных товаров, пять лет и одна арифметическая операция, которую все забывают сделать.">
+<meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B;--grid:#E6E5DF;--axis:#B9B8B1}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7}
+.container{max-width:800px;margin:0 auto;padding:1.6rem 1.5rem 3rem}
+.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
+.art-h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.4rem;line-height:1.25}
+.art-meta{font-size:0.8rem;color:var(--text3);margin-bottom:1.2rem}
+.art p{font-size:1.0rem;color:var(--text);margin-bottom:1rem}
+.art h2{font-size:1.25rem;font-weight:700;margin:2.4rem 0 0.7rem;letter-spacing:-0.01em;padding-top:1.4rem;border-top:2px solid var(--border)}
+.art h3{font-size:1.0rem;font-weight:700;margin:1.3rem 0 0.5rem;color:var(--accent)}
+.lead{font-size:1.0rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.4rem}
+.tblwrap{overflow-x:auto;margin:0.4rem 0 0.8rem}
+table{width:100%;border-collapse:collapse;font-size:0.88rem}
+.kv td{padding:0.5rem 0.7rem;border-bottom:1px solid var(--border);vertical-align:top}
+.kv td.k{color:var(--text2);width:38%;font-weight:500}
+.mt th,.mt td{padding:0.5rem 0.6rem;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.mt th:first-child,.mt td.k{text-align:left;white-space:normal}
+.mt thead th{background:var(--accent-light);color:var(--accent);font-weight:600}
+.tag{font-size:0.72rem;font-weight:500;color:var(--text3);font-family:var(--mono)}
+.mt thead th .tag{color:var(--text2);font-weight:400}
+.mt td.win{font-weight:700;color:var(--accent)}
+.mt td.win2{font-weight:700;color:var(--accent2)}
+.notes{margin:0.3rem 0 0.3rem 1.1rem} .notes li{font-size:0.96rem;margin-bottom:0.35rem}
+.good,.warn{border-radius:var(--radius);padding:0.8rem 1rem;margin:0.8rem 0}
+.good{background:rgba(46,158,91,0.07);border:1px solid rgba(46,158,91,0.25)}
+.warn{background:rgba(230,161,0,0.08);border:1px solid rgba(230,161,0,0.3)}
+.good b,.warn b{font-size:0.9rem}
+.thresh{background:var(--surface2);border-left:4px solid var(--text3);border-radius:var(--radius);padding:0.9rem 1.1rem;margin:1rem 0;font-size:0.96rem;line-height:1.55}
+.key{background:var(--accent-light);border-left:4px solid var(--accent);border-radius:var(--radius);padding:0.9rem 1.1rem;margin:1.1rem 0;font-size:1.0rem;line-height:1.6}
+.legend{font-size:0.8rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:0.8rem 1rem;margin:2rem 0 0;line-height:1.7}
+.cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:1.4rem 0 0;font-size:0.96rem;color:var(--text2)}
+.cta a{color:var(--accent);font-weight:600;text-decoration:none}
+.disclaimer{font-size:0.8rem;color:var(--text3);font-style:italic;margin:1.4rem 0 0;padding-top:1rem;border-top:1px solid var(--border)}
+.footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
+.footer a{color:var(--text2)}
+.plashki{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 1.5rem}
+.plashki a{display:inline-flex;align-items:center;font-size:0.86rem;font-weight:600;text-decoration:none;padding:0.5rem 0.9rem;border-radius:8px;line-height:1.2}
+.plashki .pl-free{background:#F1F6F2;color:#2D5A3D;border:1px solid #2D5A3D}
+.plashki .pl-pro{background:#2D5A3D;color:#fff;border:1px solid #2D5A3D}
+.razbor{background:var(--accent2-light);border-left:4px solid var(--accent2);border-radius:var(--radius);padding:0.85rem 1.1rem;margin:1.1rem 0;font-size:0.95rem;color:var(--text2);line-height:1.6}
+.razbor a{color:var(--accent2);font-weight:600;text-decoration:none}
+.nd{font-size:0.9rem;color:var(--text3);font-style:italic;margin:0.3rem 0 1rem;line-height:1.6}
+.mt td.up{color:var(--red);font-weight:700}
+.mt td.dn{color:var(--green);font-weight:700}
+text.bsm{font:10.5px var(--sans);font-weight:700}
+.chart{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem 1.2rem 0.9rem;margin:1.2rem 0}
+.chart .sect{font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin:0 0 0.8rem}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .cap{font-size:0.82rem;color:var(--text2);line-height:1.6;margin:0.7rem 0 0}
+.chart .lgd{display:flex;flex-wrap:wrap;gap:14px;margin:0.7rem 0 0;font-size:0.82rem;color:var(--text2)}
+.chart .lgd span.s{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.chart .lgd span.sq{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+text.axlbl{font:11px var(--sans);fill:var(--text3)}
+text.annot{font:12px var(--sans);font-weight:600}
+text.bval{font:12.5px var(--sans);font-weight:700}
+text.bpct{font:13px var(--sans);font-weight:700}
+text.glab{font:12px var(--sans);font-weight:600;fill:var(--text2)}
+@media(max-width:600px){text.bsm{font-size:12px}.art-h1{font-size:1.35rem}.chart{padding:0.9rem 0.7rem 0.7rem}text.axlbl{font-size:13px}text.annot{font-size:14px}text.bval{font-size:14px}text.bpct{font-size:15px}text.glab{font-size:14px}}
+</style>
+</head><body>
+<div class="container art">
+<a href="../novosti.html" class="back-link">&larr; Все обзоры и подборки</a>
+<h1 class="art-h1">&laquo;Я не верю в официальную инфляцию&raquo;</h1>
+<div class="art-meta">13 ноября 2026 &middot; проверяем на семи обычных товарах &middot; декабрь 2021 &mdash; ноябрь 2026</div>
+<div class="plashki">
+<a class="pl-free" href="../savings.html">Калькулятор накоплений</a>
+<a class="pl-free" href="../bond-vs-deposit.html">Облигация или вклад</a>
+<a class="pl-free" href="../bond-compare.html">Сравнить облигации</a>
+<a class="pl-pro" href="../index.html#pricing">Что даёт PRO &rarr;</a>
+</div>
+
+<p class="lead">Так мне написали под одним из постов. Знаете, я тоже не особенно склонна верить на слово. Даже Росстату. Поэтому предлагаю не спорить, а посчитать.</p>
+
+<p>Я взяла несколько самых обычных товаров. Не всю потребительскую корзину Росстата, а то, с чем мы регулярно сталкиваемся: хлеб, молоко, яйца, масло, курицу. Добавила электричество и ОСАГО.</p>
+
+<p>Посмотрела, насколько изменились цены с декабря 2021 года.</p>
+
+<p>А потом проделала одну операцию, которую в подобных спорах почему-то регулярно забывают.</p>
+
+<h2>Сначала просто прирост</h2>
+
+<p>Декабрь 2021 года &mdash; последний относительно спокойный месяц перед тем, как всё поехало. И ноябрь 2026-го.</p>
+
+<div class="tblwrap"><table class="mt"><thead><tr><th>Товар</th><th>2021</th><th>Сейчас</th><th>Прирост</th></tr></thead><tbody>
+<tr><td class="k">Хлеб пшеничный, кг</td><td>84 ₽</td><td>142 ₽</td><td class="up">+69%</td></tr>
+<tr><td class="k">Молоко, л</td><td>65 ₽</td><td>106 ₽</td><td class="up">+64%</td></tr>
+<tr><td class="k">Масло сливочное, кг</td><td>725 ₽</td><td>1 104 ₽</td><td class="up">+52%</td></tr>
+<tr><td class="k">Курица, кг</td><td>184 ₽</td><td>276 ₽</td><td class="up">+51%</td></tr>
+<tr><td class="k">Электроэнергия, Москва, кВт·ч</td><td>5,92 ₽</td><td>8,90 ₽</td><td class="up">+50%</td></tr>
+<tr><td class="k">ОСАГО, средний полис</td><td>5 562 ₽</td><td>7 761 ₽</td><td class="up">+40%</td></tr>
+<tr><td class="k">Яйца, десяток</td><td>88 ₽</td><td>97 ₽</td><td class="up">+10%</td></tr>
+</tbody></table></div>
+
+<p>Вот здесь обычно наступает момент торжества.</p>
+
+<p>Хлеб подорожал на 69%! А нам рассказывают про какие-то 7&ndash;8%!</p>
+
+<p>Всё. Росстат разоблачён. Можно расходиться.</p>
+
+<p>Но я бы пока не торопилась.</p>
+
+<h2>Прирост стоимости за пять лет &mdash; это не годовая инфляция</h2>
+
+<p>Между двумя колонками таблицы почти пять лет.</p>
+
+<p>А официальную инфляцию мы обычно обсуждаем в годовом выражении.</p>
+
+<p>Поэтому, прежде чем сравнивать цифры, неплохо бы привести их к одному временному масштабу.</p>
+
+<p>Это ровно та же операция, которую мы делаем при расчёте доходности инвестиций.</p>
+
+<p>Если за пять лет вы заработали 69%, вы же не станете утверждать, что получали 69% годовых?</p>
+
+<p>Хотя, конечно, звучало бы гораздо приятнее.</p>
+
+<p>Посмотрим, что получится, если перевести весь прирост цен в среднегодовой темп с учётом сложного процента.</p>
+
+<div class="tblwrap"><table class="mt"><thead><tr><th>Товар</th><th>За пять лет</th><th>В год</th></tr></thead><tbody>
+<tr><td class="k">Хлеб</td><td>+69%</td><td class="up">11,2%</td></tr>
+<tr><td class="k">Молоко</td><td>+64%</td><td class="up">10,5%</td></tr>
+<tr><td class="k">Масло</td><td>+52%</td><td>8,9%</td></tr>
+<tr><td class="k">Курица</td><td>+51%</td><td>8,7%</td></tr>
+<tr><td class="k">Электроэнергия</td><td>+50%</td><td>8,6%</td></tr>
+<tr><td class="k">ОСАГО</td><td>+40%</td><td>7,0%</td></tr>
+<tr><td class="k">Яйца</td><td>+10%</td><td class="dn">2,0%</td></tr>
+<tr><td class="k"><b>Среднее по семи позициям</b></td><td></td><td><b>8,6%</b></td></tr>
+<tr><td class="k"><b>Официальная инфляция</b></td><td>+47,9%</td><td><b>8,4%</b></td></tr>
+</tbody></table></div>
+
+<p>Разница между средним темпом роста цен в нашей небольшой подборке и официальной инфляцией &mdash; всего две десятых процентного пункта.</p>
+
+<p>Признаюсь, я надеялась на более впечатляющее расхождение.</p>
+
+<p>Было бы о чём поспорить.</p>
+
+<div class="thresh">Но здесь необходимо уточнение. Мы взяли всего семь позиций и посчитали среднее арифметическое их годовых темпов. В официальном индексе потребительских цен гораздо больше товаров и услуг, а их веса различаются. Поэтому наша подборка &mdash; не альтернативный индекс инфляции и уж точно не доказательство безупречности официальной статистики.</div>
+
+<p>Но результат получился любопытный.</p>
+
+<p>Особенно если вспомнить, с какой уверенностью обычно утверждают, что настоящая инфляция в разы выше официальной.</p>
+
+<h2>Одни и те же цифры, две разные картины</h2>
+
+<div class="chart"><p class="sect">Одни и те же цифры, две разные картины</p>
+<svg viewBox="0 0 920 380" role="img" aria-label="Прирост за пять лет против годового темпа">
+<line x1="64" y1="268.0" x2="884" y2="268.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="272.0" text-anchor="end" class="axlbl">-25%</text>
+<line x1="64" y1="207.5" x2="884" y2="207.5" stroke="var(--axis)" stroke-width="1.3"/>
+<text x="56" y="211.5" text-anchor="end" class="axlbl">0%</text>
+<line x1="64" y1="147.0" x2="884" y2="147.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="151.0" text-anchor="end" class="axlbl">25%</text>
+<line x1="64" y1="86.5" x2="884" y2="86.5" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="90.5" text-anchor="end" class="axlbl">50%</text>
+<line x1="64" y1="26.0" x2="884" y2="26.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="30.0" text-anchor="end" class="axlbl">75%</text>
+<rect x="86.2" y="41.5" width="26" height="166.0" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="99.2" y="35.5" text-anchor="middle" class="bsm" fill="#8d3a30">+69%</text>
+<rect x="118.2" y="180.4" width="26" height="27.1" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="131.2" y="174.4" text-anchor="middle" class="bsm" fill="#2D5A3D">+11%</text>
+<text x="115.2" y="290.0" text-anchor="middle" class="glab">Хлеб</text>
+<rect x="188.8" y="53.3" width="26" height="154.2" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="201.8" y="47.3" text-anchor="middle" class="bsm" fill="#8d3a30">+64%</text>
+<rect x="220.8" y="182.1" width="26" height="25.4" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="233.8" y="176.1" text-anchor="middle" class="bsm" fill="#2D5A3D">+10%</text>
+<text x="217.8" y="290.0" text-anchor="middle" class="glab">Молоко</text>
+<rect x="291.2" y="81.2" width="26" height="126.3" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="304.2" y="75.2" text-anchor="middle" class="bsm" fill="#8d3a30">+52%</text>
+<rect x="323.2" y="186.0" width="26" height="21.5" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="336.2" y="180.0" text-anchor="middle" class="bsm" fill="#2D5A3D">+9%</text>
+<text x="320.2" y="290.0" text-anchor="middle" class="glab">Масло</text>
+<rect x="393.8" y="85.3" width="26" height="122.2" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="406.8" y="79.3" text-anchor="middle" class="bsm" fill="#8d3a30">+50%</text>
+<rect x="425.8" y="186.4" width="26" height="21.1" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="438.8" y="180.4" text-anchor="middle" class="bsm" fill="#2D5A3D">+9%</text>
+<text x="422.8" y="290.0" text-anchor="middle" class="glab">Курица</text>
+<rect x="496.2" y="85.8" width="26" height="121.7" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="509.2" y="79.8" text-anchor="middle" class="bsm" fill="#8d3a30">+50%</text>
+<rect x="528.2" y="186.7" width="26" height="20.8" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="541.2" y="180.7" text-anchor="middle" class="bsm" fill="#2D5A3D">+9%</text>
+<text x="525.2" y="290.0" text-anchor="middle" class="glab">Электро­энергия</text>
+<rect x="598.8" y="111.9" width="26" height="95.6" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="611.8" y="105.9" text-anchor="middle" class="bsm" fill="#8d3a30">+40%</text>
+<rect x="630.8" y="190.6" width="26" height="16.9" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="643.8" y="184.6" text-anchor="middle" class="bsm" fill="#2D5A3D">+7%</text>
+<text x="627.8" y="290.0" text-anchor="middle" class="glab">ОСАГО</text>
+<rect x="701.2" y="183.1" width="26" height="24.4" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="714.2" y="177.1" text-anchor="middle" class="bsm" fill="#8d3a30">+10%</text>
+<rect x="733.2" y="202.7" width="26" height="4.8" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="746.2" y="196.7" text-anchor="middle" class="bsm" fill="#2D5A3D">+2%</text>
+<text x="730.2" y="290.0" text-anchor="middle" class="glab">Яйца</text>
+<rect x="803.8" y="207.5" width="26" height="48.2" fill="#C0392B" opacity="0.3" rx="2"/>
+<text x="816.8" y="269.7" text-anchor="middle" class="bsm" fill="#8d3a30">-20%</text>
+<rect x="835.8" y="207.5" width="26" height="10.6" fill="#2D5A3D" opacity="1.0" rx="2"/>
+<text x="848.8" y="232.1" text-anchor="middle" class="bsm" fill="#2D5A3D">-4%</text>
+<text x="832.8" y="290.0" text-anchor="middle" class="glab">Гречка</text>
+<line x1="64" y1="187.2" x2="884" y2="187.2" stroke="#2D5A3D" stroke-width="1.6" stroke-dasharray="5 4"/>
+<rect x="68" y="167.2" width="234" height="18" rx="3" fill="#fff" opacity="0.92"/>
+<text x="74" y="180.2" class="annot" fill="#2D5A3D">официальная инфляция 8,4% в год</text>
+</svg>
+<div class="lgd"><span><span class="sq" style="background:#C0392B;opacity:.3"></span>за пять лет</span><span><span class="sq" style="background:#2D5A3D"></span>в год</span></div>
+<p class="cap">Слева по каждой паре &mdash; прирост за пять лет, справа &mdash; он же в процентах годовых. Это одни и те же данные. Разница только в том, учли мы время или нет.</p></div>
+
+<p>На графике я показала по каждому товару две величины: общий прирост за период и среднегодовой темп.</p>
+
+<p>Это одни и те же данные.</p>
+
+<p>Никаких манипуляций. Просто в одном случае мы учитываем время, а в другом &mdash; нет.</p>
+
+<p>Хлеб действительно подорожал на 69%.</p>
+
+<p>Но это не 69% в год.</p>
+
+<div class="key">Когда мы сравниваем изменение цен за несколько лет с годовой инфляцией, мы сравниваем совершенно разные величины. С таким же успехом можно сравнивать доходность облигации за десять лет с процентной ставкой по вкладу за один год.</div>
+
+<p>Результат, безусловно, получится интересным.</p>
+
+<p>Вопрос только &mdash; что именно он будет означать.</p>
+
+<h2>Яйца: почему наша память нас обманывает</h2>
+
+<p>За пять лет яйца подорожали всего на 10%.</p>
+
+<p>Около 2% в год.</p>
+
+<p>С учётом общей инфляции они стали дешевле примерно на четверть в реальном выражении.</p>
+
+<p>И я практически уверена, что сейчас найдутся люди, которые решат, будто я разучилась считать.</p>
+
+<p>Потому что все прекрасно помнят декабрь 2023 года.</p>
+
+<p>Яйца по 132 рубля. Новости. Возмущение. Разбирательства ФАС.</p>
+
+<p>И совершенно справедливый вопрос: что вообще происходит с яйцами?</p>
+
+<p>Всё это действительно было.</p>
+
+<p>Тогда цены выросли примерно на 51%.</p>
+
+<p>А потом начали снижаться.</p>
+
+<p>И сегодня в нашем ряду средняя цена составляет 97 рублей.</p>
+
+<p>Вот только эмоциональная память работает несколько иначе, чем статистика.</p>
+
+<p>Мы прекрасно помним, как яйца стоили 132 рубля.</p>
+
+<p>А вот их последующее удешевление почему-то не произвело на нас такого же неизгладимого впечатления.</p>
+
+<p>Впрочем, никто ведь не устраивает экстренный выпуск новостей с заголовком: &laquo;ЯЙЦА ПОДЕШЕВЕЛИ! СРОЧНО!&raquo;</p>
+
+<p>Хотя, возможно, стоило бы.</p>
+
+<div class="chart"><p class="sect">Что происходило с ценами</p>
+<svg viewBox="0 0 920 420" role="img" aria-label="Цены, приведённые к 100 на декабрь 2021">
+<line x1="64" y1="340.0" x2="884" y2="340.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="344.0" text-anchor="end" class="axlbl">60</text>
+<line x1="64" y1="294.9" x2="884" y2="294.9" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="298.9" text-anchor="end" class="axlbl">80</text>
+<line x1="64" y1="249.7" x2="884" y2="249.7" stroke="var(--axis)" stroke-width="1.4"/>
+<text x="56" y="253.7" text-anchor="end" class="axlbl">100</text>
+<line x1="64" y1="204.6" x2="884" y2="204.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="208.6" text-anchor="end" class="axlbl">120</text>
+<line x1="64" y1="159.4" x2="884" y2="159.4" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="163.4" text-anchor="end" class="axlbl">140</text>
+<line x1="64" y1="114.3" x2="884" y2="114.3" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="118.3" text-anchor="end" class="axlbl">160</text>
+<line x1="64" y1="69.1" x2="884" y2="69.1" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="73.1" text-anchor="end" class="axlbl">180</text>
+<line x1="64" y1="24.0" x2="884" y2="24.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="28.0" text-anchor="end" class="axlbl">200</text>
+<text x="64.0" y="364" text-anchor="middle" class="axlbl">дек 21</text>
+<text x="228.0" y="364" text-anchor="middle" class="axlbl">дек 22</text>
+<text x="392.0" y="364" text-anchor="middle" class="axlbl">дек 23</text>
+<text x="556.0" y="364" text-anchor="middle" class="axlbl">дек 24</text>
+<text x="720.0" y="364" text-anchor="middle" class="axlbl">дек 25</text>
+<text x="884.0" y="364" text-anchor="middle" class="axlbl">ноя 26</text>
+<polyline fill="none" stroke="#7A4E9B" stroke-width="1.9" points="64.0,249.7 228.0,215.4 392.0,215.4 556.0,71.2 720.0,48.2 884.0,86.3"/>
+<polyline fill="none" stroke="#C0392B" stroke-width="1.9" points="64.0,249.7 228.0,246.6 392.0,231.7 556.0,191.7 720.0,106.6 884.0,94.9"/>
+<polyline fill="none" stroke="#1B6B9A" stroke-width="1.9" points="64.0,249.7 228.0,220.1 392.0,213.6 556.0,163.0 720.0,137.5 884.0,105.9"/>
+<polyline fill="none" stroke="#E6A100" stroke-width="1.9" points="64.0,249.7 228.0,256.3 392.0,195.5 556.0,198.7 720.0,184.0 884.0,135.7"/>
+<polyline fill="none" stroke="#1a1a18" stroke-width="2.6" points="64.0,249.7 228.0,265.3 392.0,134.8 556.0,175.2 720.0,228.0 884.0,226.9"/>
+<polyline fill="none" stroke="#9C9B96" stroke-width="2.6" points="64.0,249.7 228.0,265.3 392.0,306.8 556.0,316.5 720.0,309.5 884.0,294.6"/>
+<polyline fill="none" stroke="#2D5A3D" stroke-width="4" stroke-dasharray="7 4" points="64.0,249.7 228.0,222.9 392.0,204.1 556.0,178.2 720.0,161.7 884.0,141.6"/>
+<text x="878.0" y="131.6" text-anchor="end" class="annot" fill="#2D5A3D">официальная инфляция</text>
+<text x="392.0" y="124.8" text-anchor="middle" class="annot">яйца, дек 2023</text>
+<text x="572.4" y="297.1" class="annot" fill="#9C9B96">гречка</text>
+</svg>
+<div class="lgd"><span><span class="s" style="background:#7A4E9B"></span>икра</span><span><span class="s" style="background:#C0392B"></span>хлеб</span><span><span class="s" style="background:#1B6B9A"></span>молоко</span><span><span class="s" style="background:#E6A100"></span>курица</span><span><span class="s" style="background:#1a1a18"></span>яйца</span><span><span class="s" style="background:#9C9B96"></span>гречка</span><span><span class="s" style="background:#2D5A3D"></span>официальная инфляция</span></div>
+<p class="cap">Декабрь 2021 = 100. Зелёный пунктир &mdash; официальная инфляция. Яйца взлетели в 2023 году и вернулись. Гречка всё это время шла вниз.</p></div>
+
+<p>На графике динамики цен хорошо видно, что происходило.</p>
+
+<p>Яйца резко подорожали, а затем заметно откатились. Гречка за рассматриваемый период вообще подешевела.</p>
+
+<p>Похожая история с маслом &mdash; минус 7% за последний год. И с красной икрой &mdash; минус 9%.</p>
+
+<p>Товары, которыми ещё недавно иллюстрировали неудержимый рост цен, теперь дешевеют.</p>
+
+<p>Но в нашей памяти они продолжают дорожать.</p>
+
+<div class="key">Мы хорошо запоминаем пики. И гораздо хуже &mdash; возвращение к более низким ценам. Пик &mdash; это событие. У него есть дата, заголовок и несколько тысяч возмущённых комментариев. А снижение цены происходит тихо. Без фанфар.</div>
+
+<h2>Про омаров. У меня с ними вышел затык</h2>
+
+<p>Я хотела добавить в таблицу что-нибудь из другой жизни.</p>
+
+<p>Например, омаров. Или мраморную говядину. Для контраста.</p>
+
+<p>Но обнаружилась проблема: сопоставимых статистических рядов цен на эти товары за 2021 год у меня нет.</p>
+
+<p>Росстат почему-то не считает омаров предметом первой необходимости.</p>
+
+<p>Странные люди.</p>
+
+<p>Зато эта история прекрасно показывает, почему официальная инфляция и личные ощущения могут настолько сильно различаться.</p>
+
+<p>Возьмём гречку.</p>
+
+<p>Ту самую, которую при каждом кризисе принято сметать с полок с таким энтузиазмом, словно она обладает способностью защищать от всех экономических потрясений.</p>
+
+<p>В декабре 2021 года килограмм гречки стоил 118 рублей.</p>
+
+<p>Сейчас &mdash; 94 рубля.</p>
+
+<p>То есть за рассматриваемый период она подешевела примерно на 20%.</p>
+
+<p>А если учесть общую инфляцию, её реальная стоимость снизилась почти вдвое.</p>
+
+<p>Теперь представим двух человек.</p>
+
+<p>Один питается преимущественно гречкой. Другой предпочитает омаров.</p>
+
+<p>Допустим, омары подорожали на 10%, а гречка выросла бы в цене втрое.</p>
+
+<p>У этих двух людей будут совершенно разные представления о том, насколько подорожала жизнь.</p>
+
+<p>И оба будут правы. Каждый &mdash; относительно собственной структуры расходов.</p>
+
+<div class="key">Проблема не обязательно в честности статистики. Иногда она просто в содержимом холодильника.</div>
+
+<h2>И отдельно &mdash; доллар. Моя любимая история</h2>
+
+<p>Доллар вырос с 29 рублей до 83.</p>
+
+<p>Почти втрое!</p>
+
+<p>Впечатляет.</p>
+
+<p>Правда, 29 рублей он стоил в 2001 году.</p>
+
+<p>А с тех пор прошло двадцать пять лет.</p>
+
+<p>И если пересчитать этот рост в среднегодовую доходность, получится около <b>4,1% годовых</b>.</p>
+
+<p>Уже как-то не так захватывающе.</p>
+
+<p>Причём рост доллара был крайне неравномерным.</p>
+
+<p>Были длительные периоды относительной стабильности курса. Были резкие скачки. Особенно заметные &mdash; в 2014 и 2022 годах.</p>
+
+<p>Именно скачки мы и запоминаем.</p>
+
+<p>Потому что доллар по 100 рублей &mdash; это событие.</p>
+
+<p>А доллар, который годами колеблется в сравнительно узком диапазоне, &mdash; скука смертная.</p>
+
+<div class="chart"><p class="sect">Доллар против цен, 2001 = 100</p>
+<svg viewBox="0 0 920 400" role="img" aria-label="Доллар против цен, 2001 = 100">
+<line x1="70" y1="304.4" x2="884" y2="304.4" stroke="var(--axis)" stroke-width="1.3"/>
+<text x="62" y="308.4" text-anchor="end" class="axlbl">100</text>
+<line x1="70" y1="265.5" x2="884" y2="265.5" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="269.5" text-anchor="end" class="axlbl">200</text>
+<line x1="70" y1="226.5" x2="884" y2="226.5" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="230.5" text-anchor="end" class="axlbl">300</text>
+<line x1="70" y1="187.6" x2="884" y2="187.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="191.6" text-anchor="end" class="axlbl">400</text>
+<line x1="70" y1="148.6" x2="884" y2="148.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="152.6" text-anchor="end" class="axlbl">500</text>
+<line x1="70" y1="109.7" x2="884" y2="109.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="113.7" text-anchor="end" class="axlbl">600</text>
+<line x1="70" y1="70.7" x2="884" y2="70.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="74.7" text-anchor="end" class="axlbl">700</text>
+<line x1="70" y1="31.8" x2="884" y2="31.8" stroke="var(--grid)" stroke-width="1"/>
+<text x="62" y="35.8" text-anchor="end" class="axlbl">800</text>
+<text x="70.0" y="344" text-anchor="middle" class="axlbl">2001</text>
+<text x="232.8" y="344" text-anchor="middle" class="axlbl">2006</text>
+<text x="395.6" y="344" text-anchor="middle" class="axlbl">2011</text>
+<text x="558.4" y="344" text-anchor="middle" class="axlbl">2016</text>
+<text x="721.2" y="344" text-anchor="middle" class="axlbl">2021</text>
+<text x="884.0" y="344" text-anchor="middle" class="axlbl">2026</text>
+<polyline fill="none" stroke="#2D5A3D" stroke-width="3" points="70.0,304.4 102.6,298.5 135.1,293.2 167.7,287.3 200.2,281.2 232.8,275.6 265.4,267.5 297.9,257.4 330.5,249.9 363.0,241.6 395.6,235.4 428.2,228.3 460.7,220.8 493.3,206.9 525.8,189.2 558.4,180.9 591.0,176.8 623.5,169.7 656.1,164.5 688.6,155.7 721.2,139.9 753.8,115.8 786.3,98.9 818.9,75.7 851.4,59.3 884.0,41.3"/>
+<polyline fill="none" stroke="#1B6B9A" stroke-width="3" points="70.0,304.4 102.6,301.5 135.1,302.4 167.7,304.9 200.2,305.6 232.8,307.1 265.4,309.3 297.9,310.2 330.5,301.0 363.0,302.8 395.6,304.1 428.2,301.9 460.7,300.8 493.3,291.8 525.8,261.5 558.4,254.2 591.0,265.6 623.5,259.4 656.1,257.1 688.6,246.9 721.2,245.0 753.8,252.2 786.3,228.8 818.9,219.7 851.4,232.3 884.0,233.0"/>
+<rect x="70" y="24" width="390.7" height="296" fill="#1B6B9A" opacity="0.05"/>
+<text x="265.4" y="94.1" text-anchor="middle" class="annot" fill="#1B6B9A">пятнадцать лет доллар стоит на месте</text>
+<text x="878" y="29.3" text-anchor="end" class="annot" fill="#2D5A3D">цены: ×7,8</text>
+<text x="878" y="221.0" text-anchor="end" class="annot" fill="#1B6B9A">доллар: ×2,8</text>
+</svg>
+<div class="lgd"><span><span class="s" style="background:#2D5A3D"></span>потребительские цены</span><span><span class="s" style="background:#1B6B9A"></span>курс доллара</span></div>
+<p class="cap">За двадцать пять лет потребительские цены выросли примерно в 7,8 раза, доллар &mdash; в 2,8. Голубая зона слева &mdash; годы, когда курс колебался в сравнительно узком диапазоне, а цены за это время выросли втрое.</p></div>
+
+<p>На графике я сравнила динамику доллара и потребительских цен за двадцать пять лет.</p>
+
+<p>Результат довольно показательный.</p>
+
+<p>За это время потребительские цены выросли примерно в 7,8 раза.</p>
+
+<p>Доллар &mdash; в 2,8 раза.</p>
+
+<p>То есть простое хранение наличных долларов не защитило рублёвую покупательную способность от российской инфляции.</p>
+
+<p>Представим, что в 2001 году у вас была тысяча рублей.</p>
+
+<p>Вы купили на неё доллары и оставили их лежать. Без процентов, без инвестирования. Просто доллары.</p>
+
+<p>Сегодня их рублёвая стоимость составила бы примерно <b>2 833 рубля</b>.</p>
+
+<p>А чтобы сохранить покупательную способность той тысячи рублей, вам понадобилось бы около <b>7 760 рублей</b>.</p>
+
+<p>Разница впечатляющая.</p>
+
+<p>Потеря покупательной способности &mdash; около <b>64%</b>.</p>
+
+<p>И это за двадцать пять лет хранения валюты, которую принято считать надёжной.</p>
+
+<div class="thresh">Конечно, доллар можно было не держать под матрасом, а инвестировать в долларовые активы. Тогда результат был бы другим. Но мы сейчас проверяем именно распространённое убеждение, что достаточно просто купить валюту &mdash; и инфляция вам больше не страшна.</div>
+
+<p>Увы.</p>
+
+<p>Валюта сама по себе не является универсальной защитой покупательной способности.</p>
+
+<h2>Почему ощущения всё-таки врут</h2>
+
+<p>Я решила проверить статистику ещё одним способом.</p>
+
+<p>Пошла в магазин.</p>
+
+<p>Взяла обычное пастеризованное молоко жирностью 2,5%.</p>
+
+<p>Одна торговая сеть &mdash; &laquo;Магнит&raquo;. Одна полка. Один день.</p>
+
+<div class="tblwrap"><table class="mt"><thead><tr><th>Молоко</th><th>Цена упаковки</th><th>Цена за литр</th></tr></thead><tbody>
+<tr><td class="k">Агрокомплекс, 900 мл</td><td>72,99 ₽</td><td>81 ₽</td></tr>
+<tr><td class="k">Простоквашино, 930 мл</td><td>99,99 ₽</td><td>107 ₽</td></tr>
+<tr><td class="k">Кубанская Бурёнка, 930 мл</td><td>109,99 ₽</td><td>118 ₽</td></tr>
+</tbody></table></div>
+
+<p>Разница между самым дешёвым и самым дорогим молоком &mdash; <b>46%</b>.</p>
+
+<p>На одной полке. В одном магазине. В один день.</p>
+
+<p>А мы пытаемся определить годовую инфляцию, сравнивая, сколько заплатили за молоко сегодня и сколько, как нам кажется, платили год назад.</p>
+
+<p>При этом иногда меняем марку, объём упаковки и магазин.</p>
+
+<p>И совершенно искренне возмущаемся результатом.</p>
+
+<p>Официальная средняя цена молока &mdash; 106 рублей за литр.</p>
+
+<p>В нашем небольшом примере она оказалась почти рядом с ценой &laquo;Простоквашино&raquo;.</p>
+
+<p>Яйца и масло при аналогичной проверке тоже оказались близки к опубликованным средним значениям.</p>
+
+<div class="thresh">Разумеется, одна полка в одном магазине не может подтвердить правильность всей официальной статистики. Но и утверждение, что Росстат берёт цены из какой-то параллельной вселенной, эта проверка не поддерживает.</div>
+
+<h2>И чтобы не было обидно</h2>
+
+<p>Ваша личная инфляция действительно может быть выше официальной.</p>
+
+<p>И значительно.</p>
+
+<p>Если вы много ездите на автомобиле, регулярно пользуетесь определёнными услугами или часто покупаете технику, структура ваших расходов может заметно отличаться от усреднённой корзины.</p>
+
+<p>Например, по использованным в статье данным за год:</p>
+
+<ul class="notes">
+<li>бензин подорожал на 19%;</li>
+<li>стрижка &mdash; на 13%;</li>
+<li>смартфоны &mdash; на 31%.</li>
+</ul>
+
+<p>Если именно на эти категории приходится значительная часть ваших расходов, вы вполне можете ощущать рост цен сильнее, чем показывает общий индекс.</p>
+
+<p>И никакого противоречия здесь нет.</p>
+
+<div class="key">Официальная инфляция не описывает лично вас. Она и не должна. Это показатель изменения стоимости определённой потребительской корзины, а не содержимого конкретного холодильника. Но и холодильник &mdash; не измерительный прибор.</div>
+
+<p>Мы запоминаем самые неприятные изменения цен.</p>
+
+<p>Путаем рост за несколько лет с годовой инфляцией.</p>
+
+<p>Помним максимумы и не замечаем последующих снижений.</p>
+
+<p>Сравниваем разные товары и считаем, что сравниваем одни и те же.</p>
+
+<p>А потом с совершенно искренним возмущением заявляем, что официальная статистика врёт.</p>
+
+<p>Возможно, иногда она действительно вызывает вопросы.</p>
+
+<p>Но прежде чем обвинять статистиков в злонамеренности, неплохо бы проверить собственную арифметику.</p>
+
+<p>Потому что доходность и инфляцию считают, а не чувствуют.</p>
+
+<p>И тогда выясняется, что страшные &laquo;плюс 69%&raquo; за пять лет &mdash; это около 11% в год.</p>
+
+<p>А доллар, выросший почти втрое за двадцать пять лет, &mdash; это примерно 4% годовых и существенная потеря покупательной способности относительно российских потребительских цен.</p>
+
+<p>Математика вообще довольно неприятная наука.</p>
+
+<p>Особенно когда она отказывается подтверждать наши убеждения.</p>
+
+<div class="cta">Хотите посчитать свою финансовую цель с поправкой на инфляцию? В <a href="../savings.html">калькуляторе накоплений &rarr;</a> результат показывается не только в будущих рублях, но и отдельно &mdash; в сегодняшних деньгах. Там же можно использовать историческую доходность российского рынка за 2003&ndash;2025 годы вместо произвольно выбранной ожидаемой доходности.</div>
+
+<div class="legend">Как считано. Цены на продукты &mdash; ряды средних потребительских цен Росстата, декабрьские значения каждого года и ноябрь 2026-го; средние по России. Электроэнергия &mdash; тариф Мосэнергосбыта для квартир с газовой плитой, однотарифный учёт. ОСАГО &mdash; средняя премия по годовым полисам, данные РСА (январь&ndash;июль 2021 года против января&ndash;августа 2026 года). Курс доллара &mdash; среднегодовой по данным Банка России, за 2026 год &mdash; на 12 ноября. Инфляция &mdash; индекс потребительских цен Росстата, декабрь к декабрю, за 2026 год &mdash; накопленная с начала года. Годовые темпы &mdash; среднее геометрическое за период, с учётом сложного процента. Цена масла привязана к январю 2022 года, а не к декабрю 2021-го. Розничные цены проверены в сети &laquo;Магнит&raquo; 12 ноября 2026 года.</div>
+
+<div class="disclaimer">Материал носит образовательный характер и не является индивидуальной инвестиционной рекомендацией. Исторические данные о ценах и курсах не предсказывают будущее. Цены и тарифы меняются; перед принятием решений сверяйте актуальные данные.</div>
+
+<div class="footer">
+Автор: Екатерина Кутняк &middot; <a href="../index.html">Все калькуляторы</a> &middot; <a href="../articles.html">Статьи</a> &middot; <a href="../novosti.html">Новости</a><br>
+<a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram-канал</a> &middot; &copy; 2025&ndash;2026
+</div>
+</div>
+<script src="/nav.js" defer></script>
+</body></html>
