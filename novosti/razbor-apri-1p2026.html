@@ -1,133 +1,166 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<!-- Yandex.Metrika counter -->
 <script type="text/javascript">
 (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109013741', 'ym');
 ym(109013741, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
 </script>
 <noscript><div><img src="https://mc.yandex.ru/watch/109013741" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Разбор отчётности АПРИ (ПАО, МСФО 6 мес. 2026) — ИИ-аналитик investtools.pro</title>
-<meta name="description" content="Финансовый разбор отчётности ПАО «АПРИ» по МСФО за 6 мес. 2026 простым языком: застройщик на эскроу, скорректированное плечо 4,22×, покрытие процентов 1,21×, эскроу покрывает лишь 14% проектного долга. Светофор риска 🟡🔴. Подготовлен ИИ-аналитиком, проверен автором. Не рекомендация.">
-<meta name="keywords" content="разбор отчётности АПРИ, АПРИ МСФО 2026, застройщик эскроу, долговая нагрузка, покрытие процентов, светофор риска, ИИ-аналитик, девелопер">
+<title>Разбор АПРИ 🟡 — ИИ-аналитик</title>
+<meta name="description" content="Разбор ПАО «АПРИ» по МСФО 1П2026: выручка растёт (+29,5%), но чистая прибыль упала почти в 8 раз (0,121 млрд) из-за почти удвоившихся процентов; покрытие около единицы, поток −8,4 млрд, долг +26,5%. При этом доля короткого долга снизилась (58,4% → 30,1%), эскроу подрос. Рейтинг BBB-. Светофор 🟡. Не рекомендация.">
+<meta name="keywords" content="разбор АПРИ, застройщик Челябинск, девелопер ВДО, эскроу, покрытие процентов, рефинансирование, короткий долг, чистая прибыль, МСФО 1П2026, светофор риска">
 <link rel="canonical" href="https://investtools.pro/novosti/razbor-apri-1p2026.html">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Разбор отчётности АПРИ 🟡🔴 — ИИ-аналитик">
-<meta property="og:description" content="Застройщик на эскроу: плечо 4,22×, покрытие процентов впритык, эскроу наполнено лишь на 14%. Финансовое состояние по МСФО 6м2026 простым языком, со светофором риска.">
+<meta property="og:url" content="https://investtools.pro/novosti/razbor-apri-1p2026.html">
+<meta property="og:title" content="Разбор АПРИ 🟡 — ИИ-аналитик">
+<meta property="og:description" content="ВДО-застройщик Челябинска (BBB-), МСФО 1П2026: выручка +29,5%, но чистая прибыль −87,7%, проценты ×2, поток −8,4 млрд. Доля короткого долга снизилась до 30%.">
 <meta property="og:site_name" content="investtools.pro · Инструменты инвестора">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#FAFAF8;--surface:#FFF;--surface2:#F3F2EE;--text:#1A1A18;--text2:#6B6A65;--text3:#9C9B96;--accent:#2D5A3D;--accent-light:#E8F0EB;--accent2:#1B6B9A;--accent2-light:#E6F1FB;--border:#E5E4DF;--radius:10px;--radius-lg:14px;--sans:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--red:#C0392B;--yellow:#E6A100;--green:#2E9E5B}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7}
-.container{max-width:800px;margin:0 auto;padding:1.6rem 1.5rem 3rem}
-.back-link{font-size:0.8rem;color:var(--text2);text-decoration:none}
-.art-h1{font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:1rem 0 0.4rem;line-height:1.25}
-.art-meta{font-size:0.8rem;color:var(--text3);margin-bottom:1.2rem}
-.art p{font-size:1.0rem;color:var(--text);margin-bottom:1rem}
-.art h2{font-size:1.25rem;font-weight:700;margin:2.4rem 0 0.7rem;letter-spacing:-0.01em;padding-top:1.4rem;border-top:2px solid var(--border)}
-.art h3{font-size:1.0rem;font-weight:700;margin:1.3rem 0 0.5rem;color:var(--accent)}
-.tag{font-size:0.72rem;font-weight:500;color:var(--text3);font-family:var(--mono)}
-.lead{font-size:1.0rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.4rem}
-.tblwrap{overflow-x:auto;margin:0.4rem 0 0.8rem}
-table{width:100%;border-collapse:collapse;font-size:0.88rem}
-.kv td{padding:0.5rem 0.7rem;border-bottom:1px solid var(--border);vertical-align:top}
-.kv td.k{color:var(--text2);width:38%;font-weight:500}
-.mt th,.mt td{padding:0.5rem 0.6rem;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
-.mt th:first-child,.mt td.k{text-align:left;white-space:normal}
-.mt thead th{background:var(--accent-light);color:var(--accent);font-weight:600}
-.mt tr.sec td{background:var(--surface2);color:var(--text2);font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.03em;text-align:left}
-.notes{margin:0.3rem 0 0.3rem 1.1rem} .notes li{font-size:0.96rem;margin-bottom:0.35rem}
-.good,.warn{border-radius:var(--radius);padding:0.8rem 1rem;margin:0.8rem 0}
-.good{background:rgba(46,158,91,0.07);border:1px solid rgba(46,158,91,0.25)}
-.warn{background:rgba(230,161,0,0.08);border:1px solid rgba(230,161,0,0.3)}
-.good b,.warn b{font-size:0.9rem}
-.sf{border-radius:var(--radius);padding:0.9rem 1.1rem;margin:1rem 0 0;font-size:0.96rem;font-weight:500;line-height:1.55}
-.sf-gy{background:var(--accent-light);border-left:4px solid var(--green)}
-.sf-y{background:rgba(230,161,0,0.1);border-left:4px solid var(--yellow)}
-.sf-yr{background:rgba(192,57,43,0.08);border-left:4px solid var(--red)}
-.legend{font-size:0.8rem;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:0.8rem 1rem;margin:2rem 0 0;line-height:1.7}
-.cta{background:var(--accent-light);border:1px solid var(--accent);border-radius:14px;padding:1.1rem 1.3rem;margin:1.4rem 0 0;font-size:0.96rem;color:var(--text2)}
-.cta a{color:var(--accent);font-weight:600;text-decoration:none}
-.disclaimer{font-size:0.8rem;color:var(--text3);font-style:italic;margin:1.4rem 0 0;padding-top:1rem;border-top:1px solid var(--border)}
-.footer{margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text3);line-height:1.7}
-.footer a{color:var(--text2)}
+
+  :root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--axis:#b9b8b1;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--good:#0ca30c;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6;}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}}
+  :root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--axis:#3d3d3a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--good:#12b312;--warn:#d0a028;--crit:#e35a5a;--hair:#242422;}
+  *{box-sizing:border-box} body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.62 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 18px 56px}
+  .top{color:var(--ink2);font-size:13.5px;margin:0 0 22px} .top b{color:var(--ink)}
+  h1{font-size:27px;line-height:1.15;margin:0 0 16px}
+  .sect{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .badge{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:16px;border:1px solid var(--border);border-radius:999px;padding:.3em .85em;margin:0 0 12px}
+  .lead b{color:var(--ink)} .owner{color:var(--ink2);font-size:13px;margin:12px 0 0}
+  .voice{color:var(--muted);font-style:italic;font-size:12.5px;margin:16px 0 2px}
+  h2{font-size:15px;margin:26px 0 8px} p{margin:.55em 0}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlbl{font:12px system-ui;fill:var(--muted)} .vlbl{font:600 12px system-ui;fill:var(--ink)}
+  .legend{display:flex;gap:20px;justify-content:center;font-size:13px;color:var(--ink2);margin-top:6px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .tile{border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .tile .l{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .tile .v{font-size:26px;font-weight:700;color:var(--c26);margin-top:6px;letter-spacing:-.5px}
+  .tile .v.w{color:var(--warn)} .tile .v.c{color:var(--crit)}
+  .tile .n{font-size:12px;color:var(--ink2);margin-top:3px}
+  .score{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 0;border-top:1px solid var(--hair)}
+  .score:first-of-type{border-top:0} .score .name{font-weight:700;font-size:15px} .score .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .score .r{text-align:right;white-space:nowrap} .score .val{font:700 20px ui-monospace,"SF Mono",Menlo,monospace}
+  .score .rmeta{color:var(--ink2);font-size:12.5px;margin-top:1px}
+  .pill{display:inline-block;font-size:12px;margin-top:5px} .pill .d{display:inline-block;width:9px;height:9px;border-radius:999px;margin-right:5px}
+  .note{color:var(--ink2);font-size:12.5px;margin-top:14px}
+  .row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hair)}
+  .row:first-child{border-top:0} .row .k{font-size:14px} .row .k .s{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+  .row .val{font:600 15px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  ul{margin:.4em 0;padding-left:1.2em} li{margin:.28em 0;color:var(--ink2);font-size:14px}
+  .foot{color:var(--muted);font-size:12px;margin-top:28px;border-top:1px solid var(--grid);padding-top:12px}
+  .gh{color:var(--good)} .wh{color:var(--warn)} .ch{color:var(--crit)}
+
+  .sitenav{color:var(--muted);font-size:12px;margin-top:14px;border-top:1px solid var(--grid);padding-top:12px}
+  .sitenav a{color:var(--c26);text-decoration:none}
 </style>
 </head>
 <body>
-<div class="container art">
+<div class="wrap">
 <a href="../razbory-ii-analitika.html" class="back-link">← Разборы ИИ-аналитика</a>
-<style>.aiflag{font-size:0.82rem;line-height:1.55;color:var(--text2);background:var(--accent-light);border:1px solid var(--accent);border-radius:12px;padding:0.8rem 1rem;margin:0.2rem 0 1.2rem}.aiflag a{color:var(--accent);font-weight:600}.art h2{margin-top:1.7rem}.chg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0.8rem 0}@media(max-width:640px){.chg{grid-template-columns:1fr}}.chg .box{border-radius:12px;padding:0.9rem 1rem;font-size:0.9rem;line-height:1.55}.chg .up{background:var(--accent-light);border:1px solid var(--green)}.chg .dn{background:rgba(230,161,0,0.08);border:1px solid var(--yellow)}.chg .box b{display:block;margin-bottom:0.4rem}.chg ul{margin:0;padding-left:1.1rem}.chg li{margin:0.2rem 0}.verdict{border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;margin:1.4rem 0;background:var(--surface)}.verdict .vc-h{font-size:0.78rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--accent);margin-bottom:0.7rem}.verdict .vc-row{font-size:0.92rem;line-height:1.6;margin:0.5rem 0}.verdict .vc-row b{color:var(--text)}.verdict .vc-verdict{font-size:0.95rem;line-height:1.6;margin-top:0.7rem;padding-top:0.7rem;border-top:1px solid var(--border)}.blockh{font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin:1.9rem 0 0.6rem}.mtile{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0.2rem 0 0.4rem}.mtile .m{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.8rem 0.9rem}.mtile .m .mk{font-size:0.66rem;font-weight:600;letter-spacing:0.03em;text-transform:uppercase;color:var(--text2);line-height:1.3;margin-bottom:0.4rem}.mtile .m .mv{font-size:1.3rem;font-weight:700;font-family:var(--mono);color:var(--text)}.scnote{font-size:0.8rem;color:var(--text3);margin:0.2rem 0 0.7rem}.missing{font-size:0.88rem;color:var(--text2);line-height:1.6;margin:0.2rem 0;padding-left:1.1rem}.missing li{margin:0.25rem 0}.srcnote{font-size:0.8rem;color:var(--text3);margin-top:0.5rem}.devnote{font-size:0.9rem;color:var(--text2);line-height:1.6;background:var(--surface2);border-radius:var(--radius);padding:0.8rem 1rem;margin:0.2rem 0 0.4rem}</style>
-<h1 class="art-h1">АПРИ 🟡🔴</h1>
-<div class="art-meta">Разбор отчётности · ПАО «АПРИ», МСФО 6 мес. 2026 · светофор риска 🟡🔴 · 11 сентября 2026</div>
-<div class="aiflag">🤖 Материал подготовлен с помощью <a href="../pro/ai-analyst.html">ИИ-аналитика investtools.pro</a> по публичной отчётности и проверен автором. ИИ может ошибаться в прочтении цифры — сверяйтесь с первоисточником. Не является индивидуальной инвестиционной рекомендацией.</div>
-<p class="lead">Своих денег пока не хватает. Плечо по корпоративному контуру — 4,22×, покрытие процентов — 1,21× (впритык). Эскроу покрывает лишь 14% проектного долга, поэтому непокрытые 33,5 млрд ₽ ложатся на компанию как реальная нагрузка. Отрицательный операционный поток для застройщика — структурная норма, цвет им не понижаем. Светофор — 🟡🔴.</p>
-<p>Обзорная отчётность по МСФО (IAS 34) за 6 месяцев, завершившихся 30 июня 2026 года, в рублях; сравнение с аналогичным периодом 2025 года. Тип компании — застройщик жилья: строит и продаёт квартиры по ДДУ с использованием счетов эскроу и проектного финансирования. Поэтому долг мы читаем в девелоперской оптике: проектный долг под полным эскроу выносим за скобки как самопогашающийся, а непокрытую эскроу часть считаем нагрузкой.</p>
-<p>Аудитор дал заключение с оговоркой. Оговорка в том, что в выручке за 6 месяцев 2025 года ошибочно отражены доходы от продажи долей в дочерних компаниях без потери контроля (1,53 млрд ₽) в нарушение МСФО (IFRS 10) — их следовало отнести на капитал, а не в прибыль. Поэтому базу прошлого периода мы очистили на эту сумму: без поправки сравнение было бы искажённым. Оговорки о непрерывности деятельности нет.</p>
-<p>Что важно — компания раскрывает EBITDA и чистый долг в ковенантном примечании (прим. 28) и разбивку долга на проектный и корпоративный (прим. 20). На этих раскрытых величинах и строится оценка, а не на суррогате из полугодовой прибыли.</p>
-
-<h2>Масштаб бизнеса</h2>
-<p>Выручка за полгода выросла с 7,75 млрд ₽ (очищенная база 2025) до 12,01 млрд ₽ — это +55%. Компания заметно наращивает реализацию, растёт незавершённое строительство. Бизнес живой и расширяется.</p>
-
-<h2>Прибыль</h2>
-<p>На очищенной базе прошлого года компания была в убытке (−0,53 млрд ₽), а в этом полугодии вышла в символический плюс (+0,12 млрд ₽). Разворот в прибыль — это хорошо, но сам размер прибыли крошечный на фоне продаж: почти вся операционная прибыль уходит на проценты.</p>
-
-<h2>Рентабельность</h2>
-<p>Операционно бизнес зарабатывает нормально: валовая маржа около 40%, операционная — около 28%. С каждого рубля продаж остаётся заметная часть. Но ниже операционной строки её съедают проценты, поэтому чистая маржа тонкая — около 1%.</p>
-
-<h2>Денежный поток и качество прибыли</h2>
-<p>Операционный поток отрицательный (−8,4 млрд ₽). Для застройщика это норма, а не тревога: деньги дольщиков идут на эскроу за балансом, а стройка финансируется проектными кредитами. Разрыв компания закрывает новым долгом (привлечение +20,6 млрд за полугодие). Живых денег текущая стройка пока не приносит — они придут при вводе домов и раскрытии эскроу.</p>
-
-<h2>Долговая нагрузка — здесь ядро</h2>
-<p>Весь долг — 55,16 млрд ₽: проектный 38,96 млрд и корпоративный 16,20 млрд. У застройщика проектный долг под полным эскроу можно выносить за скобки — его гасят деньги дольщиков. Но вот в чём проблема АПРИ: эскроу покрывает лишь 14% проектного долга (5,51 млрд из 38,96 млрд). Значит 33,45 млрд проектного долга ничем не обеспечены и ложатся на компанию как реальная нагрузка. Складываем корпоративный контур с этой непокрытой частью: скорректированный чистый долг = (16,20 − 0,98) + 33,45 = 48,68 млрд ₽. К раскрытой годовой EBITDA (11,54 млрд) это даёт 4,22× — ровно как считает и сама компания. Это высокая нагрузка.</p>
-
-<h2>Покрытие процентов</h2>
-<p>Годовых процентов начислено 9,53 млрд ₽ (включая капитализированные в стоимость активов), годовая EBITDA — 11,54 млрд. Покрытие — 1,21×. Заработка хватает на проценты, но впритык: почти всё, что бизнес зарабатывает, уходит на обслуживание долга. Любой рост ставки или заминка в продажах сразу давит на этот тонкий запас.</p>
-
-<h2>Ликвидность</h2>
-<p>Формальная текущая ликвидность высокая (оборотные активы 79,8 млрд против коротких обязательств 35,1 млрд, коэффициент около 2,3), но она обманчива: почти вся оборотка — это запасы, авансы и дебиторка, а не деньги. Живых денег на счетах всего 0,98 млрд при коротких кредитах 16,6 млрд. Ликвидность держится не на кассе, а на графике продаж, раскрытии эскроу и доступе к новым кредитам.</p>
-
-<h2>Общая устойчивость</h2>
-<p>Бизнес растёт и операционно зарабатывает, но финансовая конструкция перегружена: высокий долг, эскроу почти не наполнено, покрытие процентов на пределе, деньги приходят только с новым фондированием. Каркас безопасности (эскроу плюс проектные кредиты) есть, но запаса под стресс мало.</p>
-
-<h2>Что изменилось за период</h2>
-<div class="chg"><div class="box up"><b>✅ Стало лучше</b><ul><li>выручка +55% к очищенной базе</li><li>разворот из убытка в прибыль</li><li>операционная маржа держится.</li></ul></div><div class="box dn"><b>⚠️ Стало хуже</b><ul><li>проценты выросли почти вдвое и съели почти всю операционную прибыль</li><li>валовый долг вырос (с ~46,6 до 55,2 млрд ₽)</li><li>операционный поток ушёл глубже в минус.</li></ul></div></div>
-<p><b>Без изменений:</b> модель завязана на проектное финансирование и эскроу; наполнение эскроу остаётся низким (14%).</p>
-
-<div class="verdict"><div class="vc-h">📄 Финансовое состояние ПАО «АПРИ», 6 мес. 2026</div><div class="vc-row"><b>✅ Что выглядит сильным.</b> Растущие продажи (+55%) и разворот из убытка в прибыль. Крепкая операционная маржа (валовая ~40%, операционная ~28%). Каркас из проектного финансирования и эскроу под завершение строек.</div><div class="vc-row"><b>⚠️ Что вызывает вопросы.</b> Эскроу покрывает лишь 14% проектного долга — 33,5 млрд проектного долга по сути не обеспечены. Плечо 4,22× — высокое. Покрытие процентов 1,21× — впритык. Живых денег почти нет, всё держится на рефинансировании. Тонкий капитал (10,7% активов).</div><div class="vc-row"><b>🔄 Что изменилось.</b> Стало лучше — выручка, разворот в прибыль, маржа. Стало хуже — проценты, валовый долг, операционный поток. Без изменений — зависимость от проектного финансирования и низкое наполнение эскроу.</div><div class="vc-row"><b>🔎 На что смотреть в следующих отчётах.</b> Наполнение эскроу и распроданность против строительной готовности по ключевым проектам. Динамику скорректированного плеча и покрытия процентов при изменении ключевой ставки. Соответствие графика погашения проектных кредитов графику раскрытия эскроу.</div><div class="vc-verdict"><b>🧭 Общий вывод.</b> Своих денег компании пока не хватает: операционно бизнес растёт и вышел в плюс, но нагрузка высокая, эскроу почти не наполнено, а проценты забирают почти весь заработок. Это не про близкий дефолт — стройки идут, продажи растут, оговорки о непрерывности нет, — но запас прочности тонкий и всё завязано на новые кредиты и темп ввода. Держать в голове: пока эскроу не наполнится, проектный долг остаётся реальной нагрузкой.</div></div>
-
-<div class="blockh">Ключевые показатели · коэффициенты из отчёта</div>
-<div class="mtile"><div class="m"><div class="mk">Скорр. чистый долг / EBITDA (корп. контур + непокрытый проектный)</div><div class="mv">4,22×</div></div><div class="m"><div class="mk">Покрытие процентов (EBITDA / %, LTM)</div><div class="mv">1,21×</div></div><div class="m"><div class="mk">Эскроу-покрытие проектного долга</div><div class="mv">14%</div></div><div class="m"><div class="mk">Операционная маржа</div><div class="mv">28%</div></div><div class="m"><div class="mk">Капитал / активы</div><div class="mv">10,7%</div></div></div>
-
-<div class="blockh">Скоринговые модели риска банкротства</div>
-<div class="devnote">Для этого разбора не показываем. У застройщика на эскроу генеричные модели банкротства (Альтман, Таффлер, ИГЭА) неинформативны: отложенная выручка, крупный проектный долг и структурно отрицательный операционный поток ломают их предпосылки и дают ложно-зелёный сигнал. Ориентир кредитного качества — светофор по эскроу-контуру выше.</div>
-
-<div class="blockh">Что ИИ взял из отчёта — сверьте с первоисточником</div>
-<div class="tblwrap"><table class="mt"><thead><tr><th>Показатель</th><th>Значение</th><th>Где в отчёте</th></tr></thead><tbody>
-<tr><td class="k">Выручка (6 мес.)</td><td>12,01 млрд ₽</td><td>ОПУ</td></tr>
-<tr><td class="k">Выручка 6 мес. 2025 (очищ. от IFRS 10)</td><td>7,75 млрд ₽</td><td>ОПУ + оговорка аудитора</td></tr>
-<tr><td class="k">Чистая прибыль (6 мес.)</td><td>0,12 млрд ₽</td><td>ОПУ</td></tr>
-<tr><td class="k">EBITDA (раскрытая, LTM)</td><td>11,54 млрд ₽</td><td>прим. 28</td></tr>
-<tr><td class="k">Проектный долг</td><td>38,96 млрд ₽</td><td>прим. 20</td></tr>
-<tr><td class="k">Корпоративный долг</td><td>16,20 млрд ₽</td><td>прим. 20</td></tr>
-<tr><td class="k">Средства на эскроу</td><td>5,51 млрд ₽</td><td>прим. к балансу</td></tr>
-<tr><td class="k">Начисленные проценты (LTM)</td><td>9,53 млрд ₽</td><td>прим. 28</td></tr>
-<tr><td class="k">Денежные средства</td><td>0,98 млрд ₽</td><td>баланс</td></tr>
-<tr><td class="k">Операционный поток</td><td>−8,38 млрд ₽</td><td>Отчёт о движении ДС</td></tr>
-</tbody></table></div>
-
-<div class="blockh">Чего не хватило в отчёте</div>
-<ul class="missing"><li>Детальной проектной разбивки распроданности и строительной готовности по объектам</li><li>Точной суммы обязательств по финансовой аренде (IFRS 16) в балансе</li><li>Раскрытой FFO (Funds From Operations)</li></ul>
-<p class="srcnote">Разбор построен на полной отчётности (прим. 20 и 28 — разбивка долга и раскрытая EBITDA). ИИ умён, но может ошибиться в цифре или прочтении — поэтому выше показаны значения, которые он взял из отчёта. Сверяйтесь с первоисточником, особенно перед сделкой.</p>
-
-<div class="cta">Хотите такой же разбор по своей компании? Загрузите PDF её отчёта в <a href="../pro/ai-analyst.html">ИИ-аналитик investtools.pro</a> — он прочитает отчётность, посчитает нагрузку и покрытие процентов и поставит светофор.</div>
-<div class="disclaimer">Это разбор финансовой отчётности, подготовленный ИИ-аналитиком и проверенный автором, а не индивидуальная инвестиционная рекомендация. ИИ мог ошибиться при чтении отчёта — перед решением сверяйтесь с первоисточником.</div>
-<div class="footer">
-Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../articles.html">Статьи</a> · <a href="../novosti.html">Новости</a><br>
-<a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram-канал</a> · © 2025–2026
+<p class="top"><b>ИИ-аналитик отчётности.</b> Загрузите отчёт компании (МСФО или РСБУ, PDF) — ИИ прочитает его за вас, посчитает типовые кредитные коэффициенты, используемые рейтинговыми агентствами, и объяснит человеческим языком: насколько бизнес устойчив и где риск. Методология Екатерины Кутняк.</p>
+<h1>АПРИ — прибыльный застройщик, но прибыль за полугодие резко просела</h1>
+<div class="card lead"><div class="badge">🟡 устойчиво со слабостями (с акцентом на рефинансирование) — выручка растёт, но чистая прибыль за полугодие упала почти в 8 раз, проценты почти удвоились, поток глубоко отрицательный; при этом доля короткого долга снизилась</div>
+<p>ПАО «АПРИ» — застройщик из Челябинска, сегмент ВДО, работает на эскроу. Свежий срез — консолидированная МСФО за 1П2026. Операционно выручка растёт: 12,0 млрд за полугодие против 9,3 годом раньше (+29,5%), операционная прибыль 3,4 млрд (+18,1%). Но чистая прибыль резко просела — 0,121 млрд против 0,979 годом раньше (−87,7%). Главная причина — проценты: финансовые расходы за год почти удвоились (3,43 млрд против 1,77, +93,7%). Покрытие близко к единице: EBITDA к признанным процентам 1,16×, EBIT к финрасходам 0,995×. Операционный денежный поток глубоко отрицательный (−8,4 млрд против −3,9), процентов уплачено деньгами 4,3 млрд. По двум вещам ситуация к 31.12.2025, наоборот, улучшилась: доля короткого долга снизилась с 58,4% до 30,1% (короткий долг 16,57 млрд из 55,16), а эскроу за полугодие вырос (5,51 млрд против 4,82). Но общий долг прибавил — 55,16 млрд против 43,62 (+26,5%). Рейтинг НКР BBB-.ru (стабильный, 03.08.2026), НРА BBB-|ru| по 1П2026.</p>
+<p class="owner"><b>Владелец:</b> ПАО «АПРИ» — застройщик (Челябинск), сегмент ВДО, на эскроу. Рейтинг НКР BBB-.ru (стабильный, 03.08.2026), НРА BBB-|ru|. Девелопер на эскроу: смотрим покрытие процентов (признанные/уплаченные), поток, долю короткого долга, динамику прибыли. Данные: консолидированная МСФО за 1П2026. Суммы — млрд ₽. Корректные формулировки — «вероятность неплатежа для уровня повышенная», а не «дефолт невозможен».</p>
+<p class="voice">РАЗБОР ИИ · голос Екатерины</p></div>
+<p><b>Определил тип компании: ДЕВЕЛОПЕР ЖИЛЬЯ на эскроу, сегмент ВДО.</b> Читаем ВДО-застройщика на эскроу. Операционно выручка растёт, но прибыль за полугодие резко просела из-за почти удвоившихся процентов. Покрытие близко к единице, поток глубоко отрицательный. При этом по срочности долга картина улучшилась (доля короткого снизилась), а эскроу подрос. Светофор жёлтый с акцентом на рефинансирование.</p>
+<h2>1. Кто это</h2><p>Застройщик из Челябинска, сегмент ВДО, работает на эскроу. Свежий срез — консолидированная МСФО за 1П2026. Рейтинг НКР BBB-.ru (стабильный, подтверждён 03.08.2026), НРА BBB-|ru| по 1П2026.</p>
+<h2>2. Выручка растёт — а прибыль резко просела</h2><p>Операционно рост: выручка 12,0 млрд за полугодие против 9,3 (+29,5%), операционная прибыль 3,4 млрд (+18,1%). Но чистая прибыль упала почти в восемь раз — 0,121 млрд против 0,979 годом раньше (−87,7%). Это куда существеннее, чем «прибыль держится», и причина у падения одна — проценты.</p>
+<h2>3. Проценты — почти удвоились</h2><p>Финансовые расходы за год почти удвоились: 3,43 млрд против 1,77 (+93,7%). Покрытие близко к единице и зависит от того, что считать: EBITDA (3,54 млрд) к признанным процентам (3,06) — 1,16×; EBIT к всем финрасходам — 0,995×; EBITDA ко всем финрасходам — 1,033×. Важно различать признанные, капитализированные и уплаченные проценты: деньгами за полугодие уплачено 4,3 млрд. В условиях высокой ставки это главный вектор ухудшения.</p>
+<h2>4. Поток и долг</h2><p>Операционный денежный поток глубоко отрицательный — минус 8,4 млрд (против −3,9 годом раньше): деньги уходят в стройку и запасы. Общий долг прибавил — 55,16 млрд против 43,62 на конец 2025 (+26,5%). Но по срочности картина улучшилась: доля короткого долга снизилась с 58,4% до 30,1% (короткий долг 16,57 млрд из 55,16). Это важное улучшение профиля погашений, и прежнюю претензию «больше половины долга короткий» надо снять.</p>
+<h2>5. Эскроу и ликвидность</h2><p>Эскроу за полугодие вырос — 5,51 млрд против 4,82 на конец 2025. Денежные средства тоже подросли — 0,975 млрд против 0,601. Эскроу остаётся небольшим относительно долга, поэтому заметную часть долга он не смягчает, но динамика за полугодие положительная — это стоит записать отдельно от прежней годовой картины, где эскроу сокращался.</p>
+<h2>6. Устойчивость</h2><p>Прибыльный и растущий по выручке бизнес, но за полугодие резко просела чистая прибыль, проценты почти удвоились, а поток глубоко отрицательный. С другой стороны — доля короткого долга снизилась, эскроу подрос. Запас по процентам тонкий (покрытие около единицы). Для сегмента ВДО это повышенный риск с акцентом на рефинансирование и на динамику прибыли. Не говорим «дефолт невозможен». Светофор 🟡 — устойчиво со слабостями; на мониторинге — восстановление прибыли, динамика процентов и обслуживание растущего долга.</p>
+<div class="card" style="margin-top:24px">
+<p><span class="gh">✅ Сильное:</span> операционно растёт — выручка 12,0 млрд за полугодие (+29,5%), операционная прибыль 3,4 млрд (+18,1%); доля короткого долга снизилась с 58,4% до 30,1% (улучшение профиля погашений); эскроу за полугодие вырос (4,82 → 5,51 млрд); денежные средства подросли (0,60 → 0,98 млрд); рейтинг НКР BBB-.ru (стабильный) и НРА BBB-|ru| подтверждены в 2026.</p>
+<p><span class="wh">⚠️ Нюансы:</span> чистая прибыль за полугодие упала почти в 8 раз (0,979 → 0,121 млрд, −87,7%); финансовые расходы почти удвоились (1,77 → 3,43 млрд, +93,7%); покрытие процентов около единицы (EBITDA/признанные проценты 1,16×, EBIT/финрасходы 0,995×); операционный поток глубоко отрицательный (−8,4 млрд); общий долг вырос на 26,5% (до 55,16 млрд); эскроу небольшой относительно долга — заметную часть не смягчает.</p>
+<p>🧭 <b>Общий вывод.</b> АПРИ — операционно растущий застройщик (выручка +29,5%, операционная прибыль +18,1%), но за полугодие резко просела чистая прибыль — почти в восемь раз (0,121 против 0,979 млрд), и причина одна: проценты почти удвоились (3,43 млрд, +93,7%), покрытие сжалось до уровня около единицы. Операционный поток глубоко отрицательный (−8,4 млрд), долг вырос на 26,5%. С другой стороны — доля короткого долга снизилась (с 58,4% до 30,1%), эскроу подрос: по срочности профиль стал лучше. Для сегмента ВДО — повышенный риск с акцентом на рефинансирование и динамику прибыли. Светофор 🟡 — устойчиво со слабостями; на мониторинге — восстановление прибыли и обслуживание растущего долга.</p></div>
+<div class="card"><p class="sect">Ключевые показатели</p>
+<svg viewBox="0 0 900 372" role="img" aria-label="АПРИ — прибыльный застройщик, но прибыль за полугодие резко просела">
+<line x1="64" y1="300.0" x2="884" y2="300.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="304.0" text-anchor="end" class="axlbl">0</text>
+<line x1="64" y1="261.9" x2="884" y2="261.9" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="265.9" text-anchor="end" class="axlbl">2</text>
+<line x1="64" y1="223.8" x2="884" y2="223.8" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="227.8" text-anchor="end" class="axlbl">4</text>
+<line x1="64" y1="185.7" x2="884" y2="185.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="189.7" text-anchor="end" class="axlbl">6</text>
+<line x1="64" y1="147.6" x2="884" y2="147.6" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="151.6" text-anchor="end" class="axlbl">8</text>
+<line x1="64" y1="109.5" x2="884" y2="109.5" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="113.5" text-anchor="end" class="axlbl">10</text>
+<line x1="64" y1="71.4" x2="884" y2="71.4" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="75.4" text-anchor="end" class="axlbl">12</text>
+<line x1="64" y1="33.3" x2="884" y2="33.3" stroke="var(--grid)" stroke-width="1"/>
+<text x="56" y="37.3" text-anchor="end" class="axlbl">14</text>
+<line x1="64" y1="300.0" x2="884" y2="300.0" stroke="var(--axis)" stroke-width="1.5"/>
+<rect x="163.7" y="123.2" width="34" height="176.8" rx="3" fill="var(--c25)"/>
+<text x="180.7" y="118.2" text-anchor="middle" class="vlbl">9,28</text>
+<rect x="203.7" y="71.2" width="34" height="228.8" rx="3" fill="var(--c26)"/>
+<text x="220.7" y="66.2" text-anchor="middle" class="vlbl">12,01</text>
+<text x="200.7" y="320" text-anchor="middle" class="axlbl">Выручка</text>
+<rect x="437.0" y="266.3" width="34" height="33.7" rx="3" fill="var(--c25)"/>
+<text x="454.0" y="261.3" text-anchor="middle" class="vlbl">1,77</text>
+<rect x="477.0" y="234.7" width="34" height="65.3" rx="3" fill="var(--c26)"/>
+<text x="494.0" y="229.7" text-anchor="middle" class="vlbl">3,43</text>
+<text x="474.0" y="320" text-anchor="middle" class="axlbl">Фин.</text>
+<text x="474.0" y="334" text-anchor="middle" class="axlbl">расходы</text>
+<rect x="710.3" y="281.3" width="34" height="18.7" rx="3" fill="var(--c25)"/>
+<text x="727.3" y="276.3" text-anchor="middle" class="vlbl">0,98</text>
+<rect x="750.3" y="297.7" width="34" height="2.3" rx="3" fill="var(--c26)"/>
+<text x="767.3" y="292.7" text-anchor="middle" class="vlbl">0,12</text>
+<text x="747.3" y="320" text-anchor="middle" class="axlbl">Чистая</text>
+<text x="747.3" y="334" text-anchor="middle" class="axlbl">прибыль</text>
+</svg>
+<div class="legend"><span><span class="dot" style="background:var(--c25)"></span>1П2025</span><span><span class="dot" style="background:var(--c26)"></span>1П2026</span></div>
+<p class="note" style="text-align:center">Млрд ₽, консолидированная МСФО, за 6 месяцев. Выручка выросла (+29,5%), но финансовые расходы почти удвоились (1,77 → 3,43 млрд) и обрушили чистую прибыль — с 0,98 до 0,12 млрд (−87,7%). Это ключевой сдвиг полугодия.</p></div>
+<div class="card"><p class="sect">Коэффициенты из отчёта</p><div class="tiles">
+<div class="tile"><div class="l">Чистая прибыль 1П2026</div><div class="v c">−87,7%</div><div class="n">0,121 млрд против 0,979 годом раньше — почти в 8 раз меньше</div></div>
+<div class="tile"><div class="l">Покрытие процентов</div><div class="v w">~1,0×</div><div class="n">EBITDA/признанные проценты 1,16×; EBIT/финрасходы 0,995× — запас тонкий</div></div>
+<div class="tile"><div class="l">Доля короткого долга</div><div class="v good">30,1%</div><div class="n">снизилась с 58,4% — улучшение профиля погашений (долг всего 55,16 млрд)</div></div>
+</div></div>
+<div class="card"><p class="sect">Скоринговые модели / индикаторы</p><p class="note" style="margin:0 0 6px">Скрининг — «посмотреть внимательнее», а не приговор и не индивидуальный PD.</p>
+<div class="score"><div><div class="name">Качество кредита (ВДО-девелопер на эскроу)</div><div class="meta">факторный скрининг, сегмент ВДО</div></div><div class="r"><div class="val">—</div><div class="rmeta">рост выручки и снижение доли короткого долга плюсуют; обвал прибыли, рост процентов и отрицательный поток минусуют</div><div class="pill"><span class="d" style="background:var(--warn)"></span>со слабостями</div></div></div>
+<div class="score"><div><div class="name">Прибыль / покрытие процентов</div><div class="meta">чистая прибыль −87,7%, покрытие ~1,0×</div></div><div class="r"><div class="val">—</div><div class="rmeta">ключевая слабость — проценты почти удвоились, прибыль просела</div><div class="pill"><span class="d" style="background:var(--crit)"></span>риск</div></div></div>
+<div class="score"><div><div class="name">Поток / долг</div><div class="meta">OCF −8,4 млрд, долг +26,5%</div></div><div class="r"><div class="val">—</div><div class="rmeta">акцент на обслуживании растущего долга</div><div class="pill"><span class="d" style="background:var(--crit)"></span>риск</div></div></div>
+<p class="note">Факторный скрининг (ВДО-девелопер на эскроу): за кредит — рост выручки (+29,5%) и операционной прибыли (+18,1%), снижение доли короткого долга (58,4% → 30,1%), рост эскроу; против — обвал чистой прибыли (−87,7%), почти удвоившиеся проценты, покрытие около единицы, отрицательный поток (−8,4 млрд), рост долга на 26,5%. Для сегмента ВДО — повышенный риск с акцентом на рефинансирование. Ориентир — 🟡.</p></div>
+<div class="card"><p class="sect">Что ИИ взял из отчёта — сверьте с первоисточником</p><div>
+<div class="row"><div class="k">Выручка 1П2026<span class="s">+29,5%</span></div><div class="val">12,0 млрд ₽ (1П2025: 9,3)</div></div>
+<div class="row"><div class="k">Операционная прибыль<span class="s">+18,1%</span></div><div class="val">3,4 млрд ₽ (1П2025: 2,9)</div></div>
+<div class="row"><div class="k">Чистая прибыль<span class="s">−87,7% — ключевой сдвиг</span></div><div class="val">0,121 млрд ₽ (1П2025: 0,979)</div></div>
+<div class="row"><div class="k">Финансовые расходы<span class="s">почти удвоились</span></div><div class="val">3,43 млрд ₽ (1П2025: 1,77)</div></div>
+<div class="row"><div class="k">Покрытие процентов<span class="s">около единицы</span></div><div class="val">EBITDA/признанные 1,16×; EBIT/финрасходы 0,995×</div></div>
+<div class="row"><div class="k">Проценты уплачено деньгами<span class="s"></span></div><div class="val">4,3 млрд ₽</div></div>
+<div class="row"><div class="k">Операционный поток<span class="s">глубоко отрицательный</span></div><div class="val">−8,4 млрд ₽ (1П2025: −3,9)</div></div>
+<div class="row"><div class="k">Общий долг<span class="s">+26,5%</span></div><div class="val">55,16 млрд ₽ (31.12.25: 43,62)</div></div>
+<div class="row"><div class="k">Доля короткого долга<span class="s">улучшилась</span></div><div class="val">30,1% (31.12.25: 58,4%)</div></div>
+<div class="row"><div class="k">Эскроу / деньги<span class="s">подросли за полугодие</span></div><div class="val">эскроу 5,51 (было 4,82); деньги 0,98 (было 0,60)</div></div>
+</div></div>
+<h2 style="margin-top:26px">Ключевые коэффициенты</h2><div class="card" style="margin-top:6px">
+<div class="row"><div class="k">Светофор</div><div class="val">🟡 со слабостями (акцент на рефинансировании)</div></div>
+<div class="row"><div class="k">Рейтинг</div><div class="val">BBB-.ru (НКР) / BBB-|ru| (НРА)</div></div>
+<div class="row"><div class="k">Выручка 1П2026</div><div class="val">12,0 млрд (+29,5%)</div></div>
+<div class="row"><div class="k">Чистая прибыль</div><div class="val">0,121 млрд (−87,7%)</div></div>
+<div class="row"><div class="k">Финрасходы</div><div class="val">3,43 млрд (+93,7%)</div></div>
+<div class="row"><div class="k">Покрытие процентов</div><div class="val">~1,0×</div></div>
+<div class="row"><div class="k">Общий долг</div><div class="val">55,16 млрд (+26,5%)</div></div>
+<div class="row"><div class="k">Доля короткого долга</div><div class="val">30,1% (было 58,4%)</div></div>
 </div>
+<h2 style="margin-top:26px">Чего не хватило / на что смотреть</h2><ul>
+<li>Данные: консолидированная МСФО ПАО «АПРИ» за 1П2026. Суммы — млрд ₽. Этот срез заменяет прежнюю годовую картину 2025: по срочности долга и эскроу динамика за полугодие улучшилась, а по прибыли и покрытию — ухудшилась.</li>
+<li>Ключевой сдвиг полугодия — обвал чистой прибыли почти в 8 раз (0,979 → 0,121 млрд) при росте выручки, причина — почти удвоившиеся финансовые расходы (1,77 → 3,43 млрд). Покрытие сжалось до уровня около единицы (EBITDA/признанные проценты 1,16×, EBIT/финрасходы 0,995×). Различать признанные/капитализированные/уплаченные проценты: деньгами уплачено 4,3 млрд.</li>
+<li>Улучшения, которые нужно признать: доля короткого долга снизилась с 58,4% до 30,1% (короткий долг 16,57 из 55,16 млрд) — прежнюю претензию «больше половины долга короткий» снимаем; эскроу вырос (4,82 → 5,51 млрд), деньги подросли (0,60 → 0,98).</li>
+<li>Остаётся напряжение: операционный поток глубоко отрицательный (−8,4 млрд), общий долг вырос на 26,5% (до 55,16 млрд). Рейтинг НКР BBB-.ru (стабильный, 03.08.2026), НРА BBB-|ru| по 1П2026. Параметры сверять по отчётности и сообщениям эмитента.</li>
+</ul>
+<p class="foot">Данные: консолидированная МСФО ПАО «АПРИ» за 1П2026. Рейтинг BBB-.ru (НКР) / BBB-|ru| (НРА). Суммы — млрд ₽; метрики к 30.06.2026. ВДО-девелопер на эскроу. Это разбор отчётности, а не индивидуальная инвестиционная рекомендация. @kutnyak_invest</p><p class="sitenav">Автор: Екатерина Кутняк · <a href="../index.html">Все калькуляторы</a> · <a href="../novosti.html">Новости</a> · <a href="../razbory-ii-analitika.html">Разборы ИИ</a> · <a href="../portfeli-idei.html">Портфели и идеи</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
 </div>
+
 <script src="/nav.js" defer></script>
 </body>
 </html>
