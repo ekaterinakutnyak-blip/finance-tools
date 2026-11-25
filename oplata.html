@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRO-доступ · investtools.pro</title>
+<meta name="description" content="Подписка PRO на investtools.pro: модельные портфели с живыми трекерами и закрытые калькуляторы. Оплата на сайте или через Telegram-бот.">
+<link rel="canonical" href="https://investtools.pro/oplata.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://investtools.pro/oplata.html">
+<meta property="og:title" content="PRO-доступ · investtools.pro">
+<meta property="og:description" content="Модельные портфели с живыми трекерами и закрытые калькуляторы. Оплата картой на сайте или через Telegram-бот.">
+<style>
+:root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--warn:#d0a028;--crit:#e35a5a;--hair:#242422}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--warn:#d0a028;--crit:#e35a5a;--hair:#242422}
+*{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:26px 18px 60px}
+.back-link{display:inline-block;color:var(--ink2);font-size:13px;text-decoration:none;margin-bottom:14px}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
+h1{font-size:30px;line-height:1.12;margin:0 0 10px;letter-spacing:-.5px}
+.intro{color:var(--ink2);font-size:15px;max-width:64ch;margin:0 0 20px}
+h2{font-size:18px;margin:28px 0 10px}
+.inc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:0 0 24px}
+.inc ul{margin:0;padding-left:20px}
+.inc li{font-size:14px;color:var(--ink2);margin:4px 0}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 18px}
+@media(max-width:560px){.plans{grid-template-columns:1fr}}
+.plan{display:block;cursor:pointer;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .15s,transform .12s}
+.plan:hover{border-color:var(--c26)}
+.plan input{position:absolute;opacity:0;pointer-events:none}
+.plan .per{font-size:13px;color:var(--ink2);font-weight:600}
+.plan .sum{font-size:24px;font-weight:700;letter-spacing:-.4px;margin:2px 0 0}
+.plan .mo{font-size:12px;color:var(--muted);margin-top:2px}
+.plan .save{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--c26);border-radius:20px;padding:2px 9px;margin-top:8px}
+.plan.sel{border-color:var(--c26);background:color-mix(in srgb,var(--c26) 7%,var(--card))}
+.agree-line{font-size:12px;color:var(--muted);text-align:center;margin:12px 0 0;line-height:1.5}
+.agree-line a{color:var(--muted)}
+.btn{display:block;width:100%;font:600 16px system-ui,sans-serif;color:#fff;background:var(--c26);border:none;border-radius:12px;padding:15px 20px;cursor:pointer;text-align:center;text-decoration:none}
+.btn:hover{filter:brightness(1.06)}
+.btn[disabled]{opacity:.55;cursor:default;filter:none}
+.btn.tg{background:var(--card);color:var(--ink);border:1.5px solid var(--border);margin-top:10px;font-weight:500;font-size:15px}
+.btn.tg:hover{border-color:var(--c25);filter:none}
+.err{font-size:13px;color:var(--crit);min-height:1.3em;margin:10px 0 0;text-align:center}
+.note{font-size:12.5px;color:var(--muted);margin:16px 0 0;line-height:1.55}
+.foot{color:var(--muted);font-size:12px;margin-top:34px;border-top:1px solid var(--grid);padding-top:12px}
+.foot a{color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="portfeli-idei.html" class="back-link">← Портфели-идеи</a>
+  <p class="kicker">Подписка</p>
+  <h1>PRO-доступ</h1>
+  <p class="intro">Один доступ ко всем закрытым материалам сайта. Оплатить можно прямо здесь или через Telegram-бот — токен и доступ в обоих случаях одинаковые. Регистрация не нужна. Контактные и платёжные данные для оплаты вводятся на стороне ЮKassa.</p>
+
+  <div class="inc">
+    <ul>
+      <li>Все модельные портфели с живыми еженедельными трекерами</li>
+      <li>Закрытые калькуляторы: портфель облигаций, риск ВДО, оптимизация, «Мой портфель» с разбором брокерских отчётов</li>
+      <li>Новые портфели и инструменты по мере выхода, без доплат</li>
+    </ul>
+  </div>
+
+  <h2>Выберите срок</h2>
+  <div class="plans" id="plans">
+    <label class="plan" data-plan="m1"><input type="radio" name="plan" value="m1">
+      <div class="per">1 месяц (30 дней)</div><div class="sum">700 ₽</div><div class="mo">700 ₽ в месяц</div></label>
+    <label class="plan" data-plan="m3"><input type="radio" name="plan" value="m3">
+      <div class="per">3 месяца (90 дней)</div><div class="sum">1 800 ₽</div><div class="mo">600 ₽ в месяц</div><span class="save">выгоднее на 14%</span></label>
+    <label class="plan sel" data-plan="m6"><input type="radio" name="plan" value="m6" checked>
+      <div class="per">6 месяцев (180 дней)</div><div class="sum">3 000 ₽</div><div class="mo">500 ₽ в месяц</div><span class="save">выгоднее на 29%</span></label>
+    <label class="plan" data-plan="y1"><input type="radio" name="plan" value="y1">
+      <div class="per">1 год (365 дней)</div><div class="sum">5 400 ₽</div><div class="mo">450 ₽ в месяц</div><span class="save">выгоднее на 36%</span></label>
+  </div>
+
+  <button class="btn" id="payBtn">Оплатить на сайте</button>
+  <a class="btn tg" href="https://t.me/k_invest_channel_bot" target="_blank" rel="noopener">Оплатить через Telegram</a>
+  <p class="err" id="err"></p>
+  <p class="agree-line">Оплачивая подписку, вы принимаете условия <a href="oferta.html" target="_blank" rel="noopener">оферты</a>. С порядком обработки данных можно ознакомиться в <a href="personal-data.html" target="_blank" rel="noopener">политике обработки персональных данных</a>.</p>
+
+  <p class="note">Автоматического продления и повторных списаний нет. Условия возврата — в разделе 7 оферты.</p>
+  <p class="note">Оплата проходит на защищённой странице ЮKassa — карты сюда не вводятся и на сайте не хранятся. Сразу после оплаты доступ в этом браузере включится сам, вводить токен не нужно. Токен покажется на экране — сохраните его, он понадобится, чтобы войти с телефона или другого компьютера.</p>
+
+  <p class="foot">Автор: Екатерина Кутняк · <a href="index.html">Все калькуляторы</a> · <a href="novosti.html">Новости</a> · <a href="portfeli-idei.html">Портфели-идеи</a> · <a href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Telegram</a></p>
+</div>
+
+<script>
+(function(){
+  var plans = document.getElementById('plans');
+  plans.addEventListener('change', function(){
+    [].forEach.call(plans.querySelectorAll('.plan'), function(l){
+      l.classList.toggle('sel', l.querySelector('input').checked);
+    });
+  });
+
+  var btn = document.getElementById('payBtn');
+  var err = document.getElementById('err');
+
+  btn.onclick = function(){
+    var plan = (plans.querySelector('input:checked') || {}).value;
+    if (!plan) { err.textContent = 'Выберите срок'; return; }
+
+    // при продлении отдаём прежний токен, чтобы человек попал в свою же
+    // учётную запись и не потерял сохранённые портфели
+    var prev = null;
+    try {
+      if (localStorage.getItem('pro_access_type') === 'token') {
+        prev = localStorage.getItem('pro_access_token');
+      }
+    } catch(e){}
+
+    err.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Готовлю оплату…';
+
+    fetch('/api/site/pay', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({plan: plan, prev_token: prev})
+    })
+    .then(function(r){ return r.json().then(function(j){ return {ok: r.ok, body: j}; }); })
+    .then(function(res){
+      if (!res.ok || !res.body.confirmation_url) {
+        throw new Error(res.body.detail || 'Не удалось создать платёж');
+      }
+      try { localStorage.setItem('pro_last_order', res.body.oid); } catch(e){}
+      location.href = res.body.confirmation_url;
+    })
+    .catch(function(e){
+      err.textContent = e.message + '. Попробуйте ещё раз или оплатите через Telegram.';
+      btn.disabled = false;
+      btn.textContent = 'Оплатить на сайте';
+    });
+  };
+})();
+</script>
+</body>
+</html>
