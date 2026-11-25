@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оплата прошла · investtools.pro</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--plane:#f9f9f7;--card:#fff;--ink:#0b0b0b;--ink2:#4c4b48;--muted:#8a8883;--grid:#e6e5df;--border:rgba(11,11,11,.10);--c25:#2f6fb0;--c26:#2f8f5b;--warn:#e0a01a;--crit:#d03b3b;--hair:#ecebe6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--warn:#d0a028;--crit:#e35a5a;--hair:#242422}}
+:root[data-theme="dark"]{--plane:#0d0d0d;--card:#1a1a19;--ink:#fff;--ink2:#c3c2b7;--muted:#8a8883;--grid:#2c2c2a;--border:rgba(255,255,255,.12);--c25:#3f88cf;--c26:#3aa76a;--warn:#d0a028;--crit:#e35a5a;--hair:#242422}
+*{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:620px;margin:0 auto;padding:40px 18px 60px;text-align:center}
+h1{font-size:26px;line-height:1.15;margin:0 0 10px;letter-spacing:-.4px}
+p{color:var(--ink2);margin:0 0 14px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px;margin:22px 0}
+.tok{font:700 22px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;color:var(--ink);word-break:break-all;margin:8px 0 4px}
+.until{font-size:13px;color:var(--muted)}
+.btn{display:inline-block;font:600 15px system-ui,sans-serif;color:#fff;background:var(--c26);border:none;border-radius:12px;padding:13px 26px;cursor:pointer;text-decoration:none;margin:6px 5px 0}
+.btn.sec{background:var(--card);color:var(--ink);border:1.5px solid var(--border);font-weight:500}
+.spin{width:30px;height:30px;border:3px solid var(--grid);border-top-color:var(--c26);border-radius:50%;margin:24px auto;animation:r .9s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+.note{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:18px}
+.bad{color:var(--crit)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="view">
+    <h1>Проверяю оплату</h1>
+    <p>Это занимает несколько секунд. Не закрывайте страницу.</p>
+    <div class="spin"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var view = document.getElementById('view');
+  var oid = new URLSearchParams(location.search).get('o');
+  if (!oid) { try { oid = localStorage.getItem('pro_last_order'); } catch(e){} }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function fail(title, text){
+    view.innerHTML = '<h1>' + title + '</h1><p>' + text + '</p>' +
+      '<a class="btn" href="/oplata.html">Вернуться к оплате</a>' +
+      '<a class="btn sec" href="https://t.me/kutnyak_invest" target="_blank" rel="noopener">Написать автору</a>';
+  }
+
+  function done(d){
+    // Включаем доступ в этом браузере — те же четыре ключа, которые читает gate.js
+    try {
+      localStorage.setItem('pro_access_token', d.token);
+      localStorage.setItem('pro_access_type', 'token');
+      localStorage.setItem('pro_access_expiry', d.expires_at);
+      localStorage.setItem('pro_access_lastcheck', String(Date.now()));
+      localStorage.removeItem('pro_last_order');
+    } catch(e){}
+
+    var until = '';
+    try {
+      until = new Date(d.expires_at).toLocaleDateString('ru-RU',
+        {day:'2-digit', month:'long', year:'numeric'});
+    } catch(e){ until = String(d.expires_at).slice(0,10); }
+
+    var mailLine = 'Сохраните токен — он понадобится, чтобы войти с телефона или другого компьютера.';
+
+    view.innerHTML =
+      '<h1>Оплата прошла, доступ открыт</h1>' +
+      '<p>В этом браузере всё уже работает — вводить ничего не нужно.</p>' +
+      '<div class="box">' +
+        '<div style="font-size:13px;color:var(--muted)">Ваш токен доступа</div>' +
+        '<div class="tok">' + esc(d.token) + '</div>' +
+        '<div class="until">действует до ' + until + '</div>' +
+      '</div>' +
+      '<a class="btn" href="/portfeli-idei.html">Перейти к портфелям</a>' +
+      '<a class="btn sec" href="/index.html">Все калькуляторы</a>' +
+      '<p class="note">' + mailLine + ' Чек направляется в порядке, предусмотренном законодательством о применении ККТ.</p>';
+  }
+
+  if (!oid) {
+    fail('Не вижу, какой это заказ',
+      'Похоже, страница открыта без ссылки возврата. Если деньги списались, напишите мне — найду платёж и выдам токен вручную.');
+    return;
+  }
+
+  var tries = 0;
+  (function poll(){
+    tries++;
+    fetch('/api/site/token?o=' + encodeURIComponent(oid), {cache:'no-store'})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+      .then(function(res){
+        if (res.ok && res.body.status === 'succeeded' && res.body.token) { done(res.body); return; }
+        if (res.ok && res.body.status === 'canceled') {
+          fail('Платёж отменён', 'Деньги не списаны. Можно попробовать ещё раз.');
+          return;
+        }
+        if (tries >= 20) {
+          fail('Оплата пока не подтвердилась',
+            'Иногда касса отвечает с задержкой. Обновите страницу через минуту — если доступ не откроется и деньги списались, напишите мне.');
+          return;
+        }
+        setTimeout(poll, 3000);
+      })
+      .catch(function(){
+        if (tries >= 20) {
+          fail('Не удаётся связаться с сервером',
+            'Обновите страницу через минуту. Если деньги списались, напишите мне — выдам токен вручную.');
+          return;
+        }
+        setTimeout(poll, 3000);
+      });
+  })();
+})();
+</script>
+</body>
+</html>
