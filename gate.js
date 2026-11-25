@@ -84,7 +84,8 @@
       '<div id="proErr" style="font-size:0.78rem;color:#B44040;min-height:1.2em"></div>' +
       '<div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid #F3F2EE">' +
       '<p style="font-size:0.82rem;color:#6B6A65;margin-bottom:0.75rem">Нет доступа?</p>' +
-      '<a href="https://t.me/k_invest_channel_bot" target="_blank" style="font-size:0.85rem;color:#2D5A3D;font-weight:500">Оформить PRO →</a>' +
+      '<a href="/oplata.html" style="display:block;font-family:DM Sans,sans-serif;font-size:0.9rem;font-weight:600;padding:0.6rem 1rem;border-radius:10px;background:#2D5A3D;color:#fff;text-decoration:none;margin-bottom:0.5rem">Оплатить на сайте</a>' +
+      '<a href="https://t.me/k_invest_channel_bot" target="_blank" rel="noopener" style="display:block;font-family:DM Sans,sans-serif;font-size:0.9rem;font-weight:500;padding:0.6rem 1rem;border-radius:10px;border:1px solid #E5E4DF;color:#2D5A3D;text-decoration:none">Оплатить через Telegram</a>' +
       '</div></div>';
     overlay.style.cssText = 'position:fixed;inset:0;background:#FAFAF8;z-index:99999;overflow-y:auto';
     document.documentElement.appendChild(overlay);
