@@ -98,3 +98,33 @@
     build();
   }
 })();
+
+/* investtools.pro — строка с правовыми документами внизу каждой страницы. */
+(function () {
+  function build() {
+    try {
+      if (document.getElementById('site-legal')) return;
+      var css =
+        '#site-legal{margin:28px 0 0;padding:12px 16px 16px;border-top:1px solid #E5E4DF;' +
+        'text-align:center;font-family:"DM Sans",system-ui,-apple-system,sans-serif;' +
+        'font-size:0.74rem;color:#8a8883;line-height:1.5}' +
+        '#site-legal a{color:#8a8883;text-decoration:none;border-bottom:1px solid #E5E4DF}' +
+        '#site-legal a:hover{color:#2D5A3D}';
+      var st = document.createElement('style');
+      st.textContent = css;
+      document.head.appendChild(st);
+      var box = document.createElement('div');
+      box.id = 'site-legal';
+      box.innerHTML =
+        'ИП Кутняк Екатерина Георгиевна · ИНН 503211905008 · ' +
+        '<a href="/oferta.html">Оферта</a> · ' +
+        '<a href="/personal-data.html">Обработка данных</a>';
+      document.body.appendChild(box);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', build);
+  } else {
+    build();
+  }
+})();
