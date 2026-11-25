@@ -54,6 +54,8 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
 .pricing li::before{content:'✓ ';color:var(--accent);font-weight:600}
 .btn-buy{display:inline-block;font-family:var(--sans);font-size:0.9rem;font-weight:600;padding:0.7rem 2rem;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;text-decoration:none;transition:opacity 0.2s}
 .btn-buy:hover{opacity:0.85}
+.btn-buy-alt{background:transparent;color:var(--accent);border:1.5px solid var(--border);font-weight:500}
+.btn-buy-alt:hover{border-color:var(--accent);opacity:1}
 .footer{margin-top:2.5rem;font-size:0.72rem;color:var(--text3);line-height:1.6;text-align:center}
 .footer a{color:var(--text2)}
 .nav{display:flex;gap:6px;margin-bottom:2rem;flex-wrap:wrap}
@@ -245,8 +247,11 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
     <li>Implied рейтинг Эксперт РА</li>
     <li>Данные с Мосбиржи в реальном времени</li>
   </ul>
-  <a class="btn-buy" href="https://t.me/k_invest_channel_bot" target="_blank">Оформить через Telegram-бота</a>
-  <div style="font-size:0.82rem;color:var(--text2);margin-top:0.5rem">Оплата и токен доступа — в чате с ботом</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">
+    <a class="btn-buy" href="/oplata.html">Оплатить на сайте</a>
+    <a class="btn-buy btn-buy-alt" href="https://t.me/k_invest_channel_bot" target="_blank" rel="noopener">Оплатить через Telegram</a>
+  </div>
+  <div style="font-size:0.82rem;color:var(--text2);margin-top:0.6rem">Оплата картой на сайте — доступ откроется сразу. Через бота — токен придёт в чат.</div>
 </div>
 <div class="footer">
   <a href="https://t.me/+BqH4mvzCuMVlNDNk" target="_blank" style="display:inline-block;font-size:0.85rem;font-weight:500;color:#fff;background:#2D5A3D;padding:0.5rem 1.2rem;border-radius:8px;text-decoration:none;margin-bottom:1rem">Telegram-канал · обратная связь и обновления</a><br>
@@ -255,5 +260,6 @@ h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:0.25rem
   © 2025–2026
 </div>
 </div>
+<script src="/nav.js" defer></script>
 </body>
 </html>
