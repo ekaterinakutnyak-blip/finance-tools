@@ -646,7 +646,7 @@ async function downloadReport(){
   const old = btn ? btn.textContent : '';
   if(btn){ btn.textContent = 'Готовлю отчёт…'; btn.disabled = true; }
   try{
-    const {cards, tickers, retMap, userPort} = R;
+    const {cards, tickers, retMap, userPort, stockStats} = R;
     const byTitle = t => cards.find(c=>c.title===t);
     const m = c => c ? ({
       label: c.title,
@@ -672,6 +672,23 @@ async function downloadReport(){
     }
 
     // корреляции по бумагам портфеля (только те, что в составе)
+
+    // риск по бумагам для PDF: sigma, beta, R2 (числа уже посчитаны при расчёте)
+    const stockRisk = [];
+    const _SS = stockStats || (window._reportData && window._reportData.stockStats) || {};
+    weights.forEach(w=>{
+      const s = _SS[w.ticker];
+      if(!s) return;
+      const num = v => (v==null || isNaN(v)) ? null : v;
+      stockRisk.push({
+        ticker: w.ticker,
+        weight: w.weight,
+        vol:  num(s.vol)  ===null?null:+s.vol.toFixed(1),
+        beta: num(s.betaSPY)===null?null:+s.betaSPY.toFixed(2),
+        r2:   num(s.r2)   ===null?null:+s.r2.toFixed(4)
+      });
+    });
+
     const held = weights.map(w=>w.ticker);
     let corr_avg=null, corr_top=[], corr_low=[];
     if(held.length>=2 && typeof pearson==='function'){
@@ -703,6 +720,7 @@ async function downloadReport(){
       market: "us",
       var_stats: Array.isArray(R.varStats) ? R.varStats : [],
       var_label: R.varLabel || null,
+      stock_risk: stockRisk,
       analytics: (typeof buildAnalyticsPayload==='function' ? buildAnalyticsPayload() : null)
     };
 
